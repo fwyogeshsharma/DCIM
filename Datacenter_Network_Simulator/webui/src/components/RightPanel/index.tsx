@@ -42,14 +42,15 @@ const TABS: Tab[] = [
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
   { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
-  // Square crop of the Modbus mark (assets/icons/modbus.png is a 3.1:1 lockup that
-  // renders as an 8px strip in this rail). Padded to 80% of its canvas so it
-  // carries the same visual weight as bacnet/snmp at the default 26px box —
-  // rules/tick fill their canvas instead and drop to iconSize 20 to compensate,
-  // and doing neither is what made this one overlap its neighbours.
-  // No iconInvert: it is a colour logo on transparency, and inverting would turn
-  // the orange/green brand palette blue.
-  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus-mark.png', iconNoFilter: true, label: 'Modbus/TCP', component: <ModbusPanel /> },
+  // The full Modbus lockup, not a crop: the mark and the wordmark overlap in the
+  // source art (the M is drawn over the orange disc), so every attempt to cut the
+  // mark out either sliced the disc or truncated the M.
+  // iconSize 38 because the art is 3.14:1 — objectFit:contain fits it to WIDTH, so
+  // a 38px box yields a 38x12 logo inside the 44x44 button. The default 26 would
+  // render it 8px tall and illegible; going past ~40 would touch the button edge.
+  // iconNoFilter: the rail's default contrast(2)/brightness() punch is for flat
+  // monochrome glyphs and collapses this logo's orange disc into its yellow dots.
+  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus.png', iconNoFilter: true, iconSize: 38, label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
