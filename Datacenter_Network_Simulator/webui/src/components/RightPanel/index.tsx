@@ -30,6 +30,8 @@ interface Tab {
                           // distinct hues into one (the Modbus orange disc merges
                           // into its yellow dots and the blue M washes out).
   iconSize?:    number    // override rendered px size (default 22)
+  iconWidth?:   number    // explicit width; with iconHeight, scales NON-uniformly
+  iconHeight?:  number    // explicit height (objectFit switches to 'fill')
   iconColor?:   string    // override inactive text color
   label:        string
   component:    React.ReactNode
@@ -45,12 +47,14 @@ const TABS: Tab[] = [
   // The full Modbus lockup, not a crop: the mark and the wordmark overlap in the
   // source art (the M is drawn over the orange disc), so every attempt to cut the
   // mark out either sliced the disc or truncated the M.
-  // iconSize 38 because the art is 3.14:1 — objectFit:contain fits it to WIDTH, so
-  // a 38px box yields a 38x12 logo inside the 44x44 button. The default 26 would
-  // render it 8px tall and illegible; going past ~40 would touch the button edge.
+  // 35x14 is a DELIBERATE non-uniform scale: the art is 3.14:1, which fits to
+  // 38x12 at true aspect and reads thin in the rail. Narrowing to 35 and pulling
+  // the height to 14 (2.5:1) gives it more presence without touching the 44x44
+  // button edge. Adjust the pair to taste — width drives legibility of the
+  // wordmark, height drives how heavy it sits against its neighbours.
   // iconNoFilter: the rail's default contrast(2)/brightness() punch is for flat
   // monochrome glyphs and collapses this logo's orange disc into its yellow dots.
-  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus.png', iconNoFilter: true, iconSize: 38, label: 'Modbus/TCP', component: <ModbusPanel /> },
+  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus.png', iconNoFilter: true, iconWidth: 35, iconHeight: 14, label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
@@ -103,9 +107,12 @@ function TabButton({
             </div>
           : <img src={tab.iconSrc} alt={tab.label}
               style={{
-                width:  tab.iconSize ?? 26,
-                height: tab.iconSize ?? 26,
-                objectFit: 'contain',
+                width:  tab.iconWidth  ?? tab.iconSize ?? 26,
+                height: tab.iconHeight ?? tab.iconSize ?? 26,
+                // 'fill' only when both axes are pinned — that is the caller
+                // asking for a deliberate non-uniform scale. Otherwise 'contain',
+                // which preserves the art's own aspect.
+                objectFit: (tab.iconWidth && tab.iconHeight) ? 'fill' : 'contain',
                 opacity: active ? 1 : 0.93,
                 filter: tab.iconNoFilter
                   ? active
