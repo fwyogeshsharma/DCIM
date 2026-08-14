@@ -32,26 +32,31 @@ interface Tab {
   iconWidth?:   number    // explicit width; with iconHeight, scales NON-uniformly
   iconHeight?:  number    // explicit height (objectFit switches to 'fill')
   iconColor?:   string    // override inactive text color
-  label:        string
+  label:        string    // full name: tooltip + aria
+  short?:       string    // rail caption; label is long-form ('Modbus/TCP',
+                          // 'Fleet Lifecycle') and will not fit 50px at 8px
   component:    React.ReactNode
 }
 
 const TABS: Tab[] = [
-  { id: 'binding', icon: '🔗',  label: 'Binding',      component: <BindingPanel /> },
-  { id: 'snmp',    icon: '🖥️',  iconSrc: '/assets/icons/snmp.png', iconInvert: true, label: 'SNMP', component: <SNMPPanel /> },
-  { id: 'gnmi',    icon: '📡',  iconSrc: '/assets/icons/gnmi.svg', label: 'gNMI', component: <GNMIPanel /> },
-  { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
-  { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
-  { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
-  // Plain glyph, not the brand logo: "Modbus" is 3.14:1 art whose letters land
-  // ~6px tall in this 44px button, and no crop of it survives (the wordmark is
-  // drawn over the mark in the source art). The real logo lives in the panel
-  // header, where there is width to render it unmodified and legible.
-  { id: 'modbus',  icon: '🔌',  label: 'Modbus/TCP', component: <ModbusPanel /> },
-  { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
-  { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
-  { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
-  { id: 'fleet',   icon: '📈',  label: 'Fleet Lifecycle', component: <FleetPanel /> },
+  { id: 'binding', icon: '🔗',  short: 'Bind', label: 'Binding',      component: <BindingPanel /> },
+  { id: 'snmp',    icon: '🖥️',  iconSrc: '/assets/icons/snmp.png', iconInvert: true, short: 'SNMP', label: 'SNMP', component: <SNMPPanel /> },
+  { id: 'gnmi',    icon: '📡',  iconSrc: '/assets/icons/gnmi.svg', short: 'gNMI', label: 'gNMI', component: <GNMIPanel /> },
+  { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, short: 'sFlow', label: 'sFlow', component: <SFlowPanel /> },
+  { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', short: 'BACnet', label: 'BACnet/IP', component: <BACnetPanel /> },
+  { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', short: 'Redfish', label: 'Redfish', component: <RedfishPanel /> },
+  // The real logo, with the readable text coming from the CAPTION rather than
+  // from the artwork. The wordmark itself cannot be legible here — it is 72 units
+  // tall in art 600 wide, so any fit into this button lands the letters under 5px
+  // (the square-viewBox SVG is the same wide art padded, and renders smaller
+  // still). So the lockup identifies the plane by its colour and shape, and the
+  // caption below says 'Modbus' in type that is actually readable.
+  // 44x14 keeps the art's true 3.14:1 aspect inside the 48px button.
+  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus.png', iconNoFilter: true, iconWidth: 44, iconHeight: 14, short: 'Modbus', label: 'Modbus/TCP', component: <ModbusPanel /> },
+  { id: 'traps',   icon: '⚡',  short: 'Traps', label: 'Traps',        component: <TrapsPanel />   },
+  { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, short: 'Rules', label: 'Rules', component: <RulesPanel /> },
+  { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, short: 'Tick', label: 'Metrics Tick', component: <TickPanel />    },
+  { id: 'fleet',   icon: '📈',  short: 'Fleet', label: 'Fleet Lifecycle', component: <FleetPanel /> },
 ]
 
 function TabButton({
@@ -63,13 +68,14 @@ function TabButton({
       onClick={onClick}
       style={{
         position: 'relative',
-        width: 44, height: 44,
+        width: 48, height: 50,
         border: 'none', borderRadius: 7,
         background: active ? 'var(--bg-selected)' : 'transparent',
         color: active ? 'var(--text)' : (tab.iconColor ?? 'var(--text-dim)'),
-        fontSize: 21,
+        fontSize: 17,
         cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 1,
         transition: 'background 0.15s, color 0.15s',
       }}
       onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)' }}
@@ -85,7 +91,7 @@ function TabButton({
       {tab.iconSrc
         ? tab.iconWhiteBg
           ? <div style={{
-              width: tab.iconSize ?? 30, height: tab.iconSize ?? 30,
+              width: tab.iconSize ?? 24, height: tab.iconSize ?? 24,
               borderRadius: 5, overflow: 'hidden',
               background: 'var(--on-solid)', padding: 2,
               opacity: active ? 1 : 0.82,
@@ -97,8 +103,8 @@ function TabButton({
             </div>
           : <img src={tab.iconSrc} alt={tab.label}
               style={{
-                width:  tab.iconWidth  ?? tab.iconSize ?? 26,
-                height: tab.iconHeight ?? tab.iconSize ?? 26,
+                width:  tab.iconWidth  ?? tab.iconSize ?? 22,
+                height: tab.iconHeight ?? tab.iconSize ?? 22,
                 // 'fill' only when both axes are pinned — that is the caller
                 // asking for a deliberate non-uniform scale. Otherwise 'contain',
                 // which preserves the art's own aspect.
@@ -118,6 +124,16 @@ function TabButton({
               }} />
         : tab.icon
       }
+      {/* Real UI text, not the brand wordmark. A logo's own lettering cannot be
+          legible at this size (the Modbus wordmark lands under 5px), so the name
+          is set in the app's own type where it is readable at any size. */}
+      <span style={{
+        fontSize: 8, lineHeight: 1, letterSpacing: 0.1,
+        fontFamily: 'inherit', fontWeight: active ? 600 : 400,
+        color: active ? 'var(--text)' : 'var(--text-dim)',
+        maxWidth: 46, overflow: 'hidden', textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}>{tab.short ?? tab.label}</span>
       {badge && (
         <span
           title={badge}
@@ -234,7 +250,7 @@ export default function RightPanel() {
 
       {/* Icon tab strip */}
       <div style={{
-        width: 54,
+        width: 58,
         background: 'linear-gradient(180deg, var(--chrome-a) 0%, var(--chrome-b) 100%)',
         borderLeft: '1px solid var(--border)',
         display: 'flex',
