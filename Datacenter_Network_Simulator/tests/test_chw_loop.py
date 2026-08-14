@@ -358,3 +358,73 @@ def test_pump_head_rises_monotonically_with_speed(tmp_path, plant_cache):
         pts.append((a['Speed'], a['Diff_Pressure']))
     pts.sort()
     assert all(b[1] >= a[1] for a, b in zip(pts, pts[1:])), pts
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Where published pump SPEED comes from
+#
+#  It used to be back-derived from the pump's metered draw. That draw is not the
+#  pump's own curve value: the store normalises every running unit so each DC's
+#  plant sums to cooling_electrical_w(). Inverting a normalised share answers
+#  "what fraction of the plant's electrical bill is this machine", not "how fast
+#  is it turning", and the two only agree while the staged unit count holds still.
+#  Speed is now the drive's own commanded fraction, taken from the same thermal
+#  duty that sets header flow.
+# ─────────────────────────────────────────────────────────────────────────────
+def _chwp(p):
+    return p.auto_points(p.store._plant_trains_run[DC][0]["chwp"])
+
+
+def test_a_running_pump_never_publishes_below_the_drive_floor(tmp_path, plant_cache):
+    """A VFD has a turndown limit. Below it the pump is stopped, not slow — so a
+    running pump reporting under PUMP_MIN_SPEED is a reading no drive can produce.
+    The old back-derivation published 24.6 % against a 35 % floor."""
+    from core.cooling_model import PUMP_MIN_SPEED
+    for servers in (1, 6, 40):
+        p = build_plant(tmp_path / f"idle{servers}", servers=servers,
+                        installed_modules=12)
+        _settle(p, 8)
+        a = _chwp(p)
+        assert a["Speed"] >= PUMP_MIN_SPEED * 100.0 - 0.05, (servers, a["Speed"])
+
+
+def test_speed_tracks_the_water_not_the_electrical_share(tmp_path, plant_cache):
+    """The regression in one assertion. A pump moving several times the water must
+    turn faster — even though staging a second train cut its share of the plant's
+    normalised electrical total, which is what the old derivation read."""
+    idle = build_plant(tmp_path / "i", servers=6, installed_modules=6)
+    busy = build_plant(tmp_path / "b", servers=600, installed_modules=6)
+    _settle(idle, 8)
+    _settle(busy, 8)
+    i, b = _chwp(idle), _chwp(busy)
+    assert b["Flow"] > i["Flow"]
+    assert b["Speed"] > i["Speed"], (i, b)
+
+
+def test_header_flow_and_speed_never_disagree(tmp_path, plant_cache):
+    """Flow ∝ speed on a fixed system curve, so the two must move together across
+    every load the plant sees.
+
+    HEADER flow, not per-pump: two pumps in parallel on one ΔP setpoint each carry
+    half, so per-pump flow halves at unchanged speed — that is the sharing, not a
+    disagreement. What must never happen is the header moving more water while the
+    drives report turning slower, which is precisely what the old power-derived
+    speed published."""
+    seen = []
+    for servers, mods in ((6, 12), (40, 12), (200, 6), (600, 6)):
+        p = build_plant(tmp_path / f"s{servers}m{mods}", servers=servers,
+                        installed_modules=mods)
+        _settle(p, 8)
+        pumps = [t["chwp"] for t in p.store._plant_trains_run[DC] if t.get("chwp")]
+        header = sum(p.auto_points(n).get("Flow", 0.0) for n in pumps)
+        seen.append((round(header, 2), p.auto_points(pumps[0])["Speed"]))
+    seen.sort()
+    assert all(b[1] >= a[1] - 0.05 for a, b in zip(seen, seen[1:])), seen
+
+
+def test_vfd_frequency_agrees_with_the_published_speed(tmp_path, plant_cache):
+    """50 Hz mains at 100 %. A drive whose Hz and % disagree is one of them wrong."""
+    p = build_plant(tmp_path / "f", servers=600, installed_modules=6)
+    _settle(p, 8)
+    a = _chwp(p)
+    assert a["VFD_Frequency"] == pytest.approx(a["Speed"] * 0.5, abs=0.15)

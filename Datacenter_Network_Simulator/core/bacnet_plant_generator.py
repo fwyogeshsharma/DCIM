@@ -271,6 +271,7 @@ class PlantTelemetryEngine:
              live_power: float | None = None,
              live_cop: float | None = None,
              plant_load_frac: float | None = None,
+             live_speed: float | None = None,
              live_heat: float | None = None,
              running: bool = True) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
@@ -303,11 +304,11 @@ class PlantTelemetryEngine:
                 out[name] = round(max(0.0, self._values[name]), 2)
                 _pwr_out = out[name]
                 continue
-            if live_power is not None and name == self._speed_point:
-                # Speed is driven PURELY by the affinity coupling below (from the
-                # metered power) — don't also random-walk it here, or the walk
-                # (base × diurnal) dominates and the published Speed stops tracking
-                # the actual draw (a 16 kW and a 6 kW fan both reading ~82 %).
+            if (live_power is not None or live_speed is not None) and name == self._speed_point:
+                # Speed is driven PURELY by the block below — don't also random-walk
+                # it here, or the walk (base × diurnal) dominates and the published
+                # Speed stops tracking the machine (a 16 kW and a 6 kW fan both
+                # reading ~82 %).
                 continue
             # Compressor load and COP are driven below from the live power model, and
             # they need the SAME exemption for the same reason — they did not have it,
@@ -338,12 +339,31 @@ class PlantTelemetryEngine:
             lo, hi = target - amp, target + amp
             self._values[name] = max(lo, min(hi, self._values[name]))
             out[name] = round(self._values[name], 2)
-        # Couple the VFD speed point to the metered affinity power (inverse of
-        # P ∝ speed³) so a throttled pump/fan reports the matching speed, not an
-        # independent random walk. VFD_Frequency (Hz) follows the same speed.
-        if _pwr_out is not None and self._speed_point:
+        # VFD speed. `live_speed` is the drive's OWN commanded speed fraction, taken
+        # straight from the store's vfd_speed_frac(duty) — a hydraulic quantity,
+        # which is what a VFD's speed feedback actually is.
+        #
+        # It used to be back-derived from the metered power instead (inverse of
+        # P ∝ speed³). That looked right and was not, because the metered power a
+        # plant device publishes is NOT its curve draw: the store normalises every
+        # running unit so the DC sums to cooling_electrical_w(). Inverting a
+        # normalised share therefore reported "what fraction of the plant's total
+        # electrical bill is this machine", not "how fast is it turning". Stage a
+        # second cooling train and the same total splits two ways, so both pumps'
+        # apparent speed dropped while their flow did not — one moving 4.4x the
+        # water of another published 24.6 % against its 29.1 %, and 24.6 % is below
+        # the 35 % drive floor a running pump cannot physically be under.
+        #
+        # The affinity fallback is kept for devices the store has no speed for, so
+        # a topology without the cooling model still publishes a coupled speed
+        # rather than reverting to the random walk skipped above.
+        spd = None
+        if live_speed is not None and self._speed_point:
+            spd = max(0.0, min(1.0, live_speed))
+        elif _pwr_out is not None and self._speed_point:
             from core.cooling_model import affinity_speed_frac
             spd = affinity_speed_frac(_pwr_out, self._nameplate_kw)
+        if spd is not None:
             self._values[self._speed_point] = self._ema(
                 spd * 100.0, self._values[self._speed_point], 0.3)
             out[self._speed_point] = round(

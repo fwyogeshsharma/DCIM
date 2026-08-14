@@ -627,6 +627,7 @@ class BACnetController:
              plant_power_by_name: dict | None = None,
              plant_cop_by_name: dict | None = None,
              plant_loadfrac_by_name: dict | None = None,
+             plant_speed_by_name: dict | None = None,
              plant_heat_by_name: dict | None = None,
              plant_standby_names: set | None = None,
              plant_unpowered_names: set | None = None) -> None:
@@ -680,6 +681,7 @@ class BACnetController:
                     _pw = (plant_power_by_name or {}).get(_nm)
                     _cop = (plant_cop_by_name or {}).get(_nm)
                     _lf = (plant_loadfrac_by_name or {}).get(_nm)
+                    _spd = (plant_speed_by_name or {}).get(_nm)
                     _hl = (plant_heat_by_name or {}).get(_nm)
                     # Decided BEFORE the tick, because the engine needs it: a stopped
                     # machine must not accrue run-hours. Zeroing the published points
@@ -688,6 +690,7 @@ class BACnetController:
                             or (plant_unpowered_names and _nm in plant_unpowered_names))
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
+                                         live_speed=_spd,
                                          live_heat=_hl, running=not _off)
                     # Staged-OFF (standby) chiller / pump: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and

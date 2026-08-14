@@ -429,6 +429,7 @@ class DeviceStateStore:
         self._plant_power_by_name: Dict[str, float] = {}  # {plant_name: live cooling kW}
         self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
         self._plant_loadfrac_by_name: Dict[str, float] = {}  # {plant_name: DC duty frac}
+        self._plant_speed_by_name: Dict[str, float] = {}  # {plant_name: VFD speed frac}
         self._cdu_loop_heat_kw: Dict[str, float] = {}     # {cdu_name: live loop heat kW}
         # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
         # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
@@ -3093,6 +3094,16 @@ class DeviceStateStore:
             plant_power: Dict[str, float] = {}
             plant_cop: Dict[str, float] = {}
             plant_loadfrac: Dict[str, float] = {}   # {unit_name: its DC's plant duty}
+            # {unit_name: its OWN VFD speed fraction}. Distinct from loadfrac: duty is
+            # what the loop asks for, speed is what the drive actually runs at after
+            # the turndown floor. Published speed used to be back-derived from the
+            # normalised electrical share instead, which made it an artifact of how
+            # many units were staged rather than a property of the machine — stage a
+            # second train and the same plant total splits two ways, so each pump's
+            # apparent speed HALVED while its flow stayed put. That reported 24.6 %
+            # on a pump moving 4.4x the water of one reading 29.1 %, below the 35 %
+            # drive floor a running pump cannot be under.
+            plant_speed: Dict[str, float] = {}
             self._plant_standby_names = set()
             _cool_model_w = 0.0
             _cool_model_by_dc: Dict[str, float] = {}
@@ -3454,12 +3465,31 @@ class DeviceStateStore:
                             spd = (tower_cell_speed_frac(_demand, _cells_run)
                                    if _n in _towers_run else 0.0)
                             plant_loadfrac[_n] = spd
+                            plant_speed[_n] = spd
                             plant_power[_n] = affinity_power_kw(w, spd) / 1000.0 if spd else 0.0
                             continue
                         else:
-                            duty = lf
+                            # CHW/CW pumps. THERMAL duty, not `lf`: this is a
+                            # variable-primary loop, so the pumps ride a differential-
+                            # pressure setpoint as the two-way coil valves stroke, and
+                            # what strokes those valves is the heat in the water.
+                            #
+                            # `lf` is cooling-ELECTRICAL over running nameplate, which
+                            # is a staging artifact — bring a second train up and lf
+                            # falls because the denominator grew, so the pumps slowed
+                            # down at the exact moment the plant took on more load.
+                            # The CHW publisher already derives header FLOW from the
+                            # thermal duty; taking speed from a different duty put the
+                            # two on the wire together, contradicting each other: a
+                            # pump passing 8.0 l/s published the same 35 % as one
+                            # passing 1.8 l/s. Flow ∝ speed on a fixed system curve,
+                            # so they have to come from one number.
+                            _en_kw = max(1e-6, self._plant_stage_on.get(_dc, 1)
+                                         * PLANT_MODULE_KW)
+                            duty = (self._it_live_by_dc.get(_dc, 0.0) / 1000.0) / _en_kw
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
                         spd  = vfd_speed_frac(duty, _min)
+                        plant_speed[_n] = spd
                         tgt_w = affinity_power_kw(w, spd)
                     elif _t == "chiller":
                         # Staged-off chiller: standby, drawing ~0 (its load is carried
@@ -3603,6 +3633,7 @@ class DeviceStateStore:
             self._plant_power_by_name = plant_power
             self._plant_cop_by_name = plant_cop
             self._plant_loadfrac_by_name = plant_loadfrac
+            self._plant_speed_by_name = plant_speed
             self._cool_model_w = _cool_model_w
             self._cool_model_w_by_dc = _cool_model_by_dc
         except Exception:
@@ -4931,17 +4962,41 @@ class DeviceStateStore:
                             "Discharge_Pressure": round(self._PUMP_SUCTION_KPA, 1),
                         })
                         continue
-                    # Speed back-derived from the draw this tick's power flow gave
-                    # the pump, so flow, head and kW cannot disagree.
-                    kw = self._plant_power_by_name.get(name, 0.0)
+                    # SPEED IS THE DRIVE'S OWN COMMANDED FRACTION, not a figure
+                    # back-derived from the draw. It was the latter, and the draw is
+                    # the wrong thing to invert: _plant_power_by_name is NORMALISED
+                    # so each DC's plant sums to cooling_electrical_w(), so inverting
+                    # it answered "what share of the plant's electrical bill is this
+                    # pump" rather than "how fast is it turning". Those coincide only
+                    # while the staged unit count holds still. Stage a second cooling
+                    # train and the same total splits two ways: both pumps' apparent
+                    # speed fell while their flow did not, and a pump moving 8.0 l/s
+                    # published 24.6 % against an idle plant's 29.1 % at 1.8 l/s —
+                    # below the 35 % turndown floor a running pump cannot be under.
+                    #
+                    # Flow, head and kW still cannot disagree: head is derived from
+                    # this same speed two lines down, and the draw the power flow
+                    # gave the pump came from affinity_power_kw() on this very
+                    # fraction before normalisation rescaled its magnitude.
                     npw = ctx["np_kw_by_name"].get(name, 0.0)
-                    spd = (affinity_speed_frac(kw, npw) if npw > 0
-                           else vfd_speed_frac(duty, PUMP_MIN_SPEED))
-                    diff = self._PUMP_DIFF_KPA * pump_head_frac(spd)
+                    spd = self._plant_speed_by_name.get(name)
+                    if spd is None:
+                        # No cooling model for this unit (bare topology): fall back to
+                        # the old derivation rather than publishing nothing.
+                        kw = self._plant_power_by_name.get(name, 0.0)
+                        spd = (affinity_speed_frac(kw, npw) if npw > 0
+                               else vfd_speed_frac(duty, PUMP_MIN_SPEED))
+                    # Round ONCE, then build the gauge set from the rounded figure.
+                    # Publishing round(diff) beside round(suction + diff) double-rounds
+                    # and the two disagree by 0.1 whenever diff lands near a .x5
+                    # boundary — discharge − suction ≠ the published differential, on a
+                    # gauge set whose whole job is to add up. Latent until a speed
+                    # change happened to park diff on the boundary.
+                    diff = round(self._PUMP_DIFF_KPA * pump_head_frac(spd), 1)
                     pts = auto.setdefault(ip, {})
                     pts.update({
                         "Flow": round(per_pump, 1),
-                        "Diff_Pressure": round(diff, 1),
+                        "Diff_Pressure": diff,
                         "Suction_Pressure": round(self._PUMP_SUCTION_KPA, 1),
                         "Discharge_Pressure": round(self._PUMP_SUCTION_KPA + diff, 1),
                         # Publish SPEED from the same number that produced the head,
@@ -5236,6 +5291,7 @@ class DeviceStateStore:
                                        plant_power_by_name=self._plant_power_by_name,
                                        plant_cop_by_name=self._plant_cop_by_name,
                                        plant_loadfrac_by_name=self._plant_loadfrac_by_name,
+                                       plant_speed_by_name=self._plant_speed_by_name,
                                        plant_heat_by_name=self._cdu_loop_heat_kw,
                                        plant_standby_names=self._plant_standby_names,
                                        plant_unpowered_names=self._plant_unpowered_names)

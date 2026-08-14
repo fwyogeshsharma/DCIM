@@ -36,11 +36,38 @@ import time
 #                                            regardless of IT (does NOT scale down)
 #     variable = IT_live × OH_VAR × ambient_factor   — chiller compressor work
 # At the design point (IT_live == IT_design, REF_AMBIENT_C) both terms are at
-# reference, so PUE = 1 + OH_FLOOR + OH_VAR. With OH_FLOOR + OH_VAR = 0.47 the
-# design PUE is 1.47; below design load the FLOOR/IT_live term climbs, so PUE
-# rises (and spikes as IT → 0), exactly like a real plant with a fixed base load.
+# reference, so PUE = 1 + OH_FLOOR + OH_VAR. Below design load the FLOOR/IT_live
+# term climbs, so PUE rises (and spikes as IT → 0), exactly like a real plant
+# with a fixed base load.
 OH_FLOOR      = 0.15     # fixed cooling overhead as a fraction of DESIGN IT
-OH_VAR        = 0.32     # variable (chiller) overhead as a fraction of LIVE IT
+
+# The compressor's rated efficiency — the anchor BOTH efficiency paths hang off.
+#
+# This used to sit beside chiller_cop() alone while OH_VAR was an independent
+# constant at 0.32, and the two silently disagreed: OH_VAR implied a plant COP of
+# 1/0.32 = 3.1 while the chiller module next door claimed 5.5. Only OH_VAR ever
+# reached PUE, because device_state_store normalises every per-unit curve result
+# so the DC's plant sums to cooling_electrical_w() — the per-device physics set
+# the SHAPE of the distribution, this constant sets the MAGNITUDE. The published
+# per-chiller COP is then back-derived from that normalised draw, so a chiller
+# reported ~2.2 on a plant whose own curve said 5.5 and neither number was wrong;
+# they simply came from different models. Deriving OH_VAR here makes that
+# impossible: change the rating and both paths move together.
+CHILLER_COP_RATED = 5.5  # water-cooled centrifugal at design (kW/ton ≈ 0.60)
+
+# Not all of the FLOOR's work lands on the evaporator. CRAH fan heat goes into the
+# supply air, and CHW/CDU pump heat into the chilled-water loop, so the compressor
+# has to lift it along with the IT heat. Tower fans and condenser-water pumps
+# reject on the far side of the machine and never touch it. Measured against this
+# plant's own split (CRAH + CDU + CHW pumps ≈ 39 kW vs towers + CW pumps ≈ 10 kW)
+# that is roughly four fifths of the floor.
+EVAP_HEAT_FRAC = 0.80
+
+# Compressor electrical per watt of LIVE IT, at design PLR and REF_AMBIENT_C.
+# chiller_cop() returns exactly cop_rated at plr = 1.0 (power_frac(1.0) == 1.0 and
+# ambient_factor(REF_AMBIENT_C) == 1.0), so this anchors the two models to the
+# same point rather than merely to similar-looking numbers.
+OH_VAR        = (1.0 + OH_FLOOR * EVAP_HEAT_FRAC) / CHILLER_COP_RATED
 REF_AMBIENT_C = 15.0     # annual-mean dry-bulb the variable term is anchored to
 
 # ── Ambient response (variable term only — the floor is weather-independent) ───
@@ -237,7 +264,8 @@ def chiller_load_frac(power_frac: float) -> float:
     return max(0.0, min(1.0, x))
 
 
-CHILLER_COP_RATED = 5.5    # water-cooled centrifugal at design (kW/ton ≈ 0.60)
+# CHILLER_COP_RATED is defined up in the calibration block, not here: OH_VAR is
+# derived from it, so it has to exist before that line runs.
 
 
 def chiller_cop(plr: float, city: str | None, now: float | None = None,
