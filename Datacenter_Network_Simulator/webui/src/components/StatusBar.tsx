@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useStore } from '../store/useStore'
 import { api } from '../api/client'
-import { nodeColor } from '../theme'
 
 // source: which measurement plane the backend used, best first.
 //   native   — the gear's own meters (switchgear / UPS output / MCC)
@@ -64,37 +62,7 @@ function PowerReadout() {
     </span>
   )
 }
-
-const DEVICE_TYPE_SHORT: Record<string, string> = {
-  router:        'RTR',
-  switch:        'SW',
-  server:        'SRV',
-  firewall:      'FW',
-  load_balancer: 'LB',
-  oob_switch:    'OOB',
-  pdu:           'PDU',
-  floor_pdu:     'fPDU',
-  rpp:           'RPP',
-  generator:     'GEN',
-  ups:           'UPS',
-  sensor:        'SNS',
-  energy_monitor:'EV2',
-  modbus_gateway:'MBGW',
-  bacnet_router: 'BRTR',
-  crah:          'CRAH',
-  chiller:       'CHLR',
-  pump:          'PMP',
-  cooling_tower: 'CT',
-  valve:         'VLV',
-  cdu:           'CDU',
-}
-
 export default function StatusBar() {
-  const { devices } = useStore()
-
-  const typeCounts: Record<string, number> = {}
-  for (const d of devices) typeCounts[d.device_type] = (typeCounts[d.device_type] || 0) + 1
-
   return (
     <div style={{
       height: 26,
@@ -108,24 +76,10 @@ export default function StatusBar() {
       fontSize: 10,
       color: 'var(--text-muted)',
     }}>
-      {/* ── Left: live power + PUE ─────────────────────────── */}
+      {/* Live power + PUE. The per-device-type counts that used to fill the
+          rest of this bar were removed — the same numbers are on the Live
+          Metrics page, per type, with the readings attached. */}
       <PowerReadout />
-      <span style={{ flex: 1 }} />
-      {Object.entries(typeCounts).map(([t, n]) => (
-        <span key={t} style={{
-          display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
-        }} title={t}>
-          <span style={{
-            width: 7, height: 7, borderRadius: 2,
-            background: nodeColor(t),
-          }} />
-          <span style={{ color: 'var(--text-muted)' }}>{DEVICE_TYPE_SHORT[t] || t}</span>
-          <span style={{
-            color: 'var(--text)', fontWeight: 600,
-            fontVariantNumeric: 'tabular-nums',
-          }}>{n}</span>
-        </span>
-      ))}
     </div>
   )
 }

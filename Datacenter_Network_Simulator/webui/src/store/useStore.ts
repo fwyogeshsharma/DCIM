@@ -33,6 +33,20 @@ function _scheduleFlush() {
   }, 200)
 }
 
+// Declared here rather than in api/types.ts because the store is what fetches it
+// and the panel + rail are its only consumers.
+export interface ModbusSlave {
+  name: string; ip: string; unit_id: number; device_type: string
+  map_id: string; vendor: string; product: string; word_order: string
+  online: boolean; write_enabled: boolean; role: string; gateway_ip: string
+  stats: { requests: number; exceptions: number; writes: number; last_exception: number }
+}
+export interface ModbusStatus {
+  running: boolean; available: boolean; port: number
+  active_devices: number; devices: ModbusSlave[]
+  stats: { requests?: number; exceptions?: number; connections?: number; refused?: number }
+}
+
 interface Store {
   // topology
   graphDevices: GraphDevice[]
@@ -62,9 +76,10 @@ interface Store {
   gnmi:    GnmiStatus | null
   sflow:   SFlowStatus | null
   bacnet:  BacnetStatus | null
-  // Status only — the panel owns the detail (slaves, registers). The rail
-  // needs this to show a running badge like every other plane.
-  modbus:  { running: boolean; active_devices: number; port: number } | null
+  // The whole /modbus/status payload: the rail reads `running` for its badge and
+  // the panel reads the rest, so both see one value fetched once. Only the
+  // register browser stays panel-local — that is per-selection detail, not status.
+  modbus:  ModbusStatus | null
   redfish: RedfishStatus | null
   binding: BindingStatus | null
   adapters: AdaptersResponse | null
@@ -443,7 +458,7 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   fetchModbus: async () => {
-    try { set({ modbus: await fetchWithAbort('/modbus/status') }) } catch { /* ignore */ }
+    try { set({ modbus: await fetchWithAbort<ModbusStatus>('/modbus/status') }) } catch { /* ignore */ }
   },
 
   fetchRedfish: async () => {

@@ -190,7 +190,7 @@ export default function MenuBar() {
   const [showAbout, setShowAbout] = useState(false)
 
   const {
-    snmp, gnmi, sflow, bacnet, redfish, devices,
+    snmp, gnmi, sflow, bacnet, redfish, modbus,
     fetchGraph, fetchDevices, fetchSnmp, selectedDeviceId,
     triggerFitView, setLayoutAlgo, setRightTab, setActiveView, activeView,
   } = useStore()
@@ -332,13 +332,12 @@ export default function MenuBar() {
     { label: 'Live Metrics', action: () => setActiveView('metrics'),
       checked: activeView === 'metrics' },
   ]
-  // Add/Remove Device moved here from a separate Devices menu: they edit the
-  // topology, which is what the rest of this menu does. Remove Device is also on
-  // the canvas right-click, so nothing here is the only route to it.
-  const topoMenuItems: MenuItem[] = [
-    { label: 'Add Device',      action: () => setShowAdd(true) },
-    { label: 'Remove Selected', action: removeSelected, disabled: !selectedDeviceId },
+  const devMenuItems: MenuItem[] = [
+    { label: 'Add Device',      action: () => setShowAdd(true)  },
     { label: '', divider: true, action: () => {} },
+    { label: 'Remove Selected', action: removeSelected, disabled: !selectedDeviceId },
+  ]
+  const topoMenuItems: MenuItem[] = [
     { label: 'Fit View', shortcut: 'Ctrl+Shift+F', action: () => triggerFitView() },
     { label: '', divider: true, action: () => {} },
     {
@@ -376,6 +375,7 @@ export default function MenuBar() {
   const menus: { name: string; label: string; items: MenuItem[]; badge?: { text: string; color: string } }[] = [
     { name: 'file', label: 'File',     items: fileMenuItems },
     { name: 'view', label: 'View',     items: viewMenuItems },
+    { name: 'dev',  label: 'Devices',  items: devMenuItems  },
     { name: 'topo', label: 'Topology', items: topoMenuItems },
     { name: 'sim',  label: 'Simulation', items: simMenuItems },
     { name: 'help', label: 'Help',     items: helpMenuItems },
@@ -436,11 +436,6 @@ export default function MenuBar() {
         padding: '0 10px', height: '100%',
       }}>
         <StatusChip
-          label="Devices"
-          dot={devices.length > 0 ? 'var(--accent)' : 'var(--text-dim)'}
-          value={String(devices.length)}
-        />
-        <StatusChip
           label="SNMP"
           dot={snmp?.running ? 'var(--green)' : 'var(--text-dim)'}
           value={snmp?.running ? 'running' : snmp?.datasets_generated ? 'ready' : 'idle'}
@@ -463,6 +458,12 @@ export default function MenuBar() {
           dot={bacnet?.running ? 'var(--green)' : 'var(--text-dim)'}
           value={bacnet?.running ? 'running' : 'idle'}
           color={bacnet?.running ? 'var(--green)' : undefined}
+        />
+        <StatusChip
+          label="Modbus"
+          dot={modbus?.running ? 'var(--green)' : 'var(--text-dim)'}
+          value={modbus?.running ? 'running' : 'idle'}
+          color={modbus?.running ? 'var(--green)' : undefined}
         />
         <StatusChip
           label="Redfish"

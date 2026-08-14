@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useStore } from '../../store/useStore'
+import type { ModbusSlave } from '../../store/useStore'
 import { api } from '../../api/client'
 import TargetsBox, { StatRow } from './TargetsBox'
 import NumberInput from '../NumberInput'
@@ -28,21 +30,13 @@ const IconStop = () => (
   </svg>
 )
 
-type Slave = {
-  name: string; ip: string; unit_id: number; device_type: string
-  map_id: string; vendor: string; product: string; word_order: string
-  online: boolean; write_enabled: boolean; role: string; gateway_ip: string
-  stats: { requests: number; exceptions: number; writes: number; last_exception: number }
-}
+// One row of the register browser. Panel-local: it is per-selection detail, not
+// status, so it never belongs in the store.
 type Point = {
   space: string; addr: number; name: string; dtype: string
   raw: number[]; value: number | string; units: string; key: string; writable: boolean
 }
-type Status = {
-  running: boolean; available: boolean; port: number
-  active_devices: number; devices: Slave[]
-  stats: { requests?: number; exceptions?: number; connections?: number; refused?: number }
-}
+
 type Candidate = {
   name: string; device_type: string; ip: string; bound: boolean
   role?: string; unit_id?: number
@@ -92,7 +86,6 @@ function hex(n: number) {
 }
 
 export default function ModbusPanel() {
-  const [status, setStatus] = useState<Status | null>(null)
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [port, setPort] = useState(502)
   const [writeEnabled, setWriteEnabled] = useState(false)
@@ -102,25 +95,18 @@ export default function ModbusPanel() {
   const [points, setPoints] = useState<Point[]>([])
   const [mapMeta, setMapMeta] = useState<{ map_id: string; word_order: string; product: string } | null>(null)
 
+  // Status comes from the store, same as every other protocol panel: one fetch
+  // feeds both this panel and the rail's running badge, on the shared 4 s poll
+  // plus the sync_modbus event. Only the register browser below polls on its own,
+  // because that is per-selection detail rather than status.
+  const { modbus: status, fetchModbus } = useStore()
   const running = status?.running ?? false
 
-  const refresh = async () => {
-    try { setStatus(await api.modbusStatus() as Status) } catch { /* transient */ }
-  }
-
-  useEffect(() => { refresh() }, [])
+  useEffect(() => { fetchModbus() }, [fetchModbus])
   useEffect(() => {
     api.modbusCandidates()
       .then(r => setCandidates((r as { devices?: Candidate[] }).devices ?? []))
       .catch(() => {})
-  }, [running])
-
-  // Live poll while running. 1 s matches the store tick — polling faster shows
-  // the same register image twice and just burns requests.
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(refresh, 1000)
-    return () => clearInterval(t)
   }, [running])
 
   useEffect(() => {
@@ -147,13 +133,13 @@ export default function ModbusPanel() {
 
   const start = async () => {
     setBusy(true); setErr('')
-    try { await api.modbusStart({ port, write_enabled: writeEnabled }); await refresh() }
+    try { await api.modbusStart({ port, write_enabled: writeEnabled }); await fetchModbus() }
     catch (e: any) { setErr(e?.message ?? String(e)) }
     finally { setBusy(false) }
   }
   const stop = async () => {
     setBusy(true); setErr('')
-    try { await api.modbusStop(); setSelected(''); await refresh() }
+    try { await api.modbusStop(); setSelected(''); await fetchModbus() }
     catch (e: any) { setErr(e?.message ?? String(e)) }
     finally { setBusy(false) }
   }
@@ -169,7 +155,7 @@ export default function ModbusPanel() {
     : !validPort ? 'Port must be 1–65535'
     : `Serve ${boundCount} device(s) on port ${port}`
 
-  const slaves = status?.devices ?? []
+  const slaves: ModbusSlave[] = status?.devices ?? []
   const sel = slaves.find(s => s.name === selected)
 
   // Pre-start target rows, grouped by device type like the other panels.
