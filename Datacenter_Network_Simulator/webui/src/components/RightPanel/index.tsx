@@ -43,14 +43,17 @@ const TABS: Tab[] = [
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
   { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
-  // The STACKED lockup (mark above, wordmark below), 1.28:1 rather than the wide
-  // 3.14:1 one. Being near-square it uses the button's HEIGHT as well as its
-  // width, which is what buys the wordmark more room: ~5.4px letters at a 38px
-  // box versus ~4.2px for the wide art. Transparent background, so no white
-  // plate is needed on the dark rail.
-  // iconSize (not the iconWidth/iconHeight pair) so objectFit:contain keeps the
-  // art's true aspect — this logo must not be stretched.
-  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus-logo-png.png', iconNoFilter: true, iconSize: 38, label: 'Modbus/TCP', component: <ModbusPanel /> },
+  // The STACKED lockup (mark above, wordmark below), 1.28:1 — near-square, so it
+  // sits at the same visual weight as the other protocol logos.
+  // NO iconSize override: the default 26px box renders 26x20.3 of ink here, which
+  // matches bacnet (20.8x20.2) and redfish (24.3x20.1). A larger box was tried and
+  // stood out badly — at 38 it drew 38x29.7, half again the size of its neighbours.
+  // The cost is that the logo's own wordmark is ~3.7px and not readable; that is
+  // unavoidable in a 44px button (it needs a ~57px box), so the tooltip carries the
+  // name and the panel header shows the lockup at a legible size.
+  // iconNoFilter: the rail's contrast(2)/brightness() punch is for flat monochrome
+  // glyphs and would collapse the orange disc into its yellow dots.
+  { id: 'modbus',  icon: '🔌',  iconSrc: '/assets/icons/modbus-logo-png.png', iconNoFilter: true, label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
