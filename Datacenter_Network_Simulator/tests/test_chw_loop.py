@@ -428,3 +428,45 @@ def test_vfd_frequency_agrees_with_the_published_speed(tmp_path, plant_cache):
     _settle(p, 8)
     a = _chwp(p)
     assert a["VFD_Frequency"] == pytest.approx(a["Speed"] * 0.5, abs=0.15)
+
+
+def test_pump_speed_is_monotonic_across_staging_boundaries(tmp_path, plant_cache):
+    """Pump duty is anchored to INSTALLED capacity, not the staged subset.
+
+    Staging is quantised on module boundaries, so load ÷ staged-capacity saw-tooths
+    as modules come up and is not monotonic in load. Live, that published the
+    SLOWER pump on the DC carrying twice the heat. Installed capacity is fixed, so
+    more heat can only mean more flow and more speed."""
+    seen = []
+    for servers in (6, 40, 120, 300, 600, 900):
+        p = build_plant(tmp_path / f"s{servers}", servers=servers,
+                        installed_modules=6)
+        _settle(p, 8)
+        pumps = [t["chwp"] for t in p.store._plant_trains_run[DC] if t.get("chwp")]
+        header = sum(p.auto_points(n).get("Flow", 0.0) for n in pumps)
+        seen.append((round(header, 2), p.auto_points(pumps[0])["Speed"],
+                     p.store._plant_stage_on.get(DC)))
+    assert len({s for _f, _s, s in seen}) > 1, "fixture should cross a staging step"
+    assert all(b[1] >= a[1] - 0.05 for a, b in zip(seen, seen[1:])), seen
+
+
+def test_a_larger_installed_plant_turns_slower_for_the_same_heat(tmp_path,
+                                                                 plant_cache):
+    """The other half of the anchor. Flow is set by the heat (Q = ṁ·cp·ΔT), so the
+    same load moves the same water — but a plant built with twice the capacity has
+    pumps sized for twice the design flow, and delivers it at a lower fraction of
+    theirs. Speed must fall while flow does not."""
+    small = build_plant(tmp_path / "small", servers=600, installed_modules=6)
+    large = build_plant(tmp_path / "large", servers=600, installed_modules=12)
+    _settle(small, 8)
+    _settle(large, 8)
+
+    def header(p):
+        pumps = [t["chwp"] for t in p.store._plant_trains_run[DC] if t.get("chwp")]
+        return sum(p.auto_points(n).get("Flow", 0.0) for n in pumps)
+
+    assert header(large) == pytest.approx(header(small), rel=0.05), \
+        "same heat must move the same water whatever is installed"
+    s = small.auto_points(small.store._plant_trains_run[DC][0]["chwp"])["Speed"]
+    lg = large.auto_points(large.store._plant_trains_run[DC][0]["chwp"])["Speed"]
+    assert lg <= s

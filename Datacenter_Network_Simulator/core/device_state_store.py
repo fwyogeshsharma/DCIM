@@ -3484,9 +3484,22 @@ class DeviceStateStore:
                             # pump passing 8.0 l/s published the same 35 % as one
                             # passing 1.8 l/s. Flow ∝ speed on a fixed system curve,
                             # so they have to come from one number.
-                            _en_kw = max(1e-6, self._plant_stage_on.get(_dc, 1)
-                                         * PLANT_MODULE_KW)
-                            duty = (self._it_live_by_dc.get(_dc, 0.0) / 1000.0) / _en_kw
+                            # Against INSTALLED capacity, not the staged subset.
+                            # Staging is a capacity decision; the flow the coil valves
+                            # demand does not shrink because another chiller came up,
+                            # and the ΔP setpoint the pumps ride is held either way.
+                            # Dividing by staged capacity also quantises the ratio on
+                            # module boundaries, so it is not even monotonic in load:
+                            # live, a DC carrying 2x the heat (chiller 38.9 vs 19.2 kW)
+                            # and moving more water (5.3 vs 4.1 l/s) published the
+                            # SLOWER pump (50.5 % vs 77.8 %) and burnt less doing it,
+                            # because its load rounded up to more modules while the
+                            # lighter DC's rounded down to fewer.
+                            #
+                            # _duty_inst is the same installed-capacity ratio the tower
+                            # bank already stages on, so the two air/water sides of the
+                            # plant now answer to one definition of duty.
+                            duty = _duty_inst
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
                         spd  = vfd_speed_frac(duty, _min)
                         plant_speed[_n] = spd
