@@ -156317,7 +156317,8 @@
         "rack_row": 1,
         "rack_num": 1,
         "power_draw_w": 15,
-        "rated_power_w": 25
+        "rated_power_w": 25,
+        "id": "mbgwdc101"
       }
     },
     {
@@ -156378,7 +156379,8 @@
         "rack_row": 1,
         "rack_num": 1,
         "power_draw_w": 15,
-        "rated_power_w": 25
+        "rated_power_w": 25,
+        "id": "mbgwdc201"
       }
     },
     {
@@ -156442,7 +156444,8 @@
         "rack_row": 1,
         "rack_num": 1,
         "power_draw_w": 12,
-        "rated_power_w": 20
+        "rated_power_w": 20,
+        "id": "brtrdc101"
       }
     },
     {
@@ -156506,7 +156509,8 @@
         "rack_row": 1,
         "rack_num": 1,
         "power_draw_w": 12,
-        "rated_power_w": 20
+        "rated_power_w": 20,
+        "id": "brtrdc201"
       }
     }
   ],

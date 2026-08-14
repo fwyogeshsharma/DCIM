@@ -137,6 +137,11 @@ def migrate(path: Path, dry_run: bool = False) -> int:
             "position": dict(sample.get("position", {"x": 0, "y": 0}))
             if isinstance(sample.get("position"), dict) else {"x": 0, "y": 0},
             "device": {
+                # TopologyEngine keys graph nodes by device.id, NOT by the node id.
+                # Omitting it makes Device.from_dict mint a random uuid, the node
+                # lands under an id nothing references, and EVERY edge to this
+                # device is silently dropped by add_link's node check.
+                "id": f"mbgw{dc.lower()}01",
                 "name": gw_name,
                 "device_type": "modbus_gateway",
                 "vendor": GATEWAY_VENDOR,

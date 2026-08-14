@@ -297,3 +297,43 @@ def test_fieldbus_edges_carry_no_interface():
     assert fb, "no fieldbus edges in the topology"
     for e in fb:
         assert e.get("src_iface") is None and e.get("dst_iface") is None, e
+
+
+def test_every_node_carries_its_own_id():
+    """TopologyEngine keys graph nodes by device.id, not by the node id. A device
+    dict without an "id" makes Device.from_dict mint a random uuid, so the node
+    lands under an id nothing references and EVERY edge to it is silently dropped
+    by add_link's node check — no error, the device just floats.
+
+    That shipped: four carriers lost all 34 of their edges on load while looking
+    fine in the device list."""
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    bad = [n["id"] for n in data["nodes"] if n["device"].get("id") != n["id"]]
+    assert not bad, f"nodes whose device.id != node id: {bad}"
+
+
+def test_the_loaded_graph_keeps_every_edge():
+    """Round-trip the topology through TopologyEngine and confirm no layer loses
+    edges. Comparing counts is what exposes a silently-refused add_link."""
+    from core.topology_engine import TopologyEngine
+    import collections
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    on_disk = collections.Counter(e.get("layer") for e in data["edges"])
+    topo = TopologyEngine()
+    topo.from_dict(data)
+    loaded = collections.Counter(d.get("layer") for _, _, d in topo.graph.edges(data=True))
+    assert loaded == on_disk, (
+        f"edges lost on load: "
+        f"{ {k: on_disk[k] - loaded.get(k, 0) for k in on_disk if loaded.get(k, 0) != on_disk[k]} }")
+
+
+def test_carriers_are_reachable_in_the_loaded_graph():
+    from core.topology_engine import TopologyEngine
+    topo = TopologyEngine()
+    topo.from_dict(json.loads(TOPOLOGY.read_text(encoding="utf-8")))
+    devs = {d.id: d for d in topo.get_all_devices()}
+    carriers = [i for i, d in devs.items()
+                if d.device_type in (DeviceType.MODBUS_GATEWAY, DeviceType.BACNET_ROUTER)]
+    assert carriers
+    for i in carriers:
+        assert topo.graph.degree(i) > 0, f"{devs[i].name} floats in the loaded graph"

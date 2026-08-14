@@ -123,6 +123,11 @@ def migrate(path: Path, dry_run: bool = False) -> int:
                          "y": sample.get("position", {}).get("y", 0) + 80
                          if isinstance(sample.get("position"), dict) else 0},
             "device": {
+                # TopologyEngine keys graph nodes by device.id, NOT by the node id.
+                # Omitting it makes Device.from_dict mint a random uuid, the node
+                # lands under an id nothing references, and EVERY edge to this
+                # device is silently dropped by add_link's node check.
+                "id": f"brtr{dc.lower()}01",
                 "name": router_name,
                 "device_type": "bacnet_router",
                 "vendor": ROUTER_VENDOR,
