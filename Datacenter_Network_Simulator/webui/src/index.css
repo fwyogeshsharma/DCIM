@@ -215,7 +215,13 @@
      the OOB plane took violet, which also matches the OOB node colour above.
      Each plane's edges and its devices now agree. */
   --layer-prod:    #4a9eff;   /* blue    — matches --node-switch/router/server */
-  --layer-mgmt:    #a78bfa;   /* violet  — matches --node-oob */
+  /* Neutral on purpose. Mgmt is 25% of all edges (644 of 2566) and is the same
+     on a healthy day as on a bad one, so it must not compete with the layers
+     that carry information — power, cooling, fieldbus. LinkEdge already singles
+     mgmt out for opacity 0.7; a neutral states that intent instead of fighting a
+     saturated hue with transparency. (Was violet, tinted to match --node-oob;
+     that pairing only ever held at one end of the link.) */
+  --layer-mgmt:    #94a3b8;   /* slate */
   --layer-power:   #f59e0b;   /* amber   — matches the brass node arc */
   --layer-cooling: #22d3ee;   /* cyan    — matches the cooling node arc */
   /* fieldbus — RS-485 / sensor-port drops. NOT Ethernet: these carry no IP and
