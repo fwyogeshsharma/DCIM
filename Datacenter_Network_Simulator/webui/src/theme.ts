@@ -75,6 +75,7 @@ export const LAYER_COLOR: Record<string, string> = {
   management: 'var(--layer-mgmt)',
   power:      'var(--layer-power)',
   cooling:    'var(--layer-cooling)',
+  fieldbus:   'var(--layer-fieldbus)',
 }
 
 export const LAYER_DEFAULT = 'var(--layer-prod)'
