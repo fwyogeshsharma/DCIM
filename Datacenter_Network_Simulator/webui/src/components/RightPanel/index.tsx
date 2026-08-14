@@ -36,13 +36,18 @@ interface Tab {
   component:    React.ReactNode
 }
 
+// Protocol simulators above the divider, tooling below. Membership, not a slice
+// index -- an index meant any reorder silently moved a tab across the divider.
+const PROTOCOL_TABS = new Set(['binding', 'snmp', 'gnmi', 'redfish', 'sflow',
+                               'bacnet', 'modbus'])
+
 const TABS: Tab[] = [
   { id: 'binding', icon: '🔗',  label: 'Binding',      component: <BindingPanel /> },
   { id: 'snmp',    icon: '🖥️',  iconSrc: '/assets/icons/snmp.png', iconInvert: true, label: 'SNMP', component: <SNMPPanel /> },
   { id: 'gnmi',    icon: '📡',  iconSrc: '/assets/icons/gnmi.svg', label: 'gNMI', component: <GNMIPanel /> },
+  { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
-  { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
   // The STACKED lockup (mark above, wordmark below), 1.28:1 — near-square, so it
   // sits at the same visual weight as the other protocol logos.
   // NO iconSize override: the default 26px box renders 26x20.3 of ink here, which
@@ -249,7 +254,7 @@ export default function RightPanel() {
         padding: '10px 0',
         gap: 4,
       }}>
-        {TABS.slice(0, 6).map(t => (
+        {TABS.filter(t => PROTOCOL_TABS.has(t.id)).map(t => (
           <TabButton
             key={t.id}
             tab={t}
@@ -266,7 +271,7 @@ export default function RightPanel() {
           margin: '6px 0',
         }} />
 
-        {TABS.slice(6).map(t => (
+        {TABS.filter(t => !PROTOCOL_TABS.has(t.id)).map(t => (
           <TabButton
             key={t.id}
             tab={t}
