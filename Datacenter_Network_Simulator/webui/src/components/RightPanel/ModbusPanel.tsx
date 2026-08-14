@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
+import TargetsBox, { StatRow } from './TargetsBox'
 import NumberInput from '../NumberInput'
 
 /**
@@ -10,7 +11,10 @@ import NumberInput from '../NumberInput'
  * register reads 4152 and means nothing until someone tells you it is volts
  * scaled by ten. This panel is that vendor register map, rendered live, which
  * is the one thing the SNMP and BACnet panels never have to do.
-
+ *
+ * Styling follows BACnetPanel: panel-header + badge, group-box sections, the
+ * shared Field row, TargetsBox for the pre-start list and btn-action buttons,
+ * so every protocol panel reads the same way.
  */
 
 const IconPlay = () => (
@@ -39,7 +43,10 @@ type Status = {
   active_devices: number; devices: Slave[]
   stats: { requests?: number; exceptions?: number; connections?: number; refused?: number }
 }
-type Candidate = { name: string; device_type: string; ip: string; bound: boolean }
+type Candidate = {
+  name: string; device_type: string; ip: string; bound: boolean
+  role?: string; unit_id?: number
+}
 
 const SPACE_LABEL: Record<string, string> = {
   input: 'Input Reg (FC04)',
@@ -48,19 +55,40 @@ const SPACE_LABEL: Record<string, string> = {
   coil: 'Coil (FC01)',
 }
 
-function StatRow({ label, value, valueColor }: {
-  label: string; value: number | string; valueColor?: string
+// Same 90px label column as BACnetPanel's Field, so the two panels line up.
+function Field({ label, suffix, value, onChange, disabled, min, max, fallback }: {
+  label: string; suffix?: string
+  value: number
+  onChange: (n: number) => void
+  disabled: boolean
+  min?: number; max?: number; fallback?: number
 }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, lineHeight: 1.85 }}>
-      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ color: valueColor ?? 'var(--text)' }}>{value}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+      <span style={{ width: 90, fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', gap: 4,
+        background: disabled ? 'var(--bg-base)' : 'var(--bg-card)',
+        border: '1px solid var(--border)', borderRadius: 4,
+        padding: '0 6px', opacity: disabled ? 0.6 : 1,
+      }}>
+        <NumberInput
+          value={value} onChange={onChange} fallback={fallback} int
+          min={min} max={max} disabled={disabled}
+          style={{
+            flex: 1, minWidth: 0, background: 'transparent', border: 'none',
+            outline: 'none', color: 'var(--text)', fontSize: 10,
+            fontFamily: 'Consolas, monospace', padding: '4px 0',
+          }}
+        />
+        {suffix && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{suffix}</span>}
+      </div>
     </div>
   )
 }
 
-function hex(n: number, w = 4) {
-  return '0x' + n.toString(16).toUpperCase().padStart(w, '0')
+function hex(n: number) {
+  return '0x' + n.toString(16).toUpperCase().padStart(4, '0')
 }
 
 export default function ModbusPanel() {
@@ -114,14 +142,13 @@ export default function ModbusPanel() {
   }, [running, selected])
 
   const boundCount = candidates.filter(c => c.bound).length
-  const canStart = !busy && !running && boundCount > 0 && port >= 1 && port <= 65535
+  const validPort = port >= 1 && port <= 65535
+  const canStart = !busy && !running && boundCount > 0 && validPort
 
   const start = async () => {
     setBusy(true); setErr('')
-    try {
-      await api.modbusStart({ port, write_enabled: writeEnabled })
-      await refresh()
-    } catch (e: any) { setErr(e?.message ?? String(e)) }
+    try { await api.modbusStart({ port, write_enabled: writeEnabled }); await refresh() }
+    catch (e: any) { setErr(e?.message ?? String(e)) }
     finally { setBusy(false) }
   }
   const stop = async () => {
@@ -131,279 +158,256 @@ export default function ModbusPanel() {
     finally { setBusy(false) }
   }
 
-  let badge: { dot: string; text: string }
-  if (busy)         badge = { dot: 'var(--warn)', text: 'Working' }
-  else if (running) badge = { dot: 'var(--ok)',   text: 'Running' }
-  else              badge = { dot: 'var(--text-dim)', text: 'Idle' }
+  type BadgeCfg = { cls: string; dot: string; text: string }
+  let badge: BadgeCfg
+  if (busy)         badge = { cls: 'ready',   dot: 'yellow', text: running ? 'Stopping' : 'Starting' }
+  else if (running) badge = { cls: 'running', dot: 'green',  text: 'Running' }
+  else              badge = { cls: 'stopped', dot: 'grey',   text: 'Idle' }
 
   const startTip = boundCount === 0
-    ? 'No Modbus-capable device has a bound IP (Binding panel → Bind IPs)'
-    : `Serve ${boundCount} electrical device(s) on port ${port}`
+    ? 'Bind IPs first (Binding panel → Bind IPs)'
+    : !validPort ? 'Port must be 1–65535'
+    : `Serve ${boundCount} device(s) on port ${port}`
 
   const slaves = status?.devices ?? []
   const sel = slaves.find(s => s.name === selected)
 
+  // Pre-start target rows, grouped by device type like the other panels.
+  const byType = new Map<string, number>()
+  for (const c of candidates) byType.set(c.device_type, (byType.get(c.device_type) ?? 0) + 1)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontSize: 10 }}>
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 10px', borderBottom: '1px solid var(--border)',
-      }}>
-        {/* The official Modbus logo, unmodified. It is 3.14:1 art, so it only
-            reads at a width the 44px icon rail cannot give it — here there is
-            room, and the wordmark is legible at its true proportions. */}
-        <img
-          src="/assets/icons/modbus.png"
-          alt="Modbus/TCP"
-          title="Modbus/TCP"
-          style={{ height: 24, width: 'auto', maxWidth: '65%',
-                   objectFit: 'contain', display: 'block' }}
-        />
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{
-            width: 6, height: 6, borderRadius: '50%', background: badge.dot,
-          }} />
-          <span style={{ color: 'var(--text-muted)' }}>{badge.text}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      <div className="panel-header">
+        <span className="title">
+          {/* The official lockup, unmodified — the panel has the width the 44px
+              icon rail cannot give it, so the wordmark is legible here. */}
+          <img
+            src="/assets/icons/modbus.png"
+            alt="Modbus/TCP Simulator"
+            style={{ height: 24, width: 'auto', maxWidth: '62%',
+                     objectFit: 'contain', display: 'block' }}
+          />
+        </span>
+        <span className={`badge ${badge.cls}`}>
+          <span className={`status-dot ${badge.dot}`} />
+          {badge.text}
         </span>
       </div>
 
-      <div style={{ overflowY: 'auto', flex: 1, padding: '8px 10px' }}>
-        {/* ── Config ───────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span style={{ width: 80, color: 'var(--text-muted)', flexShrink: 0 }}>TCP Port</span>
-          <div style={{
-            flex: 1, display: 'flex', alignItems: 'center',
-            background: running ? 'var(--bg-base)' : 'var(--bg-card)',
-            border: '1px solid var(--border)', borderRadius: 4,
-            padding: '0 6px', opacity: running ? 0.6 : 1,
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 10px',
+                    display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* ── Configuration ──────────────────────────────────── */}
+        <div className="group-box" style={{ marginTop: 6 }}>
+          <span className="group-box-label">Configuration</span>
+
+          <Field
+            label="TCP Port"
+            value={port}
+            onChange={setPort}
+            fallback={502}
+            min={1}
+            max={65535}
+            disabled={running || busy}
+            suffix="502"
+          />
+
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: 10,
+            color: 'var(--text-muted)', marginTop: 2,
+            cursor: running || busy ? 'default' : 'pointer',
           }}>
-            <NumberInput
-              value={port} onChange={setPort} fallback={502} int disabled={running}
-              style={{
-                flex: 1, minWidth: 0, background: 'transparent', border: 'none',
-                outline: 'none', color: 'var(--text)', fontSize: 10,
-                fontFamily: 'Consolas, monospace', padding: '4px 0',
-              }}
+            <input
+              type="checkbox" checked={writeEnabled} disabled={running || busy}
+              onChange={e => setWriteEnabled(e.target.checked)}
+            />
+            Arm write path (FC05/06/15/16)
+          </label>
+
+          {port < 1024 && (
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.5, marginTop: 6 }}>
+              Port 502 is privileged — on Linux the process needs root or
+              CAP_NET_BIND_SERVICE. Use 5020 if the bind is refused.
+            </div>
+          )}
+        </div>
+
+        {/* ── Targets — pre-start, mirrors the other protocol panels ── */}
+        {!running && candidates.length > 0 && (
+          <TargetsBox
+            rows={[...byType.entries()].map(([t, n]) => ({ label: `${t}:`, value: n }))}
+            total={candidates.length}
+            footer={
+              <StatRow
+                label="Bound:"
+                value={`${boundCount} / ${candidates.length}`}
+                labelColor={boundCount === candidates.length ? undefined : 'var(--warn)'}
+                valueColor={boundCount === candidates.length ? undefined : 'var(--warn)'}
+              />
+            }
+          />
+        )}
+
+        {/* ── Running summary ────────────────────────────────── */}
+        {running && status && (
+          <div style={{
+            fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.6,
+            padding: '6px 8px', background: 'var(--bg-base)',
+            border: '1px solid var(--border)', borderRadius: 4,
+            fontFamily: 'Consolas, monospace',
+          }}>
+            <StatRow label="TCP port:" value={status.port} valueColor="var(--text)" />
+            <StatRow label="Active slaves:" value={status.active_devices} valueColor="var(--text)" />
+            <StatRow label="Requests:" value={status.stats?.requests ?? 0} valueColor="var(--text)" />
+            <StatRow
+              label="Exceptions:"
+              value={status.stats?.exceptions ?? 0}
+              valueColor={(status.stats?.exceptions ?? 0) > 0 ? 'var(--warn)' : 'var(--text)'}
+            />
+            <StatRow label="Connections:" value={status.stats?.connections ?? 0} valueColor="var(--text)" />
+            <StatRow
+              label="Refused:"
+              value={status.stats?.refused ?? 0}
+              valueColor={(status.stats?.refused ?? 0) > 0 ? 'var(--warn)' : 'var(--text)'}
             />
           </div>
-        </div>
-        {port < 1024 && (
-          <div style={{ color: 'var(--text-dim)', marginBottom: 6, lineHeight: 1.5 }}>
-            Port 502 is privileged — on Linux the process needs root or
-            CAP_NET_BIND_SERVICE. Use 5020 if the bind is refused.
-          </div>
         )}
 
-        <label style={{
-          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
-          color: 'var(--text-muted)', cursor: running ? 'default' : 'pointer',
-        }}>
-          <input
-            type="checkbox" checked={writeEnabled} disabled={running}
-            onChange={e => setWriteEnabled(e.target.checked)}
-          />
-          Arm write path (FC05/06/15/16)
-        </label>
-        <div style={{ color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.5 }}>
-          No map declares a writable point yet, so every write is refused at the
-          address check. Real sites run this plane read-only regardless.
-        </div>
-
-        {/* ── Start / Stop ─────────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-          <button
-            onClick={start} disabled={!canStart} title={startTip}
-            style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 5, padding: '6px 0', fontSize: 10, borderRadius: 4,
-              border: '1px solid var(--border)',
-              background: canStart ? 'var(--ok-bg)' : 'var(--bg-base)',
-              color: canStart ? 'var(--ok)' : 'var(--text-dim)',
-              cursor: canStart ? 'pointer' : 'default',
-            }}
-          ><IconPlay /> Start</button>
-          <button
-            onClick={stop} disabled={busy || !running}
-            style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 5, padding: '6px 0', fontSize: 10, borderRadius: 4,
-              border: '1px solid var(--border)',
-              background: running ? 'var(--crit-bg)' : 'var(--bg-base)',
-              color: running ? 'var(--crit)' : 'var(--text-dim)',
-              cursor: running ? 'pointer' : 'default',
-            }}
-          ><IconStop /> Stop</button>
-        </div>
-
-        {err && (
-          <div style={{
-            color: 'var(--crit)', background: 'var(--crit-bg)', padding: '5px 7px',
-            borderRadius: 4, marginBottom: 8, lineHeight: 1.5,
-          }}>{err}</div>
-        )}
-
-        {/* ── Stats ────────────────────────────────────────────────── */}
-        <div style={{ marginBottom: 10 }}>
-          <StatRow label="Candidates (bound)" value={`${boundCount} / ${candidates.length}`} />
-          <StatRow label="Active servers" value={status?.active_devices ?? 0} />
-          <StatRow label="Requests" value={status?.stats?.requests ?? 0} />
-          <StatRow
-            label="Exceptions" value={status?.stats?.exceptions ?? 0}
-            valueColor={(status?.stats?.exceptions ?? 0) > 0 ? 'var(--warn)' : undefined}
-          />
-          <StatRow label="Connections" value={status?.stats?.connections ?? 0} />
-          <StatRow
-            label="Refused" value={status?.stats?.refused ?? 0}
-            valueColor={(status?.stats?.refused ?? 0) > 0 ? 'var(--warn)' : undefined}
-          />
-        </div>
-
-        {/* ── Slave table ──────────────────────────────────────────── */}
+        {/* ── Active slaves ──────────────────────────────────── */}
         {running && slaves.length > 0 && (
-          <>
-            <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>Slaves</div>
-            <div style={{
-              border: '1px solid var(--border)', borderRadius: 4,
-              marginBottom: 10, maxHeight: 190, overflowY: 'auto',
-            }}>
+          <div className="group-box">
+            <span className="group-box-label">Active Slaves</span>
+            <div style={{ maxHeight: 190, overflowY: 'auto', margin: '0 -4px' }}>
               {slaves.map(s => (
                 <div
                   key={s.name}
                   onClick={() => setSelected(s.name === selected ? '' : s.name)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '4px 6px', cursor: 'pointer',
-                    borderBottom: '1px solid var(--border)',
+                    padding: '3px 4px', cursor: 'pointer', borderRadius: 3,
+                    fontSize: 10,
                     background: s.name === selected ? 'var(--bg-selected)' : 'transparent',
                   }}
                 >
-                  <span style={{
-                    width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                    background: s.online ? 'var(--ok)' : 'var(--crit)',
-                  }} />
+                  <span className={`status-dot ${s.online ? 'green' : 'red'}`} />
                   <span style={{
                     flex: 1, minWidth: 0, overflow: 'hidden',
                     textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     fontFamily: 'Consolas, monospace', color: 'var(--text)',
                   }}>{s.name}</span>
+                  <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>
+                    {s.role === 'rtu_slave' ? 'RTU' : 'TCP'}
+                  </span>
                   <span style={{
-                    fontSize: 9, padding: '1px 4px', borderRadius: 3,
-                    background: 'var(--bg-base)', color: 'var(--text-muted)',
-                  }}>{s.role === 'rtu_slave' ? 'RTU' : 'TCP'}</span>
-                  <span style={{
-                    fontFamily: 'Consolas, monospace', color: 'var(--text-dim)',
-                    fontSize: 9,
+                    fontFamily: 'Consolas, monospace', color: 'var(--text-dim)', fontSize: 9,
                   }}>u{s.unit_id}</span>
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
 
-        {/* ── Register browser ─────────────────────────────────────── */}
+        {/* ── Register browser ───────────────────────────────── */}
         {sel && (
-          <>
+          <div className="group-box">
+            <span className="group-box-label">Register Map</span>
+
             <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              alignItems: 'baseline', marginBottom: 3,
+              fontSize: 9, color: 'var(--text-dim)', lineHeight: 1.5,
+              fontFamily: 'Consolas, monospace', marginBottom: 6,
+              display: 'flex', justifyContent: 'space-between', gap: 6,
             }}>
-              <span style={{ color: 'var(--text-muted)' }}>Register map</span>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {mapMeta?.product} · {mapMeta?.map_id} · word order {mapMeta?.word_order}
+              </span>
               <a
                 href={api.modbusMapExportUrl(sel.device_type)}
-                style={{ color: 'var(--accent)', fontSize: 9, textDecoration: 'none' }}
-              >export CSV</a>
+                style={{ color: 'var(--accent)', textDecoration: 'none', flexShrink: 0 }}
+              >CSV</a>
             </div>
-            <div style={{
-              color: 'var(--text-dim)', marginBottom: 6, lineHeight: 1.5,
-              fontFamily: 'Consolas, monospace', fontSize: 9,
-            }}>
-              {mapMeta?.product} · {mapMeta?.map_id} · word order {mapMeta?.word_order}
-              <br />
+            <div style={{ fontSize: 9, color: 'var(--text-dim)', marginBottom: 6 }}>
               Simulator addresses, not the vendor's published map.
             </div>
 
             <div style={{
-              border: '1px solid var(--border)', borderRadius: 4,
-              overflow: 'hidden', marginBottom: 10,
+              display: 'grid', gridTemplateColumns: '54px 1fr 66px 56px',
+              gap: 4, fontSize: 9, color: 'var(--text-muted)',
+              borderBottom: '1px solid var(--border)', paddingBottom: 3,
             }}>
-              <div style={{
-                display: 'grid', gridTemplateColumns: '58px 1fr 74px 58px',
-                gap: 4, padding: '4px 6px', fontSize: 9,
-                background: 'var(--bg-base)', color: 'var(--text-muted)',
-              }}>
-                <span>Addr</span><span>Point</span><span>Raw</span><span>Value</span>
-              </div>
-              <div style={{ maxHeight: 260, overflowY: 'auto' }}>
-                {['input', 'holding', 'discrete', 'coil'].map(space => {
-                  const rows = points.filter(p => p.space === space)
-                  if (!rows.length) return null
-                  return (
-                    <div key={space}>
-                      <div style={{
-                        padding: '3px 6px', fontSize: 9, color: 'var(--text-dim)',
-                        background: 'var(--bg-base)',
-                      }}>{SPACE_LABEL[space] ?? space}</div>
-                      {rows.map(p => (
-                        <div key={space + p.addr} style={{
-                          display: 'grid', gridTemplateColumns: '58px 1fr 74px 58px',
-                          gap: 4, padding: '3px 6px',
-                          borderBottom: '1px solid var(--border)',
-                          fontFamily: 'Consolas, monospace',
-                        }}>
-                          <span style={{ color: 'var(--text-dim)' }}>
-                            {space === 'input' || space === 'holding' ? hex(p.addr) : p.addr}
-                          </span>
-                          <span style={{
+              <span>Addr</span><span>Point</span><span>Raw</span><span>Value</span>
+            </div>
+
+            <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+              {['input', 'holding', 'discrete', 'coil'].map(space => {
+                const rows = points.filter(p => p.space === space)
+                if (!rows.length) return null
+                return (
+                  <div key={space}>
+                    <div style={{
+                      fontSize: 9, color: 'var(--text-dim)', padding: '4px 0 2px',
+                    }}>{SPACE_LABEL[space] ?? space}</div>
+                    {rows.map(p => (
+                      <div key={space + p.addr} style={{
+                        display: 'grid', gridTemplateColumns: '54px 1fr 66px 56px',
+                        gap: 4, fontSize: 10, padding: '2px 0',
+                        fontFamily: 'Consolas, monospace',
+                      }}>
+                        <span style={{ color: 'var(--text-dim)' }}>
+                          {space === 'input' || space === 'holding' ? hex(p.addr) : p.addr}
+                        </span>
+                        <span
+                          style={{
                             color: 'var(--text)', overflow: 'hidden',
                             textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }} title={`${p.name}  ←  ext["${p.key}"]`}>{p.name}</span>
-                          <span style={{ color: 'var(--text-dim)' }}>
-                            {p.raw.map(r => r.toString()).join(',')}
-                          </span>
-                          <span style={{ color: 'var(--text)' }}>
-                            {p.value}{p.units ? ' ' + p.units : ''}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
-              </div>
+                          }}
+                          title={`${p.name}  ←  ext["${p.key}"]`}
+                        >{p.name}</span>
+                        <span style={{ color: 'var(--text-dim)' }}>{p.raw.join(',')}</span>
+                        <span style={{ color: 'var(--text)' }}>
+                          {p.value}{p.units ? ' ' + p.units : ''}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
             </div>
-          </>
+          </div>
         )}
 
-        {/* ── Unbound candidates ───────────────────────────────────── */}
-        {!running && candidates.length > 0 && (
-          <>
-            <div style={{ color: 'var(--text-muted)', marginBottom: 4 }}>
-              Candidate devices
-            </div>
-            <div style={{
-              border: '1px solid var(--border)', borderRadius: 4,
-              maxHeight: 200, overflowY: 'auto',
-            }}>
-              {candidates.map(c => (
-                <div key={c.name} style={{
-                  display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px',
-                  borderBottom: '1px solid var(--border)',
-                  fontFamily: 'Consolas, monospace',
-                }}>
-                  <span style={{
-                    width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                    background: c.bound ? 'var(--ok)' : 'var(--text-dim)',
-                  }} />
-                  <span style={{
-                    flex: 1, minWidth: 0, overflow: 'hidden',
-                    textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)',
-                  }}>{c.name}</span>
-                  <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>{c.ip || 'unbound'}</span>
-                </div>
-              ))}
-            </div>
-          </>
+        {err && (
+          <div style={{
+            fontSize: 10, color: 'var(--crit)', background: 'var(--crit-bg)',
+            padding: '5px 7px', borderRadius: 4, lineHeight: 1.5,
+          }}>{err}</div>
         )}
+
+        {/* ── Start / Stop ───────────────────────────────────── */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {running ? (
+            <button
+              className="btn-action btn-stop"
+              onClick={stop}
+              disabled={busy}
+              title="Stop Modbus simulator"
+            >
+              <IconStop />
+              <span>Stop Modbus</span>
+            </button>
+          ) : (
+            <button
+              className="btn-action btn-start"
+              onClick={start}
+              disabled={!canStart}
+              title={startTip}
+            >
+              <IconPlay />
+              <span>Start Modbus</span>
+            </button>
+          )}
+        </div>
+
       </div>
     </div>
   )
