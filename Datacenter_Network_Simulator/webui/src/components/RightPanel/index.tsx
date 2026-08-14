@@ -9,7 +9,6 @@ import RedfishPanel from './RedfishPanel'
 import ModbusPanel  from './ModbusPanel'
 import TrapsPanel   from './TrapsPanel'
 import RulesPanel   from './RulesPanel'
-import ConsolePanel from './ConsolePanel'
 import TickPanel    from './TickPanel'
 import FleetPanel   from './FleetPanel'
 
@@ -44,26 +43,15 @@ const TABS: Tab[] = [
   { id: 'sflow', icon: '📶', iconSrc: '/assets/icons/sflow.png', iconInvert: true, label: 'sFlow', component: <SFlowPanel /> },
   { id: 'bacnet',  icon: '🔋',  iconSrc: '/assets/icons/bacnet.png', label: 'BACnet/IP', component: <BACnetPanel /> },
   { id: 'redfish', icon: '🖧',  iconSrc: '/assets/icons/redfish.png', label: 'Redfish', component: <RedfishPanel /> },
-  // The full Modbus lockup, not a crop: the mark and the wordmark overlap in the
-  // source art (the M is drawn over the orange disc), so every attempt to cut the
-  // mark out either sliced the disc or truncated the M.
-  // 35x14 is a DELIBERATE non-uniform scale: the art is 3.14:1, which fits to
-  // 38x12 at true aspect and reads thin in the rail. Narrowing to 35 and pulling
-  // the height to 14 (2.5:1) gives it more presence without touching the 44x44
-  // button edge. Adjust the pair to taste — width drives legibility of the
-  // wordmark, height drives how heavy it sits against its neighbours.
-  // iconNoFilter: the rail's default contrast(2)/brightness() punch is for flat
-  // monochrome glyphs and collapses this logo's orange disc into its yellow dots.
   // Plain glyph, not the brand logo: "Modbus" is 3.14:1 art whose letters land
   // ~6px tall in this 44px button, and no crop of it survives (the wordmark is
-  // drawn over the mark in the source). The real logo lives in the panel header,
-  // where there is width to render it unmodified and legible.
+  // drawn over the mark in the source art). The real logo lives in the panel
+  // header, where there is width to render it unmodified and legible.
   { id: 'modbus',  icon: '🔌',  label: 'Modbus/TCP', component: <ModbusPanel /> },
   { id: 'traps',   icon: '⚡',  label: 'Traps',        component: <TrapsPanel />   },
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
   { id: 'fleet',   icon: '📈',  label: 'Fleet Lifecycle', component: <FleetPanel /> },
-  { id: 'console', icon: '>_',  iconColor: 'var(--text)', label: 'Console', component: <ConsolePanel /> },
 ]
 
 function TabButton({
@@ -79,9 +67,7 @@ function TabButton({
         border: 'none', borderRadius: 7,
         background: active ? 'var(--bg-selected)' : 'transparent',
         color: active ? 'var(--text)' : (tab.iconColor ?? 'var(--text-dim)'),
-        fontSize: tab.icon === '>_' ? 13 : 21,
-        fontFamily: tab.icon === '>_' ? 'Consolas, monospace' : 'inherit',
-        fontWeight: tab.icon === '>_' ? 700 : 400,
+        fontSize: 21,
         cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'background 0.15s, color 0.15s',

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { api, clearToken, AUTH_EXPIRED_EVENT } from '../api/client'
 import { useStore } from '../store/useStore'
 import AddDeviceDialog from './AddDeviceDialog'
+import ConsoleModal from './ConsoleModal'
 
 interface MenuItem {
   label: string
@@ -185,6 +186,7 @@ export default function MenuBar() {
   const menuBarRef = useRef<HTMLDivElement>(null)
   const [openMenu,  setOpenMenu]  = useState<string | null>(null)
   const [showAdd,   setShowAdd]   = useState(false)
+  const [showConsole, setShowConsole] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
 
   const {
@@ -347,6 +349,8 @@ export default function MenuBar() {
     { label: '', divider: true, action: () => {} },
     { label: 'SNMP Traps',      action: () => setRightTab('traps') },
     { label: 'Bindings',        action: () => setRightTab('binding') },
+    { label: '', divider: true, action: () => {} },
+    { label: 'Console',         action: () => setShowConsole(true) },
   ]
   function logout() {
     if (!confirm('Log out of the simulator?')) return
@@ -477,6 +481,7 @@ export default function MenuBar() {
       />
 
       {showAdd  && <AddDeviceDialog     onClose={() => setShowAdd(false)}  />}
+      {showConsole && <ConsoleModal onClose={() => setShowConsole(false)} />}
     </div>
   )
 }
