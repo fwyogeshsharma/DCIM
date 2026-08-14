@@ -145,7 +145,7 @@ function TabButton({
 }
 
 export default function RightPanel() {
-  const { rightTab, setRightTab, snmp, gnmi, sflow, bacnet, redfish, traps, binding } = useStore()
+  const { rightTab, setRightTab, snmp, gnmi, sflow, bacnet, redfish, modbus, traps, binding } = useStore()
   const [panelOpen, setPanelOpen] = useState(true)
   const [width, setWidth] = useState<number>(() => {
     const saved = parseInt(localStorage.getItem(STORAGE_KEY) || '', 10)
@@ -203,6 +203,7 @@ export default function RightPanel() {
     sflow:   sflow?.running  ? 'sFlow running'  : undefined,
     bacnet:  bacnet?.running ? 'BACnet running' : undefined,
     redfish: redfish?.running ? 'Redfish running' : undefined,
+    modbus:  modbus?.running ? 'Modbus running'  : undefined,
     traps:   snmp?.autonomous_faults ? 'Autonomous faults on' : undefined,
   }
 

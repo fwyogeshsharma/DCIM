@@ -62,6 +62,9 @@ interface Store {
   gnmi:    GnmiStatus | null
   sflow:   SFlowStatus | null
   bacnet:  BacnetStatus | null
+  // Status only — the panel owns the detail (slaves, registers). The rail
+  // needs this to show a running badge like every other plane.
+  modbus:  { running: boolean; active_devices: number; port: number } | null
   redfish: RedfishStatus | null
   binding: BindingStatus | null
   adapters: AdaptersResponse | null
@@ -179,6 +182,7 @@ interface Store {
   fetchGnmi:    () => Promise<void>
   fetchSflow:   () => Promise<void>
   fetchBacnet:       () => Promise<void>
+  fetchModbus:       () => Promise<void>
   fetchRedfish:      () => Promise<void>
   fetchEV2Metrics:   () => Promise<void>
   fetchPlantMetrics: () => Promise<void>
@@ -213,6 +217,7 @@ export const useStore = create<Store>((set, get) => ({
   gnmi:         null,
   sflow:        null,
   bacnet:       null,
+  modbus:       null,
   redfish:      null,
   binding:      null,
   adapters:     null,
@@ -437,6 +442,10 @@ export const useStore = create<Store>((set, get) => ({
     try { set({ bacnet: await fetchWithAbort<BacnetStatus>('/bacnet/status') }) } catch { /* ignore */ }
   },
 
+  fetchModbus: async () => {
+    try { set({ modbus: await fetchWithAbort('/modbus/status') }) } catch { /* ignore */ }
+  },
+
   fetchRedfish: async () => {
     try { set({ redfish: await fetchWithAbort<RedfishStatus>('/redfish/status') }) } catch { /* ignore */ }
   },
@@ -503,6 +512,7 @@ export const useStore = create<Store>((set, get) => ({
     s.fetchGnmi()
     s.fetchSflow()
     s.fetchBacnet()
+    s.fetchModbus()
     s.fetchRedfish()
     s.fetchBinding()
     s.fetchRules()
@@ -516,6 +526,7 @@ export const useStore = create<Store>((set, get) => ({
       st.fetchGnmi()
       st.fetchSflow()
       st.fetchBacnet()
+      st.fetchModbus()
       st.fetchRedfish()
       st.fetchBinding()
       st.fetchHealth()
@@ -553,6 +564,7 @@ export const useStore = create<Store>((set, get) => ({
             if (t === 'gnmi')     s.fetchGnmi()
             if (t === 'sflow')    s.fetchSflow()
             if (t === 'bacnet')   s.fetchBacnet()
+            if (t === 'modbus')   s.fetchModbus()
             if (t === 'redfish')  { s.fetchRedfish(); s.fetchGraph() }  // power ops fade/unfade nodes
             if (t === 'binding')  s.fetchBinding()
             if (t === 'rules')    s.fetchRules()

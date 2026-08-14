@@ -192,7 +192,7 @@ export default function MenuBar() {
   const {
     snmp, gnmi, sflow, bacnet, redfish, devices,
     fetchGraph, fetchDevices, fetchSnmp, selectedDeviceId,
-    triggerFitView, setLayoutAlgo, setRightTab, setActiveView,
+    triggerFitView, setLayoutAlgo, setRightTab, setActiveView, activeView,
   } = useStore()
 
   const closeAll = useCallback(() => setOpenMenu(null), [])
@@ -320,14 +320,25 @@ export default function MenuBar() {
     { label: '',                divider: true,      action: () => {}       },
     { label: 'Export as JSON',                       action: exportJson    },
   ]
-  const devMenuItems: MenuItem[] = [
-    { label: 'Add Device',        action: () => setShowAdd(true)  },
-    { label: '', divider: true, action: () => {} },
+  // The app has exactly three views. They used to be scattered — Floor Plan under
+  // Topology (whose other items act ON the canvas rather than navigate away from
+  // it) and Live Metrics under Devices — with no menu path back to the canvas at
+  // all. Grouping them here also gives 'main' a route it never had.
+  const viewMenuItems: MenuItem[] = [
+    { label: 'Topology',     action: () => setActiveView('main'),
+      checked: activeView === 'main' },
+    { label: 'Floor Plan',   action: () => setActiveView('floorplan'),
+      checked: activeView === 'floorplan' },
+    { label: 'Live Metrics', action: () => setActiveView('metrics'),
+      checked: activeView === 'metrics' },
+  ]
+  // Add/Remove Device moved here from a separate Devices menu: they edit the
+  // topology, which is what the rest of this menu does. Remove Device is also on
+  // the canvas right-click, so nothing here is the only route to it.
+  const topoMenuItems: MenuItem[] = [
+    { label: 'Add Device',      action: () => setShowAdd(true) },
     { label: 'Remove Selected', action: removeSelected, disabled: !selectedDeviceId },
     { label: '', divider: true, action: () => {} },
-    { label: 'Live Metrics',    action: () => setActiveView('metrics') },
-  ]
-  const topoMenuItems: MenuItem[] = [
     { label: 'Fit View', shortcut: 'Ctrl+Shift+F', action: () => triggerFitView() },
     { label: '', divider: true, action: () => {} },
     {
@@ -339,8 +350,6 @@ export default function MenuBar() {
         { label: 'Kamada-Kawai Layout',                           action: () => setLayoutAlgo('kamada_kawai') },
       ],
     },
-    { label: '', divider: true, action: () => {} },
-    { label: 'Floor Plan', action: () => setActiveView('floorplan') },
   ]
   const simMenuItems: MenuItem[] = [
     { label: 'SNMP Simulator',  action: () => setRightTab('snmp')  },
@@ -366,7 +375,7 @@ export default function MenuBar() {
 
   const menus: { name: string; label: string; items: MenuItem[]; badge?: { text: string; color: string } }[] = [
     { name: 'file', label: 'File',     items: fileMenuItems },
-    { name: 'dev',  label: 'Devices',  items: devMenuItems  },
+    { name: 'view', label: 'View',     items: viewMenuItems },
     { name: 'topo', label: 'Topology', items: topoMenuItems },
     { name: 'sim',  label: 'Simulation', items: simMenuItems },
     { name: 'help', label: 'Help',     items: helpMenuItems },
