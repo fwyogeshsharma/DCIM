@@ -316,3 +316,53 @@ def test_a_dead_instrument_answers_0x0b_over_a_live_gateway(trunk):
     assert (body[0], body[1]) == (0x84, 0x0B)
     # The trunk is not down — its neighbours still answer.
     assert struct.unpack(">h", _read(port, 1)[2:4])[0] == 72
+
+
+def test_every_transmitter_point_is_reachable_through_the_gateway(trunk):
+    """The trunk tests above read input register 0 only. A transmitter also
+    carries a Reading_Valid discrete, and that is served by a different function
+    code (FC02, not FC04) — so it exercises a path the value read never touches."""
+    import struct as _s
+    from core.modbus_register_map import SPACE_DISCRETE, SPACE_INPUT
+    _ctrl, port = trunk
+    roles = {1: "chw_supply", 2: "chw_return", 3: "chw_flow",
+             4: "cw_supply", 5: "cw_return", 6: "ct_basin"}
+    for unit, role in roles.items():
+        mm = get_probe_map(role)
+        for p in mm.points[SPACE_INPUT]:
+            body = _read(port, unit, addr=p.addr, count=1)
+            assert not (body[0] & 0x80), (
+                f"unit {unit} ({role}) {p.name} -> exception 0x{body[1]:02X}")
+            raw = _s.unpack(">H", body[2:4])[0]
+            if p.dtype == "s16" and raw >= 0x8000:
+                raw -= 0x10000
+            assert raw / p.scale != 0 or role == "chw_flow", (
+                f"unit {unit} {p.name} reads zero — the store published nothing")
+        for p in mm.points[SPACE_DISCRETE]:
+            pdu = _s.pack(">BHH", 2, p.addr, 1)
+            frame = _s.pack(">HHHB", 1, 0, len(pdu) + 1, unit) + pdu
+            s = socket.create_connection((HOST, port), timeout=5)
+            try:
+                s.sendall(frame)
+                head = s.recv(7)
+                body = s.recv(_s.unpack(">H", head[4:6])[0] - 1)
+            finally:
+                s.close()
+            assert not (body[0] & 0x80), (
+                f"unit {unit} ({role}) {p.name} -> exception 0x{body[1]:02X}")
+            assert (body[2] & 1) == 1, (
+                f"unit {unit} {p.name} reads invalid while the store is publishing")
+
+
+def test_the_flow_meter_agrees_with_the_loop_it_measures(trunk, published):
+    """A magnetic flow meter on the CHW main and the pump pushing that water are
+    rendered by two different planes from one ext state. If they can disagree,
+    one of them is lying — and a BMS trending both would see a phantom imbalance."""
+    import struct as _s
+    _ctrl, port = trunk
+    body = _read(port, 3, addr=0, count=1)          # FLOW, unit 3
+    assert not (body[0] & 0x80)
+    modbus_lps = _s.unpack(">H", body[2:4])[0] / 100.0
+    assert modbus_lps == pytest.approx(
+        float(published["FLOW-DC1-CP"]["water_flow_lps"]), abs=0.01), (
+        "the Modbus flow reading does not match the published loop flow")

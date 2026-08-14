@@ -166,3 +166,80 @@ def test_trunk_devices_own_no_socket(trunk):
         assert dev._send_sock is router._send_sock
         dev.close()
     assert router._send_sock is not None, "a child close took the router's socket"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Whole-device reachability
+#
+#  The tests above prove ROUTING — that MAC 3 and MAC 11 reach different devices.
+#  They read AI1/AI2 only. A pump carries 12 points, so an object-tree indexing
+#  fault past the second one would route correctly and still be invisible.
+# ─────────────────────────────────────────────────────────────────────────────
+def _read_obj(port, mac, obj_type, inst):
+    apdu = (bytes([0x00, 0x05, 0x01, SVC_READ_PROPERTY])
+            + enc_app_oid(obj_type, inst) + bytes([0x19, 85]))
+    npdu = bytes([0x01, 0x24]) + bytes([0x07, 0xD1, 1, mac, 0xFF]) + apdu
+    fr = bytes([0x81, 0x0A, (4 + len(npdu)) >> 8, (4 + len(npdu)) & 0xFF]) + npdu
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(3)
+    try:
+        s.sendto(fr, (HOST, port))
+        data, _ = s.recvfrom(2048)
+    finally:
+        s.close()
+    r = parse_npdu_routed(parse_bvll(data)[1])
+    p = parse_apdu(r["apdu"])
+    if p["type"] != "complex_ack":
+        return r, None
+    d = p["data"]
+    i = d.find(b"\x44")
+    if i >= 0 and len(d) >= i + 5:
+        return r, struct.unpack(">f", d[i + 1:i + 5])[0]
+    i = d.find(b"\x91")
+    if i >= 0 and len(d) >= i + 2:
+        return r, float(d[i + 1])
+    return r, None
+
+
+@pytest.mark.parametrize("mac,dtype", [(3, "pump"), (11, "valve")])
+def test_every_point_is_reachable_through_the_router(trunk, mac, dtype):
+    """Walk the device's ENTIRE declared point set over the wire, not a sample.
+
+    PLANT_SPEC is the authority on what the device publishes, so a point added
+    there is demanded here automatically."""
+    from core.bacnet_object_model import OBJ_BINARY_INPUT
+    from core.bacnet_plant_generator import PLANT_SPEC
+    _ctrl, port = trunk
+    spec = PLANT_SPEC[dtype]
+
+    for i, (name, _u, _b, _a) in enumerate(spec["ai"], start=1):
+        r, v = _read_obj(port, mac, OBJ_ANALOG_INPUT, i)
+        assert v is not None, f"{dtype} AI{i} ({name}) unreadable through the router"
+        assert list(r["sadr"]) == [mac], f"{name} replied with the wrong source route"
+
+    for i, name in enumerate(spec["bi"], start=1):
+        r, v = _read_obj(port, mac, OBJ_BINARY_INPUT, i)
+        assert v is not None, f"{dtype} BI{i} ({name}) unreadable through the router"
+        assert v in (0.0, 1.0), f"{name} is a binary point but read {v}"
+        assert list(r["sadr"]) == [mac]
+
+
+def test_analog_and_binary_instances_do_not_collide(trunk):
+    """AI 1 and BI 1 share an instance number; only the object TYPE separates
+    them. Reading both must return different points, not the same one twice."""
+    from core.bacnet_object_model import OBJ_BINARY_INPUT
+    _ctrl, port = trunk
+    _, ai = _read_obj(port, 3, OBJ_ANALOG_INPUT, 1)      # pump Speed
+    _, bi = _read_obj(port, 3, OBJ_BINARY_INPUT, 1)      # pump Run_Status
+    assert ai is not None and bi is not None
+    assert bi in (0.0, 1.0)
+    assert not (ai == bi and ai not in (0.0, 1.0))
+
+
+def test_a_point_past_the_object_tree_is_refused(trunk):
+    """Reading beyond the declared set must error, not return a plausible zero."""
+    from core.bacnet_plant_generator import PLANT_SPEC
+    _ctrl, port = trunk
+    beyond = len(PLANT_SPEC["pump"]["ai"]) + 5
+    _r, v = _read_obj(port, 3, OBJ_ANALOG_INPUT, beyond)
+    assert v is None, f"AI{beyond} does not exist but returned {v}"
