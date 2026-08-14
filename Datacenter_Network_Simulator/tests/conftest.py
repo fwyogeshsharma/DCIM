@@ -251,9 +251,28 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
     # the plant header instruments `probes=` adds. No "Plant …" model name, so the
     # store leaves them on the ambient path rather than publishing a header reading
     # into them.
-    for i in range(1, rack_probes + 1):
-        made[f"SNS{i}"] = _device(dm, f"SNS{i}-{dc}-HA-R1-01", "sensor",
-                                  f"10.{net}.9.{i}", 0, model="DPX2-T2H1", dc=dc)
+    if rack_probes:
+        # A DPX2 plugs into a PX2's RJ-12 sensor port and is read through that
+        # PDU's agent — it has no address of its own. The rack PDU therefore has
+        # to exist before the probes do, and it is what carries them.
+        pdu_ip = f"10.{net}.9.1"
+        rack_pdu = _device(dm, f"PDUA-{dc}-HA-R1-01", "pdu", "", 0,
+                           model="Raritan PX2-5170CR", dc=dc)
+        rack_pdu.mgmt_ip = pdu_ip
+        rack_pdu.sensor_children = []
+        made["PDUA"] = rack_pdu
+
+        slot = 1
+        for i in range(1, rack_probes + 1):
+            probe = _device(dm, f"SNS{i}-{dc}-HA-R1-01", "sensor", "", 0,
+                            model="DPX2-T2H1", dc=dc)
+            # attach_to_sensor_port, not a bare field assignment: the portless
+            # rule runs in __post_init__ and has already fired by now, so setting
+            # host_pdu_ip by hand leaves the probe holding an Ethernet port.
+            probe.attach_to_sensor_port(pdu_ip, slot)
+            rack_pdu.sensor_children.append(probe.name)
+            slot += 2                      # a T2H1 occupies two slots (temp + humidity)
+            made[f"SNS{i}"] = probe
 
     for i in range(1, servers + 1):
         made[f"SRV{i}"] = _device(dm, f"SRV{i:02d}-{dc}-HA-R1-01", "server",

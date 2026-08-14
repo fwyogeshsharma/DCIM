@@ -337,3 +337,29 @@ def test_carriers_are_reachable_in_the_loaded_graph():
     assert carriers
     for i in carriers:
         assert topo.graph.degree(i) > 0, f"{devs[i].name} floats in the loaded graph"
+
+
+def test_the_fixture_models_rack_probes_on_a_pdu():
+    """The harness must model the plant the simulator actually has. Rack probes
+    holding their own IPs was the last place it still described the pre-migration
+    world — and a fixture that models a device the code cannot produce is a
+    harness that passes while the real thing is broken."""
+    import sys
+    import tempfile
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from conftest import build_plant
+    p = build_plant(Path(tempfile.mkdtemp()), servers=50, installed_modules=6,
+                    rack_probes=3)
+    devs = p.dm.get_all_devices()
+    probes = [d for d in devs if d.name.startswith("SNS")]
+    pdus = [d for d in devs if d.device_type == DeviceType.PDU]
+    assert len(probes) == 3 and len(pdus) == 1
+    host = pdus[0]
+    for d in probes:
+        assert not d.ip_address and not d.mgmt_ip, d.name
+        assert d.interface_count == 0 and not d.interfaces, d.name
+        assert d.snmp_port == 0 and not d.metrics_enabled, d.name
+        assert d.host_pdu_ip == host.mgmt_ip
+    slots = [d.sensor_slot for d in probes]
+    assert len(slots) == len(set(slots)), "two probes share a slot"
+    assert set(host.sensor_children) == {d.name for d in probes}
