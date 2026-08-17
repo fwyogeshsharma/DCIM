@@ -252,8 +252,14 @@ def _build_dc(dm, topo, dc, net, trains, servers, crahs=0, probes=False,
                                _VALVE_MAC + j - 1)
 
     for i in range(1, crahs + 1):
+        # Carries a catalog SKU on purpose: CRAH fan duty is now this room's heat
+        # against the cooling its units are RATED for, and cooling_capacity_w()
+        # answers 0 for an unknown model. Without a real SKU the fixture would take
+        # the legacy fallback branch and the tests would pass while covering code
+        # the live topology never runs.
         made[f"CRAH{i}"] = _device(dm, f"CRAH{i}-{dc}-HA-R1-01", "crah",
-                                   f"10.{net}.5.{i}", CRAH_W, dc=dc)
+                                   f"10.{net}.5.{i}", CRAH_W,
+                                   model="Liebert PCW 100kW", dc=dc)
 
     for i in range(1, cdus + 1):
         made[f"CDU{i}"] = _device(dm, f"CDU{i}-{dc}-HA-R1-01", "cdu",

@@ -241,3 +241,89 @@ class TestResidualLandsOnTheChiller:
                 kw = p.store._plant_power_by_name.get(name, 0.0)
                 assert kw >= CHILLER_PLF[0] * np_kw.get(name, 0.0) - 1e-6, \
                     (servers, name, kw)
+
+
+class TestRoomLevelGearAnswersToItsRoom:
+    """Prerequisites for inverting the top-down power model.
+
+    `lf` — cooling ELECTRICAL over running plant nameplate — used to set CRAH fan
+    duty and valve draw. Both are wrong on their own terms: a CRAH is sized to the
+    heat in ITS hall and knows nothing about the plant's electrical bill, and an
+    actuator draws its rating whenever energised. Both were also circular, because
+    `lf` derives from the top-down cooling total that these devices' own draws are
+    supposed to add up to. Nothing can be summed bottom-up until they answer to
+    something upstream of the total.
+    """
+
+    def test_a_hotter_hall_runs_its_own_fans_harder(self, tmp_path, plant_cache):
+        """The duty is this room's heat over the cooling its CRAHs are rated for, so
+        fan speed has to rise with the hall's load. Under `lf` two rooms on one
+        plant got identical duty however their loads differed."""
+        seen = []
+        for servers in (40, 200, 400, 900):
+            p = build_plant(tmp_path / f"crah{servers}", servers=servers,
+                            installed_modules=6, crahs=8)
+            _settle(p)
+            crah = sorted(n for n in p.store._plant_speed_by_name
+                          if "CRAH" in n and DC in n)[0]
+            seen.append((p.store._it_live_by_dc[DC],
+                         p.store._plant_speed_by_name[crah]))
+        assert all(b[1] >= a[1] for a, b in zip(seen, seen[1:])), seen
+        assert seen[-1][1] > seen[0][1], "fan duty must actually respond to heat"
+
+    def test_crah_duty_is_not_the_plant_electrical_ratio(self, tmp_path,
+                                                         plant_cache):
+        """Pins the basis, not the value. Room heat ÷ rated room capacity is a
+        THERMAL ratio; reconstruct it and the published speed must follow it rather
+        than the plant's electrical duty."""
+        from core.cooling_model import FAN_MIN_SPEED
+        p = build_plant(tmp_path / "basis", servers=900, installed_modules=6,
+                        crahs=8)
+        _settle(p)
+        room_cap_kw = 8 * 100.0                      # 8 × Liebert PCW 100kW
+        thermal = p.store._it_live_by_dc[DC] / 1000.0 / room_cap_kw
+        crah = sorted(n for n in p.store._plant_speed_by_name
+                      if "CRAH" in n and DC in n)[0]
+        speed = p.store._plant_speed_by_name[crah]
+        # Speed is the thermal ratio times the inlet-temp ramp, floored at the fan
+        # turndown and capped at full speed. Deliberately NOT compared against
+        # _plant_duty: the electrical ratio is not guaranteed to sit either side of
+        # the thermal one, so that comparison would pass or fail by coincidence.
+        lo = min(1.0, max(thermal, FAN_MIN_SPEED))
+        hi = min(1.0, max(thermal * 3.0, FAN_MIN_SPEED))    # ramp is capped at ×3
+        assert lo - 1e-6 <= speed <= hi + 1e-6, (speed, thermal, lo, hi)
+
+    def test_the_fixture_crahs_carry_a_catalog_sku(self, tmp_path, plant_cache):
+        """Guards the branch, not the behaviour. cooling_capacity_w() returns 0 for
+        an unknown model and the duty falls back to `lf` — so a fixture without a
+        real SKU would pass every test above while exercising the legacy path."""
+        from core.device_manager import cooling_capacity_w
+        p = build_plant(tmp_path / "sku", servers=200, installed_modules=6, crahs=4)
+        _settle(p)
+        for dev in p.store._dm._devices.values():
+            if getattr(dev, "device_type").value == "crah":
+                assert cooling_capacity_w(getattr(dev, "model_name", "")) > 0, \
+                    dev.name
+
+    def test_a_valve_never_draws_a_share_of_the_plant_total(self, tmp_path,
+                                                            plant_cache):
+        """An actuator holding position is a fixed load, so its draw is its rating.
+
+        Honest about what this can check: the header valves carry a ZERO nameplate
+        in this fixture and in the shipped topology alike, so both the old share and
+        the new rating come to 0.0 W and no arithmetic distinguishes them. The change
+        is a decoupling one — it removes total_w from the valve branch, so the plant
+        sum stops being an input to one of its own terms — and it is a no-op on
+        today's numbers. What is testable is that a valve never picks up draw it has
+        no nameplate for, which the share form would have given it the moment a valve
+        SKU gained a rating."""
+        p = build_plant(tmp_path / "valve", servers=400, installed_modules=6,
+                        valves=True)
+        _settle(p)
+        np_kw = p.store._cooling_context()["np_kw_by_name"]
+        for dev in p.store._dm._devices.values():
+            if dev.device_type.value != "valve":
+                continue
+            published = p.store._plant_power_by_name.get(dev.name, 0.0)
+            assert published == pytest.approx(np_kw.get(dev.name, 0.0), abs=1e-9), \
+                dev.name

@@ -2993,6 +2993,11 @@ class DeviceStateStore:
             # how a growing fleet shows up on the return-air point.
             outlet_sum_room: Dict[tuple, float] = _dd(float)
             outlet_n_room: Dict[tuple, int] = _dd(int)
+            # Σ live IT WATTS per hall. A CRAH's fan is sized to the heat in ITS room,
+            # so this is the duty a room-level unit actually answers to — the DC-wide
+            # electrical ratio it used before is a plant-level quantity that says
+            # nothing about how hot this particular hall is.
+            it_live_room: Dict[tuple, float] = _dd(float)
             crah_room: Dict[str, tuple] = {}                 # CRAH name → (dc, room)
             dc_city: Dict[str, str] = {}
             plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
@@ -3017,6 +3022,10 @@ class DeviceStateStore:
                     it_live_dc[_dc] += w
                     it_w_by_name[d.name] = w
                     it_nom_by_name[d.name] = float(getattr(d, "power_draw_w", 0) or 0)
+                    # Room key normalised the SAME way crah_room does it below — a
+                    # server keyed on None and a CRAH keyed on "" are the same hall,
+                    # and keying them apart would silently give every room zero heat.
+                    it_live_room[(_dc, getattr(d, "room", "") or "")] += w
                     _inl = getattr(d, "inlet_temp", None)
                     if _inl is not None:
                         inlet_sum_dc[_dc] += float(_inl)
@@ -3440,7 +3449,27 @@ class DeviceStateStore:
                             _rk = crah_room.get(_n)
                             _rn = inlet_n_room.get(_rk, 0)
                             _rinl = (inlet_sum_room[_rk] / _rn) if _rn else avg_inlet
-                            duty = lf * crah_fan_speed_ratio(_rinl)
+                            # THERMAL duty, from this room's own heat against the
+                            # cooling its CRAHs are rated for. It was `lf` — cooling
+                            # ELECTRICAL over running plant nameplate — which is a
+                            # plant-level ratio that says nothing about how hot this
+                            # hall is: two rooms on one plant got identical fan duty
+                            # however their loads differed. It also made the total
+                            # circular, because lf comes from the top-down cooling
+                            # figure that this fan's own draw is supposed to add up to.
+                            #
+                            # Falls back to lf where the CRAH SKU carries no catalog
+                            # capacity, so a topology without rated air-side gear keeps
+                            # its old behaviour rather than dividing by zero.
+                            _room_cap_kw = sum(
+                                cooling_capacity_w(plant_model.get(_c, "")) or 0.0
+                                for _c, _k in crah_room.items() if _k == _rk) / 1000.0
+                            if _room_cap_kw > 1e-6:
+                                duty = (it_live_room.get(_rk, 0.0) / 1000.0
+                                        / _room_cap_kw)
+                            else:
+                                duty = lf
+                            duty *= crah_fan_speed_ratio(_rinl)
                         elif _t == "cdu":
                             # Per-loop control: a CDU's pump ramps on the LIVE heat of
                             # the cold-plate servers on ITS loop, not the DC-wide plant
@@ -3537,9 +3566,15 @@ class DeviceStateStore:
                         # normalised Active_Power made the pair describe a machine
                         # that does not exist.
                     else:
-                        # Valve / other: negligible actuator draw — nameplate share.
-                        base = total_w * (w / np_sum)
-                        tgt_w = min(base, w if w > 0 else base)
+                        # Valve / other: its OWN nameplate, not a share of the plant
+                        # total. A modulating actuator is a small fixed load — it
+                        # holds position against spring and flow force and draws
+                        # essentially its rating whenever it is energised, which has
+                        # nothing to do with how hard the chillers are working.
+                        # Scaling it by total_w also made the actuator a function of
+                        # the very sum it contributes to, which is the top-down
+                        # inversion in miniature.
+                        tgt_w = max(0.0, w)
                     plant_power[_n] = tgt_w / 1000.0   # kW
                 # Reconcile this DC's RUNNING plant draws to the staged-model demand
                 # (total_w), so the metered cooling equals the model and the meter-
