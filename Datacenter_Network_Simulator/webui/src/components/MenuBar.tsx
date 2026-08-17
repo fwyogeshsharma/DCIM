@@ -413,7 +413,7 @@ export default function MenuBar() {
           fontSize: 9, fontWeight: 700,
           fontFamily: 'Consolas, monospace',
           letterSpacing: '0.4px',
-        }}>v6.0</span>
+        }}>v6.1</span>
       </div>
 
       {/* ── Menu strip ────────────────────────────────────────â”€ */}
@@ -529,7 +529,7 @@ function AboutDialog({ onClose }: { onClose: () => void }) {
               border: '1px solid rgba(30,110,200,0.4)',
               color: 'var(--accent-soft)', fontSize: 9, fontWeight: 700,
               fontFamily: 'Consolas, monospace',
-            }}>v6.0</span>
+            }}>v6.1</span>
           </div>
 
           <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.7 }}>

@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="datacenter-network-simulator",
-    version="6.0.0",
+    version="6.1.0",
     description="Visual datacenter network topology simulator with SNMP and gNMI simulation",
     packages=find_packages(),
     python_requires=">=3.11",

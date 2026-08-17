@@ -356,7 +356,7 @@ def main():
 
     app.setApplicationName("Datacenter Network Simulator")
     app.setOrganizationName("Datacenter Network Simulator")
-    app.setApplicationVersion("6.0.0")
+    app.setApplicationVersion("6.1.0")
 
     # Refuse a second instance: protocol ports (SNMP/161, BACnet/47808, …) are
     # host singletons, so a duplicate fails late and per-protocol (e.g. BACnet
