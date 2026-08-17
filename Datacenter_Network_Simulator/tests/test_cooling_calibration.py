@@ -158,7 +158,7 @@ class TestResidualLandsOnTheChiller:
         identical pumps at identical speed must draw identically, whatever the
         rest of each DC is doing."""
         seen = []
-        for servers in (40, 200):
+        for servers in (1, 6, 40, 120):
             p = build_plant(tmp_path / f"eq{servers}", servers=servers,
                             installed_modules=6)
             _settle(p)
@@ -169,29 +169,48 @@ class TestResidualLandsOnTheChiller:
                                                             "every pump", seen)
         assert len({round(kw, 6) for _s, kw in seen}) == 1, seen
 
-    def test_a_binding_envelope_still_lands_on_the_model(self, tmp_path,
-                                                         plant_cache):
-        """The fallback, and it is reachable — an almost-empty plant hits it.
+    def test_the_plants_minimum_draw_fits_inside_the_modelled_floor(
+            self, tmp_path, plant_cache):
+        """An almost-empty plant must still publish honest per-device draws.
 
-        Below roughly 40 servers the VFD minimums plus the chillers' fixed losses
-        come to MORE than cooling_electrical_w() allows: OH_FLOOR × design is under
-        the plant's true physical minimum draw. Something has to give, and holding
-        the DC total is the property worth keeping, because PUE is derived from it.
-        So the chillers go to their floor and the VFD side is scaled to fit — the
-        one case where a pump does not publish its own curve. Pinned here so the
-        behaviour is deliberate rather than discovered again later."""
-        from core.cooling_model import CHILLER_PLF
-        p = build_plant(tmp_path / "bind", servers=6, installed_modules=6)
+        The fallback that scales the VFD side exists for when the devices' physical
+        minimum exceeds cooling_electrical_w(), and reaching it means the plant
+        cannot be described by the model at all. It fired here once, on nameplates
+        that were not physical — a chiller at COP 1.83 has a fixed-loss floor
+        (a FRACTION of nameplate) three times what a real machine's would be, and
+        that read exactly like OH_FLOOR being too low. It is not: with physical
+        nameplates the minimum draw sits well inside the floor at every load."""
+        from core.cooling_model import affinity_power_kw
+        p = build_plant(tmp_path / "minimum", servers=1, installed_modules=6)
         _settle(p)
-        published = sum(kw for n, kw in p.store._plant_power_by_name.items()
-                        if DC in n)
-        model = p.store._cool_model_w_by_dc.get(DC, 0.0) / 1000.0
-        assert published == pytest.approx(model, abs=1e-6)
         np_kw = p.store._cooling_context()["np_kw_by_name"]
-        for train in p.store._plant_trains_run[DC]:
-            name = train["chiller"]
-            assert p.store._plant_power_by_name.get(name, 0.0) >= \
-                CHILLER_PLF[0] * np_kw.get(name, 0.0) - 1e-6
+        speeds = p.store._plant_speed_by_name
+        for name, kw in p.store._plant_power_by_name.items():
+            if DC not in name or kw <= 0 or name not in speeds:
+                continue
+            want = affinity_power_kw(np_kw.get(name, 0.0), speeds[name])
+            if want > 1e-9:
+                assert kw == pytest.approx(want, rel=1e-6), (
+                    f"{name} was scaled — the envelope bound at near-zero load")
+
+    def test_the_fixtures_chiller_nameplate_is_physical(self, tmp_path,
+                                                        plant_cache):
+        """Guards the root cause directly, because it is invisible from the tests it
+        breaks. The chiller's ELECTRICAL nameplate has to be its cooling capacity
+        divided by a believable COP — a fixture whose plant could not exist produces
+        findings about the model that are really findings about the fixture."""
+        from core.cooling_model import PLANT_MODULE_KW
+        installed_mods = 6
+        p = build_plant(tmp_path / "np", servers=200,
+                        installed_modules=installed_mods)
+        _settle(p)
+        np_kw = p.store._cooling_context()["np_kw_by_name"]
+        chillers = [t["chiller"] for t in p.store._cooling_context()
+                    ["trains_by_dc"][DC]]
+        cap_each = installed_mods * PLANT_MODULE_KW / len(chillers)
+        for name in chillers:
+            implied_cop = cap_each / max(1e-6, np_kw.get(name, 0.0))
+            assert 3.0 <= implied_cop <= 8.0, (name, implied_cop)
 
     def test_the_dc_total_still_lands_on_the_model(self, tmp_path, plant_cache):
         """Non-negotiable: PUE is derived from this sum. Moving the residual must

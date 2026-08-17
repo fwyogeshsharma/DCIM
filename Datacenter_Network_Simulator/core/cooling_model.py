@@ -602,11 +602,45 @@ def makeup_flow_lpm(reject_kw: float) -> float:
     return max(0.0, reject_kw) * MAKEUP_LPM_PER_KW
 
 
-def pump_head_frac(speed_frac: float) -> float:
-    """Pump differential pressure as a fraction of design head at *speed_frac*.
-    Affinity law: head ∝ speed² (flow ∝ speed, power ∝ speed³)."""
+# Shutoff head as a multiple of design head. A centrifugal pump's curve is not
+# flat: it develops most head at zero flow and droops as the impeller is asked to
+# pass more water. 1.15–1.30 is the usual band for the end-suction and split-case
+# machines a chilled-water plant uses; 1.25 is mid-range.
+PUMP_SHUTOFF_RATIO = 1.25
+
+
+def pump_head_frac(speed_frac: float, q_frac: float | None = None) -> float:
+    """Pump differential pressure as a fraction of design head.
+
+    With *q_frac* (this pump's flow ÷ its own design flow) this is the real pump
+    curve, H = A·N² − B·Q², written so that A − B = 1 at the design point:
+
+        h = SHUTOFF·N² − (SHUTOFF − 1)·Q²
+
+    Speed alone is not enough to fix head. Two pumps at the SAME speed passing
+    different flows sit at different points on the same curve and develop
+    different head — which is what the affinity-only form could not say. It
+    reported identical differential pressure for a pump passing 1.8 l/s and one
+    passing 15.9 l/s, both pinned at the turndown floor, and that reads as a
+    healthy loop when it is anything but.
+
+    The affinity law is not contradicted, it is the special case: on the pump's
+    own similarity line (Q ∝ N, so q_frac == speed_frac) this returns exactly N²,
+    because SHUTOFF·N² − (SHUTOFF−1)·N² = N². Head only departs from N² when flow
+    departs from what that speed would naturally pass — a valve position change,
+    or a failed pump pushing its survivors out along their curve.
+
+    Clamped at zero: past the end of the curve the pump cannot sustain the flow at
+    all, and negative head is not a reading.
+
+    Without *q_frac* the old affinity-only form is kept, for callers that have a
+    speed but no flow to go with it.
+    """
     s = max(0.0, min(1.0, speed_frac))
-    return s * s
+    if q_frac is None:
+        return s * s
+    q = max(0.0, q_frac)
+    return max(0.0, PUMP_SHUTOFF_RATIO * s * s - (PUMP_SHUTOFF_RATIO - 1.0) * q * q)
 
 
 def rotation_rank(run_hours: float, is_running: bool, rotate_h: float) -> tuple:

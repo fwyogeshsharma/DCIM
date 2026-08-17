@@ -33,9 +33,21 @@ def plant_cache():
 CITY = "chicago"
 DC = "DC1"
 ROOM = "Hall A"
-CHILLER_W = 120_000      # nameplate electrical, per unit
-PUMP_W = 15_000
-TOWER_W = 45_000
+# Plant nameplates, sized to what this fixture's plant actually is: 6 modules ×
+# PLANT_MODULE_KW = 660 kW of cooling across 3 trains, so 220 kW per train.
+#
+# These were 120/15/45 kW and were not physical. 120 kW electrical for 220 kW of
+# cooling is COP 1.83, against the 5.5 the model rates the machine at, and a 45 kW
+# fan on a cell rejecting 220 kW is an order of magnitude off. That mattered beyond
+# realism: the fixed-loss floor is a FRACTION of nameplate, so oversized nameplates
+# made the plant's minimum draw (18.1 kW) exceed cooling_electrical_w()'s floor for
+# one staged module (16.5 kW). The power flow then had to scale the VFD side to fit
+# and pumps stopped publishing their own curve — which reads exactly like OH_FLOOR
+# being too low, and is not. Live nameplates were always sane, which is why only
+# the fixture ever hit it.
+CHILLER_W = 40_000       # nameplate electrical, per unit — 220 kW cooling ÷ COP 5.5
+PUMP_W = 5_000           # ~10.5 l/s at ~30 m head, 75 % efficient
+TOWER_W = 5_000          # cell fan ≈ 2 % of the ~260 kW it rejects
 CRAH_W = 11_000
 CDU_W = 8_000
 SERVER_W = 700

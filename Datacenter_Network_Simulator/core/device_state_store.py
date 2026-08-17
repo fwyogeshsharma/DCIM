@@ -3499,7 +3499,21 @@ class DeviceStateStore:
                             # _duty_inst is the same installed-capacity ratio the tower
                             # bank already stages on, so the two air/water sides of the
                             # plant now answer to one definition of duty.
-                            duty = _duty_inst
+                            #
+                            # SCALED BY HOW MANY PUMPS ACTUALLY CARRY IT. _duty_inst is
+                            # flow ÷ the whole installed plant's design flow, which is
+                            # the right speed only if every installed pump is running.
+                            # Stage two trains of three out and the survivors carry the
+                            # entire header between them, so they must turn faster — a
+                            # pump's speed is set by ITS share of the water, not the
+                            # plant's average. Without this the loop published a pump at
+                            # the 35 % floor passing 100 % of its design flow, which is
+                            # off the end of its curve: the head model correctly derived
+                            # zero differential pressure for an operating point that
+                            # cannot exist.
+                            _n_all = len(cool_ctx["trains_by_dc"].get(_dc, ())) or 1
+                            _n_run = len(self._plant_trains_run.get(_dc, ())) or 1
+                            duty = min(1.0, _duty_inst * (_n_all / _n_run))
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
                         spd  = vfd_speed_frac(duty, _min)
                         plant_speed[_n] = spd
@@ -4943,8 +4957,8 @@ class DeviceStateStore:
             # are VFD too and bottom out at the same turndown; sized off the STAGED
             # capacity because a staged-off train's pump is stopped, not slow.
             _cw_design_kw = _enabled_kw * (1.0 + 1.0 / CHILLER_COP_RATED)
-            _cw_min_lps = (water_flow_lps(_cw_design_kw, COND_DESIGN_RANGE_C)
-                           * PUMP_MIN_SPEED)
+            _cw_design_lps = water_flow_lps(_cw_design_kw, COND_DESIGN_RANGE_C)
+            _cw_min_lps = _cw_design_lps * PUMP_MIN_SPEED
             cw_flow = max(water_flow_lps(reject_kw, COND_DESIGN_RANGE_C),
                           _cw_min_lps) * self._cw_pump_frac.get(dc, 1.0)
             # RANGE IS DERIVED FROM THE FLOW ACTUALLY MOVING. A ΔT-controlled loop
@@ -5012,8 +5026,31 @@ class DeviceStateStore:
             # decayed by whatever alarm coupling applied) went out on the wire. A
             # faulted spare advertised 1.62 l/s while the header it feeds read 0.
             _pumps_all = [n for n in (kinds.get("pump") or [])]
-            for group, total, _label, _pref in ((chwps, flow, "chw", "CHWP"),
-                                                (cwps, cw_flow, "cw", "CWP")):
+            # DESIGN FLOW PER PUMP IS A HARDWARE CONSTANT — the installed plant's
+            # design flow divided by how many trains were built, NOT by how many are
+            # staged. Staging does not resize an impeller. It has to be the same
+            # basis the power flow derives speed from (_duty_inst × trains_all /
+            # trains_running), or the published speed and the published operating
+            # point describe different machines: sized off STAGED capacity instead,
+            # a pump at 50.9 % came out passing 0.68 of design, and the head read off
+            # a curve position the drive was never at.
+            #
+            # Divided by ALL trains, not the turning ones, for the same reason: a
+            # failed pump does not make its neighbours bigger machines, it pushes
+            # them further out along the curve they already have. That is what makes
+            # head droop diagnostic — once the survivors' speed caps at 100 %, extra
+            # flow can only come from sliding down the curve.
+            _n_trains_all = max(1, len(ctx["trains_by_dc"].get(dc, ())))
+            _inst_kw = max(1e-6, self._plant_installed_mods.get(dc, 1)
+                           * PLANT_MODULE_KW)
+            _chw_pump_design = water_flow_lps(_inst_kw,
+                                              CHW_DESIGN_DT_C) / _n_trains_all
+            _cw_pump_design = water_flow_lps(
+                _inst_kw * (1.0 + 1.0 / CHILLER_COP_RATED),
+                COND_DESIGN_RANGE_C) / _n_trains_all
+            for group, total, _pump_design_lps, _label, _pref in (
+                    (chwps, flow, _chw_pump_design, "chw", "CHWP"),
+                    (cwps, cw_flow, _cw_pump_design, "cw", "CWP")):
                 _members = [n for n in _pumps_all if n.upper().startswith(_pref)]
                 # TURNING, not merely present. A faulted or silent pump is not
                 # moving water, so it must not take a share of the header flow —
@@ -5070,7 +5107,15 @@ class DeviceStateStore:
                     # boundary — discharge − suction ≠ the published differential, on a
                     # gauge set whose whole job is to add up. Latent until a speed
                     # change happened to park diff on the boundary.
-                    diff = round(self._PUMP_DIFF_KPA * pump_head_frac(spd), 1)
+                    # Head from the pump's operating POINT — speed and flow — not
+                    # from speed alone. A pump pinned at the turndown floor still
+                    # rides its curve, so one passing 1.8 l/s and one passing
+                    # 15.9 l/s develop different differential pressure; the
+                    # affinity-only form published the same number for both.
+                    _q_frac = ((per_pump / _pump_design_lps)
+                               if _pump_design_lps > 1e-6 else None)
+                    diff = round(self._PUMP_DIFF_KPA
+                                 * pump_head_frac(spd, _q_frac), 1)
                     pts = auto.setdefault(ip, {})
                     pts.update({
                         "Flow": round(per_pump, 1),

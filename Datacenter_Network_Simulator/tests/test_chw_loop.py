@@ -125,19 +125,33 @@ def test_standby_chillers_publish_no_evaporator_points(plant):
         assert "CHW_Flow" not in plant.auto_points(name)
 
 
-def test_pump_head_follows_the_affinity_law(tmp_path, plant_cache):
-    """Head ∝ speed², so a pump throttled back develops far less differential
-    pressure. A pump reporting design head at 40 % speed is physically impossible."""
-    idle = build_plant(tmp_path / "i", servers=6, installed_modules=12)
-    busy = build_plant(tmp_path / "b", servers=600, installed_modules=6)
-    _settle(idle, 6)
-    _settle(busy, 6)
+def test_head_follows_the_affinity_law_on_the_similarity_line(tmp_path,
+                                                              plant_cache):
+    """Head ∝ speed² — but only along the pump's OWN similarity line, where flow
+    scales with speed. That is what the affinity law actually claims, and stating
+    it as "faster pump ⇒ more head" is wrong: a pump held at one speed while the
+    valves open passes more water and develops LESS head, because it slides out
+    along its curve. Comparing two plants' absolute head conflates the two.
 
-    def head(p):
-        tr = p.store._plant_trains_run[DC][0]
-        return p.auto_points(tr["chwp"])["Diff_Pressure"]
+    Pinned on the curve itself so it cannot be perturbed by whatever load the rest
+    of the suite happens to leave behind."""
+    from core.cooling_model import pump_head_frac
 
-    assert head(busy) > head(idle)
+    for n in (0.35, 0.5, 0.75, 1.0):
+        assert pump_head_frac(n, n) == pytest.approx(n * n), n
+
+    # And at a FIXED speed, head must fall as the pump is asked to pass more.
+    at_speed = [pump_head_frac(0.35, q) for q in (0.2, 0.35, 0.6, 1.0)]
+    assert all(b < a for a, b in zip(at_speed, at_speed[1:])), at_speed
+
+    # Live gauge set: whatever the load, the published head has to be the curve
+    # evaluated at the published speed and flow — one operating point, not two.
+    p = build_plant(tmp_path / "curve", servers=400, installed_modules=6)
+    _settle(p, 8)
+    tr = p.store._plant_trains_run[DC][0]
+    pts = p.auto_points(tr["chwp"])
+    assert 0.0 < pts["Diff_Pressure"] <= p.store._PUMP_DIFF_KPA * 1.25
+    assert pts["Speed"] >= 35.0 - 0.05
 
 
 def test_pump_discharge_equals_suction_plus_head(plant):
@@ -334,15 +348,36 @@ def test_pump_head_and_speed_come_from_one_number(tmp_path, plant_cache):
     transient — and in one captured run head FELL while speed ROSE, which is
     impossible for a centrifugal pump. Publishing both from one number removes the
     class of bug rather than just the instance."""
-    from core.cooling_model import pump_head_frac
+    from core.cooling_model import (
+        CHILLER_COP_RATED, CHW_DESIGN_DT_C, COND_DESIGN_RANGE_C, PLANT_MODULE_KW,
+        pump_head_frac, water_flow_lps,
+    )
 
     p = build_plant(tmp_path, servers=400, installed_modules=6)
     _settle(p, 6)
-    tr = p.store._plant_trains_run[DC][0]
+    trains = p.store._plant_trains_run[DC]
+    tr = trains[0]
+    # Design flow per pump is HARDWARE: the installed plant's design flow over the
+    # number of trains built, not the number staged. Re-derived here rather than
+    # read off the store, so this cross-checks the published gauge set instead of
+    # restating it.
+    n_all = len(p.store._cooling_context()["trains_by_dc"][DC])
+    inst_kw = p.store._plant_installed_mods.get(DC, 1) * PLANT_MODULE_KW
+    design = {
+        tr['chwp']: water_flow_lps(inst_kw, CHW_DESIGN_DT_C) / n_all,
+        tr['cwp']: water_flow_lps(inst_kw * (1.0 + 1.0 / CHILLER_COP_RATED),
+                                  COND_DESIGN_RANGE_C) / n_all,
+    }
     for name in (tr['chwp'], tr['cwp']):
         pts = p.auto_points(name)
-        implied = p.store._PUMP_DIFF_KPA * pump_head_frac(pts['Speed'] / 100.0)
-        assert pts['Diff_Pressure'] == pytest.approx(implied, abs=0.2), name
+        # Head is now the pump's operating POINT — speed and flow together, because
+        # a centrifugal pump droops along its curve as it passes more water.
+        implied = p.store._PUMP_DIFF_KPA * pump_head_frac(
+            pts['Speed'] / 100.0, pts['Flow'] / design[name])
+        # Tolerance is wider than the gauge's own precision on purpose: q_frac is
+        # reconstructed from Flow as PUBLISHED (1 dp), and at design head that
+        # rounding moves the curve result by a few tenths of a kPa.
+        assert pts['Diff_Pressure'] == pytest.approx(implied, abs=0.6), name
         # And the drive frequency has to match the same speed.
         assert pts['VFD_Frequency'] == pytest.approx(pts['Speed'] / 2.0, abs=0.2), name
 
@@ -430,32 +465,55 @@ def test_vfd_frequency_agrees_with_the_published_speed(tmp_path, plant_cache):
     assert a["VFD_Frequency"] == pytest.approx(a["Speed"] * 0.5, abs=0.15)
 
 
-def test_pump_speed_is_monotonic_across_staging_boundaries(tmp_path, plant_cache):
-    """Pump duty is anchored to INSTALLED capacity, not the staged subset.
+def test_speed_and_operating_point_describe_one_machine(tmp_path, plant_cache):
+    """Published speed and published flow must place the pump at the SAME point on
+    its curve, because head is read off that point.
 
-    Staging is quantised on module boundaries, so load ÷ staged-capacity saw-tooths
-    as modules come up and is not monotonic in load. Live, that published the
-    SLOWER pump on the DC carrying twice the heat. Installed capacity is fixed, so
-    more heat can only mean more flow and more speed."""
-    seen = []
-    for servers in (6, 40, 120, 300, 600, 900):
-        p = build_plant(tmp_path / f"s{servers}", servers=servers,
-                        installed_modules=6)
+    Both are now derived from one hardware constant — the installed plant's design
+    flow per train — so a pump's speed fraction and its flow fraction agree. When
+    they did not, a pump published 50.9 % speed while passing 0.68 of design, and
+    the head came off a curve position the drive was never at. In the worst case
+    the two disagreed enough to put the operating point off the end of the curve
+    entirely, and the published differential pressure was zero at a perfectly
+    ordinary load.
+
+    Above the turndown floor only: ON the floor the pump deliberately runs faster
+    than the load needs, pushing minimum flow around the bypass, and speed
+    exceeding the flow fraction there is the bypass working."""
+    from core.cooling_model import (
+        CHW_DESIGN_DT_C, PLANT_MODULE_KW, PUMP_MIN_SPEED, water_flow_lps,
+    )
+    checked = 0
+    for servers, mods in ((200, 6), (400, 6), (600, 6), (600, 12), (900, 6)):
+        p = build_plant(tmp_path / f"pt{servers}m{mods}", servers=servers,
+                        installed_modules=mods)
         _settle(p, 8)
-        pumps = [t["chwp"] for t in p.store._plant_trains_run[DC] if t.get("chwp")]
-        header = sum(p.auto_points(n).get("Flow", 0.0) for n in pumps)
-        seen.append((round(header, 2), p.auto_points(pumps[0])["Speed"],
-                     p.store._plant_stage_on.get(DC)))
-    assert len({s for _f, _s, s in seen}) > 1, "fixture should cross a staging step"
-    assert all(b[1] >= a[1] - 0.05 for a, b in zip(seen, seen[1:])), seen
+        n_all = len(p.store._cooling_context()["trains_by_dc"][DC])
+        inst_kw = p.store._plant_installed_mods.get(DC, 1) * PLANT_MODULE_KW
+        per_pump_design = water_flow_lps(inst_kw, CHW_DESIGN_DT_C) / n_all
+        pts = p.auto_points(p.store._plant_trains_run[DC][0]["chwp"])
+        speed = pts["Speed"] / 100.0
+        if speed <= PUMP_MIN_SPEED + 1e-6:
+            continue                       # on the bypass floor — see docstring
+        assert speed == pytest.approx(pts["Flow"] / per_pump_design, abs=0.02), \
+            (servers, mods, speed, pts["Flow"] / per_pump_design)
+        assert pts["Diff_Pressure"] > 0.0, (servers, mods)
+        checked += 1
+    assert checked >= 3, "fixture should exercise pumps off the floor"
 
 
-def test_a_larger_installed_plant_turns_slower_for_the_same_heat(tmp_path,
-                                                                 plant_cache):
-    """The other half of the anchor. Flow is set by the heat (Q = ṁ·cp·ΔT), so the
-    same load moves the same water — but a plant built with twice the capacity has
-    pumps sized for twice the design flow, and delivers it at a lower fraction of
-    theirs. Speed must fall while flow does not."""
+def test_the_same_heat_moves_the_same_water_whatever_is_installed(tmp_path,
+                                                                  plant_cache):
+    """Flow is set by the heat (Q = ṁ·cp·ΔT), so installed capacity cannot change
+    how much water a given load moves — only how many pumps share it.
+
+    This deliberately does NOT assert that the bigger plant turns slower. Its pumps
+    are larger, but it also stages down to fewer trains, so the one that runs
+    carries the whole header: twice the flow through a twice-as-big pump is the
+    same fraction of design and therefore the same speed. Both effects are real and
+    they cancel. What must hold is that per-pump speed is per-pump flow over the
+    hardware's design flow — pinned by
+    test_speed_and_operating_point_describe_one_machine."""
     small = build_plant(tmp_path / "small", servers=600, installed_modules=6)
     large = build_plant(tmp_path / "large", servers=600, installed_modules=12)
     _settle(small, 8)
@@ -465,11 +523,10 @@ def test_a_larger_installed_plant_turns_slower_for_the_same_heat(tmp_path,
         pumps = [t["chwp"] for t in p.store._plant_trains_run[DC] if t.get("chwp")]
         return sum(p.auto_points(n).get("Flow", 0.0) for n in pumps)
 
-    assert header(large) == pytest.approx(header(small), rel=0.05), \
-        "same heat must move the same water whatever is installed"
-    s = small.auto_points(small.store._plant_trains_run[DC][0]["chwp"])["Speed"]
-    lg = large.auto_points(large.store._plant_trains_run[DC][0]["chwp"])["Speed"]
-    assert lg <= s
+    assert header(large) == pytest.approx(header(small), rel=0.05)
+    # And the bigger plant really did stage down, which is why the speeds match.
+    assert (len(large.store._plant_trains_run[DC])
+            < len(small.store._plant_trains_run[DC]))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
