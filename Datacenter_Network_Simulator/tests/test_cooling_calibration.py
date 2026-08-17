@@ -327,3 +327,70 @@ class TestRoomLevelGearAnswersToItsRoom:
             published = p.store._plant_power_by_name.get(dev.name, 0.0)
             assert published == pytest.approx(np_kw.get(dev.name, 0.0), abs=1e-9), \
                 dev.name
+
+
+class TestCoolingIsSummedFromTheDevices:
+    """The inversion. A DC's cooling figure is what its plant DRAWS, not a target
+    the plant is fitted to.
+
+    cooling_electrical_w() used to set the magnitude and every running unit was
+    scaled so the DC summed to it. That is backwards from how a plant meters, and
+    it is why a calibration constant could disagree with the device curves for
+    months without failing anything — each side was internally consistent on its
+    own terms. The envelope survives as a design reference and as the fallback duty
+    anchor; it no longer decides what anything draws.
+    """
+
+    def test_the_dc_total_is_exactly_the_sum_of_its_devices(self, tmp_path,
+                                                            plant_cache):
+        for servers in (40, 200, 600, 900):
+            p = build_plant(tmp_path / f"sum{servers}", servers=servers,
+                            installed_modules=6, crahs=8)
+            _settle(p)
+            devices = sum(kw for n, kw in p.store._plant_power_by_name.items()
+                          if DC in n)
+            total = p.store._cool_model_w_by_dc.get(DC, 0.0) / 1000.0
+            assert total == pytest.approx(devices, abs=1e-9), servers
+
+    def test_stopping_plant_can_only_reduce_cooling(self, tmp_path, plant_cache):
+        """Structural, not behavioural. Under the old split the metered figure and
+        the model term were independent and had to be taught to collapse together;
+        the live campaign caught them diverging, with cooling RISING 130.2 -> 133.6
+        kW while every CHW pump was faulted. Summed from the devices, a machine that
+        stops drawing cannot raise the total — the failure mode no longer exists to
+        be regressed."""
+        from core.device_state_store import _plant_state_cache
+        for prefix in ("CHWP", "CHL", "CT", "CRAH"):
+            # Per ITERATION, not just per test. The cache is module-level, so last
+            # round's faults survive into this one — and they do not merely add
+            # noise: faulted CHW pumps shed the chillers on the evaporator flow
+            # interlock, so the next baseline is measured on an already-collapsed
+            # plant and the assertion compares a number with itself.
+            _plant_state_cache.clear()
+            p = build_plant(tmp_path / f"fault{prefix}", servers=600,
+                            installed_modules=6, crahs=8)
+            _settle(p, 10)
+            before = p.store._cool_model_w_by_dc.get(DC, 0.0) / 1000.0
+            hit = [n for n in p.store._plant_power_by_name
+                   if DC in n and n.upper().startswith(prefix)]
+            assert hit, f"fixture should build {prefix} gear"
+            for name in hit:
+                _plant_state_cache[name] = {"Alarm_Fault": 1.0}
+            _settle(p, 6)
+            after = p.store._cool_model_w_by_dc.get(DC, 0.0) / 1000.0
+            assert after < before, (prefix, before, after)
+
+    def test_the_envelope_no_longer_sets_the_total(self, tmp_path, plant_cache):
+        """cooling_electrical_w() is a design reference now. If the total still
+        tracked it they would be equal, and the inversion would be cosmetic — so
+        this asserts they genuinely differ at part load, where the envelope's fixed
+        OH_FLOOR term exceeds what throttled VFD gear actually draws."""
+        p = build_plant(tmp_path / "env", servers=200, installed_modules=6,
+                        crahs=8)
+        _settle(p)
+        from core.cooling_model import PLANT_MODULE_KW
+        itl_w = p.store._it_live_by_dc.get(DC, 0.0)
+        itd_w = p.store._plant_stage_on.get(DC, 1) * PLANT_MODULE_KW * 1000.0
+        envelope = cooling_electrical_w(itl_w, itd_w, "chicago") / 1000.0
+        total = p.store._cool_model_w_by_dc.get(DC, 0.0) / 1000.0
+        assert total < envelope, (total, envelope)
