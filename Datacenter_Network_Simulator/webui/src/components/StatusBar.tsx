@@ -125,7 +125,13 @@ function PowerReadout() {
     computed: ' (estimated — no meter hierarchy)',
   }
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+    // marginLeft:auto rather than justifyContent on the bar itself — this pushes the
+    // readout right while leaving the left of the bar free for anything added later,
+    // which a container-level flex-end would silently drag right along with it.
+    <span style={{
+      display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap',
+      marginLeft: 'auto',
+    }}>
       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}
         title={degraded
           ? 'Cooling is DEGRADED — PUE is not a measure of efficiency right now. '
