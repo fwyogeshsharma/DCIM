@@ -54,11 +54,35 @@ function pueColor(pue: number, degraded: boolean): string {
  *              the endpoint is failing, and "no news" is the wrong default for
  *              the only health signal on the bar.
  */
-function PlantHealthChip({ degraded, dcs, tripped }: {
+function PlantHealthChip({ degraded, dcs, tripped, known }: {
   degraded: boolean
   dcs: string[]
   tripped: { name: string; dc?: string }[]
+  known: boolean
 }) {
+  // UNKNOWN is a real state, not a variant of OK. Without it a failing endpoint
+  // renders exactly like a healthy plant: the fields come back empty, `degraded`
+  // is falsy, and the chip cheerfully asserts health it has not verified. That is
+  // the same "absence reads as good news" trap that showing PLANT OK (rather than
+  // nothing) was meant to close — one level further up.
+  if (!known) {
+    return (
+      <span title={'Plant condition unavailable — no recent successful reading. '
+        + 'This is NOT a statement that the plant is healthy; it means the health '
+        + 'of the plant is currently unknown.'}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          color: 'var(--text-dim)', fontWeight: 700, letterSpacing: 0.2,
+        }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+          border: '1px solid var(--text-dim)',
+        }} />
+        PLANT ?
+      </span>
+    )
+  }
+
   let label = 'PLANT OK'
   let color = 'var(--ok)'
   let title = 'Cooling is keeping up in every datacenter'
@@ -97,17 +121,26 @@ function PlantHealthChip({ degraded, dcs, tripped }: {
 
 function PowerReadout() {
   const [p, setP] = useState<PowerSummary | null>(null)
-  const [h, setH] = useState<PlantHealth | null>(null)
+  // Health is kept WITH the time it was read, so a stale reading can age out into
+  // the unknown state instead of being shown forever as current.
+  const [h, setH] = useState<{ d: PlantHealth; at: number } | null>(null)
+  // Bumped every poll so the component re-renders even when BOTH fetches fail.
+  // Without it a total API outage freezes the last good render and the chip keeps
+  // asserting whatever it last saw — staleness that is never evaluated.
+  const [, setTick] = useState(0)
   useEffect(() => {
     let alive = true
     const load = () => {
+      if (alive) setTick(t => t + 1)
       api.powerSummary()
         .then(d => { if (alive) setP(d as PowerSummary) })
         .catch(() => {})
       // Plant condition on the SAME cadence as the power figures, so the health
-      // chip can never lag the number it qualifies.
+      // chip can never lag the number it qualifies. A failed poll deliberately
+      // does NOT clear the last reading — one dropped request should not flap the
+      // chip to unknown; HEALTH_STALE_MS decides that instead.
       api.chillerTrips()
-        .then(d => { if (alive) setH(d as PlantHealth) })
+        .then(d => { if (alive) setH({ d: d as PlantHealth, at: Date.now() }) })
         .catch(() => {})
     }
     load()
@@ -116,9 +149,13 @@ function PowerReadout() {
   }, [])
 
   if (!p || p.facility_watts <= 0) return null
-  const degradedDcs = h?.degraded_dcs ?? []
-  const tripped = h?.tripped ?? []
-  const degraded = !!h?.degraded
+  // Four missed polls. Long enough that a single dropped request is invisible,
+  // short enough that a dead endpoint stops claiming the plant is fine.
+  const HEALTH_STALE_MS = 12_000
+  const known = !!h && (Date.now() - h.at) < HEALTH_STALE_MS
+  const degradedDcs = known ? (h!.d.degraded_dcs ?? []) : []
+  const tripped = known ? (h!.d.tripped ?? []) : []
+  const degraded = known && !!h!.d.degraded
   const PUE_SOURCE: Record<PueSource, string> = {
     native:   ' (switchgear + UPS output — Green Grid Category 1)',
     meters:   ' (from EV2 meter readings)',
@@ -143,7 +180,8 @@ function PowerReadout() {
           {p.source === 'computed' ? '~' : ''}{p.pue > 0 ? p.pue.toFixed(2) : '—'}
         </span>
       </span>
-      <PlantHealthChip degraded={degraded} dcs={degradedDcs} tripped={tripped} />
+      <PlantHealthChip degraded={degraded} dcs={degradedDcs} tripped={tripped}
+        known={known} />
       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }} title="Live IT load">
         <span style={{ color: 'var(--text-muted)' }}>IT</span>
         <span style={{ color: 'var(--text)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtKW(p.it_watts)}</span>
