@@ -3083,7 +3083,7 @@ class DeviceStateStore:
             cool_ctx = self._cooling_context()
             from core.cooling_model import (
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
-                affinity_power_kw, chiller_electrical_w,
+                affinity_power_kw, chiller_electrical_w, CHILLER_PLF,
                 stage_modules, installed_modules_for, PLANT_MODULE_KW,
                 PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR,
                 tower_cell_demand, tower_cells_needed, tower_cells_running,
@@ -3527,20 +3527,60 @@ class DeviceStateStore:
                         base = total_w * (w / np_sum)
                         tgt_w = min(base, w if w > 0 else base)
                     plant_power[_n] = tgt_w / 1000.0   # kW
-                # Normalise this DC's RUNNING plant draws so the metered cooling equals
-                # the staged-model demand (total_w). This gives realistic per-unit kW
-                # (a chiller reads its real ~100 kW, not the tiny curated nameplate) AND
-                # a meter-derived PUE that matches the model — the mech RPP, rated from
-                # downstream nameplate ÷ 0.8, is sized to carry it (~80 % at peak). The
-                # per-device physics above set the SHAPE (chiller-heavy, VFD pumps/fans);
-                # this scales the SUM. Standby chillers are 0 and stay 0.
+                # Reconcile this DC's RUNNING plant draws to the staged-model demand
+                # (total_w), so the metered cooling equals the model and the meter-
+                # derived PUE matches — the mech RPP, rated from downstream nameplate
+                # ÷ 0.8, is sized to carry it (~80 % at peak).
+                #
+                # THE RESIDUAL GOES ON THE CHILLER, not on everything. This used to
+                # scale every unit by one factor, which meant no plant device
+                # published its own draw: a VFD pump's kW was its affinity value times
+                # a DC-wide constant. Two identical pumps at identical speed in
+                # different DCs therefore published different kW (2.15 vs 1.41 live),
+                # because their DCs had different totals — and P ∝ speed³ × nameplate
+                # says that is impossible. It stayed hidden only while Speed was
+                # itself back-derived from the scaled power, which made the pair agree
+                # by construction while both were wrong; fixing Speed exposed it.
+                #
+                # Pumps and fans keep their own curve value. Their physics is exact
+                # and their nameplates are credible — a 4 kW pump is a 4 kW pump. The
+                # chiller absorbs the difference, which is the right place for it: its
+                # real draw turns on condenser approach, fouling and refrigerant
+                # charge, all of which this model treats coarsely, and the top-down
+                # calibration (OH_VAR, itself now derived from CHILLER_COP_RATED) is a
+                # statement about compressor efficiency in the first place. The scale
+                # factor was already 0.79–0.97 across the load range, so the residual
+                # is a correction, not a rewrite.
                 _dc_names = [_n2 for _n2, _w2, _t2 in units]
-                _sum_kw = sum(plant_power.get(_x, 0.0) for _x in _dc_names)
-                if _sum_kw > 1e-6:
-                    _scale = (total_w / 1000.0) / _sum_kw
-                    for _x in _dc_names:
-                        if _x in plant_power:
-                            plant_power[_x] *= _scale
+                _ch_names = [_n2 for _n2, _w2, _t2 in units
+                             if _t2 == "chiller" and plant_power.get(_n2, 0.0) > 1e-9]
+                _ch_set = set(_ch_names)
+                _target_kw = total_w / 1000.0
+                _vfd_kw = sum(plant_power.get(_x, 0.0)
+                              for _x in _dc_names if _x not in _ch_set)
+                _ch_kw = sum(plant_power.get(_x, 0.0) for _x in _ch_names)
+                # A running chiller cannot draw less than its fixed losses — CHILLER_PLF
+                # C0 is exactly that floor (oil pump, controls, motor no-load), and it is
+                # why the part-load curve does not pass through the origin.
+                _ch_floor = sum(CHILLER_PLF[0] * (_w2 / 1000.0)
+                                for _n2, _w2, _t2 in units if _n2 in _ch_set)
+                _avail = _target_kw - _vfd_kw
+                if _ch_kw > 1e-6 and _avail >= _ch_floor:
+                    _cs = _avail / _ch_kw
+                    for _x in _ch_names:
+                        plant_power[_x] *= _cs
+                else:
+                    # The pumps and fans alone have reached the calibrated envelope —
+                    # a deep-overload or heavy-fault case. Hold the chillers at their
+                    # fixed-loss floor and scale the VFD side to fit, so the DC total
+                    # still lands on total_w and PUE stays continuous. Preserves the
+                    # old failure semantics rather than letting the total drift.
+                    _sum_kw = _vfd_kw + _ch_kw
+                    if _sum_kw > 1e-6:
+                        _scale = _target_kw / _sum_kw
+                        for _x in _dc_names:
+                            if _x in plant_power:
+                                plant_power[_x] *= _scale
                 # DELIVERED-CAPACITY COLLAPSE. Runs AFTER the normalisation above,
                 # deliberately. A STAGED-OFF unit's load transfers to the units
                 # still running — that is what sequencing means, and its zero is
