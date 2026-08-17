@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """The six exhaustion scenarios, re-measured live — without disturbing the plant.
 
-    python tools/live_campaign_exhaustion.py [hold_s] [settle_s] [out.json]
+    python tools/live_campaign_exhaustion.py [hold_s] [settle_s] [out.json] [only]
+
+`only` is a comma-separated scenario filter (e.g. "hall-crahs,lead-chiller-stop")
+for re-measuring a suspect case without holding the plant for the full hour.
 
 WHY THIS EXISTS. The original campaign called GET /rules on EVERY observation, and
 that endpoint took 333 snapshots per request (166 rules x 2, plus the grand total),
@@ -48,8 +51,12 @@ HOLD_S = int(sys.argv[1]) if len(sys.argv) > 1 else 240
 SETTLE_S = int(sys.argv[2]) if len(sys.argv) > 2 else 420
 OUT = (sys.argv[3] if len(sys.argv) > 3
        else os.path.join(tempfile.gettempdir(), "live_campaign_exhaustion.json"))
+# Optional comma-separated scenario filter, so a single suspect case can be
+# re-measured without holding the plant for the full hour that six of them take.
+ONLY = {s.strip() for s in sys.argv[4].split(",")} if len(sys.argv) > 4 else None
 POLL_S = 15
 CLEAN_CHW_C = 8.0            # chilled water at/below this counts as settled
+CLEAN_INLET_C = 27.0         # ASHRAE A1 recommended upper limit on server inlet
 
 
 def _avg(xs):
@@ -110,8 +117,27 @@ def observe(get):
 
 
 def is_clean(o):
+    """Settled means the AIR is settled too, not just the water.
+
+    This used to judge the plant on chw_supply, trips and `degraded` alone — all
+    water-side signals. `hall-crahs` stops the air side and leaves the plant
+    healthy by design ("the plant itself stays healthy"), so every one of those
+    read fine while the hall cooked: chw 7.0, no trips, degraded False, and 90
+    servers above 32 C. is_clean returned True on the FIRST poll, so the recovery
+    wait returned instantly and `after` was captured in the same breath as
+    `during` — byte-identical blocks, and a `recovered: True` that meant nothing.
+    The next scenario then took its baseline from the same hot hall and reported
+    `clean_baseline: True`, which made its whole measurement uninterpretable.
+
+    Previously blamed on /rules starving the ticker. This harness never calls
+    /rules and the pair failed identically, so that diagnosis was incomplete.
+
+    Server inlet temperature is the thing an air-side fault actually moves, and it
+    is already collected — it just was not consulted."""
     return (o["chw_supply"] is not None and o["chw_supply"] <= CLEAN_CHW_C
-            and not o["tripped"] and not o["degraded"])
+            and not o["tripped"] and not o["degraded"]
+            and not o["srv_over_32"]
+            and (o["inlet_max"] is None or o["inlet_max"] <= CLEAN_INLET_C))
 
 
 def wait_clean(get, limit_s, tag):
@@ -122,7 +148,8 @@ def wait_clean(get, limit_s, tag):
         o = observe(get)
     took = round(time.time() - t0)
     print(f"   {tag}: chw={o['chw_supply']} tripped={o['tripped']} "
-          f"degraded={o['degraded']} after {took}s "
+          f"degraded={o['degraded']} inlet_max={o['inlet_max']} "
+          f"over32={o['srv_over_32']} after {took}s "
           f"{'CLEAN' if is_clean(o) else 'NOT CLEAN'}", flush=True)
     return o, is_clean(o)
 
@@ -190,6 +217,8 @@ def main() -> None:
     results = []
 
     for name, points, why in scenarios(get, ids):
+        if ONLY is not None and name not in ONLY:
+            continue
         if not points:
             print(f"\n### {name}: SKIPPED (no target devices found)", flush=True)
             continue

@@ -1767,7 +1767,16 @@ class DeviceStateStore:
         # PUE toward 1.0 as the fleet outgrows the plant. Dropping it reintroduces
         # that bug. Scaling keeps a healthy plant on today's behaviour and lets the
         # meters through once the plant is genuinely short.
-        cool_for_pue = max(cool_m, self.cooling_model_kw())
+        # DIAGNOSTIC: both sides of the max() are reported below, because the headline
+        # figure is their maximum and therefore cannot show which one is winning.
+        # That matters now: half the reasoning above is obsolete. The model term is no
+        # longer a demand figure — it is the sum of what the plant devices actually
+        # draw, so it DOES see a stopped plant (the live campaign measured -22 to
+        # -25 kW across four total-loss scenarios). Whether the max() still earns its
+        # keep therefore rests entirely on whether cool_m ever exceeds it, which is
+        # unanswerable from outside while only the maximum is published.
+        cool_model = self.cooling_model_kw()
+        cool_for_pue = max(cool_m, cool_model)
         sub_fac = it_m + cool_for_pue
         fac_m = max(sub_fac, main_m)
         # A trustworthy facility reading must be ≥ IT (the facility carries IT +
@@ -1786,6 +1795,11 @@ class DeviceStateStore:
             "facility_watts": round(fac_w, 1),
             "pue":            round(pue, 3),
             "source":         source,
+            # Diagnostic only — the two inputs to the max() above, so a caller can
+            # see which one set the headline. Additive keys; nothing reads them yet.
+            "cooling_metered_kw": round(cool_m, 3),
+            "cooling_model_kw":   round(cool_model, 3),
+            "cooling_source":     ("metered" if cool_m > cool_model else "model"),
         }
 
     # ── Utility / transfer control surface ────────────────────────────────────
