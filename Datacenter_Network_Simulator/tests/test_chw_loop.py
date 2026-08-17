@@ -470,3 +470,70 @@ def test_a_larger_installed_plant_turns_slower_for_the_same_heat(tmp_path,
     s = small.auto_points(small.store._plant_trains_run[DC][0]["chwp"])["Speed"]
     lg = large.auto_points(large.store._plant_trains_run[DC][0]["chwp"])["Speed"]
     assert lg <= s
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Condenser flow: a ΔT-setpoint loop, not a ΔP one
+#
+#  The two loops run different control strategies. Evaporator pumps ride a
+#  differential-pressure setpoint, so their flow floors at the bypass and the
+#  measured ΔT collapses at light load. Condenser pumps ride a condenser-ΔT
+#  setpoint, so flow tracks the heat and the RANGE holds near design. Sizing the
+#  condenser flow with the EVAPORATOR's bypass curve inverted that — the range
+#  moved and the flow held, and since flow = Q/(cp·ΔT) a collapsing range
+#  inflates flow. The published figure came out as reject_kw/duty, which is
+#  nearly load-independent because both terms rise together.
+# ─────────────────────────────────────────────────────────────────────────────
+def _cw_flow(p):
+    return sum(p.auto_points(t["cwp"]).get("Flow", 0.0)
+               for t in p.store._plant_trains_run[DC] if t.get("cwp"))
+
+
+def test_condenser_flow_rises_with_rejected_heat(tmp_path, plant_cache):
+    """The defect in one assertion. Live, the DC rejecting 153.9 kW moved 12.6 l/s
+    while the one rejecting 111.4 kW moved 14.2 — more heat, less water."""
+    seen = []
+    for servers in (40, 200, 600, 900):
+        p = build_plant(tmp_path / f"cw{servers}", servers=servers,
+                        installed_modules=6)
+        _settle(p, 8)
+        seen.append((p.store._it_live_by_dc[DC], _cw_flow(p)))
+    assert all(b[1] >= a[1] for a, b in zip(seen, seen[1:])), seen
+    assert seen[-1][1] > seen[0][1] * 2, "flow must actually track heat, not creep"
+
+
+def test_condenser_range_holds_at_design_under_load(tmp_path, plant_cache):
+    """What a ΔT-controlled loop is FOR. Once the pumps are off their floor they
+    have authority, and holding the range is the whole control objective."""
+    from core.cooling_model import COND_DESIGN_RANGE_C
+    for servers in (200, 600, 900):
+        p = build_plant(tmp_path / f"r{servers}", servers=servers,
+                        installed_modules=6)
+        _settle(p, 8)
+        assert p.store._cond_range_c[DC] == pytest.approx(COND_DESIGN_RANGE_C,
+                                                          abs=0.05), servers
+
+
+def test_condenser_flow_always_exceeds_evaporator_flow(tmp_path, plant_cache):
+    """Thermodynamics, at EVERY load — the condenser carries the IT heat plus the
+    compressor work that moved it. This is what the old range-narrowing was really
+    guarding, and it survives on the pump turndown floor instead: a lightly loaded
+    plant floors both loops rather than distorting one loop's range."""
+    for servers, mods in ((1, 12), (6, 12), (40, 6), (200, 6), (600, 6), (900, 6)):
+        p = build_plant(tmp_path / f"x{servers}m{mods}", servers=servers,
+                        installed_modules=mods)
+        _settle(p, 8)
+        assert _cw_flow(p) > p.store._chw_flow_lps[DC], (servers, mods)
+
+
+def test_condenser_flow_does_not_track_the_electrical_duty(tmp_path, plant_cache):
+    """Guards the specific wrong input. _plant_duty is cooling-electrical over
+    running nameplate; dividing by it made flow ≈ reject/duty, so a plant whose
+    load doubled published almost the same flow. Doubling the heat must move
+    materially more water."""
+    small = build_plant(tmp_path / "cwsmall", servers=300, installed_modules=6)
+    big = build_plant(tmp_path / "cwbig", servers=600, installed_modules=6)
+    _settle(small, 8)
+    _settle(big, 8)
+    ratio = _cw_flow(big) / max(1e-6, _cw_flow(small))
+    assert ratio > 1.5, ratio

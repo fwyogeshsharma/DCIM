@@ -4776,7 +4776,7 @@ class DeviceStateStore:
         from core.cooling_model import (
             CHW_SETPOINT_C, CHW_DESIGN_DT_C, CHW_MAX_DT_C, COND_DESIGN_RANGE_C,
             COND_MAX_RANGE_C, CP_WATER_KJ_KGK, PLANT_MODULE_KW,
-            chw_supply_c, chw_delta_t_c,
+            chw_supply_c, CHILLER_COP_RATED,
             chw_flow_frac, water_flow_lps, makeup_flow_lpm, pump_head_frac,
             affinity_speed_frac, vfd_speed_frac, PUMP_MIN_SPEED)
         ctx = self._cooling_context()
@@ -4880,8 +4880,33 @@ class DeviceStateStore:
             # Which is why flow keeps its demand shape and is merely capped by
             # surviving pumping: with the pumps healthy the control loop genuinely
             # does deliver whatever the reject needs.
-            cw_flow = water_flow_lps(reject_kw, chw_delta_t_c(
-                duty, COND_DESIGN_RANGE_C)) * self._cw_pump_frac.get(dc, 1.0)
+            # Flow tracks the heat at the DESIGN range, floored at the pumps' own
+            # turndown. It used to size the flow with chw_delta_t_c() — the
+            # EVAPORATOR loop's minimum-flow bypass curve, which collapses ΔT below
+            # 35 % duty. Borrowing it here made the condenser RANGE the thing that
+            # moved and the flow the thing that held, which is the opposite of the
+            # control strategy described above, and since flow = Q/(cp·ΔT) a
+            # collapsing range INFLATES flow. The duty it collapsed against is
+            # _plant_duty — cooling-electrical over running nameplate — so the
+            # published flow came out as reject_kw/duty, and because both terms rise
+            # with load they cancelled: condenser flow went nearly load-independent
+            # and inverted. Live, the DC rejecting 153.9 kW moved 12.6 l/s while the
+            # one rejecting 111.4 kW moved 14.2 — ratio 0.887 against a reject ratio
+            # of 1.382, and reject/duty predicts 0.880.
+            #
+            # The narrowing was guarding something real: hold the range fixed with no
+            # floor and a lightly loaded plant reports LESS condenser than evaporator
+            # flow, which is thermodynamically impossible — the condenser carries the
+            # IT heat plus the compressor work that moved it. But the cause of that
+            # was CHW flow being floored at its bypass while CW flow was free to fall
+            # to nothing, so the fix belongs on the floor, not on the range. CW pumps
+            # are VFD too and bottom out at the same turndown; sized off the STAGED
+            # capacity because a staged-off train's pump is stopped, not slow.
+            _cw_design_kw = _enabled_kw * (1.0 + 1.0 / CHILLER_COP_RATED)
+            _cw_min_lps = (water_flow_lps(_cw_design_kw, COND_DESIGN_RANGE_C)
+                           * PUMP_MIN_SPEED)
+            cw_flow = max(water_flow_lps(reject_kw, COND_DESIGN_RANGE_C),
+                          _cw_min_lps) * self._cw_pump_frac.get(dc, 1.0)
             # RANGE IS DERIVED FROM THE FLOW ACTUALLY MOVING. A ΔT-controlled loop
             # holds its setpoint only while the pumps can still deliver; once they
             # cannot, the control loop is out of authority and the range widens —
