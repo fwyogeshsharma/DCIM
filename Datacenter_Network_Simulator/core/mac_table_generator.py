@@ -90,7 +90,7 @@ def generate_stp_entries(switch: Device) -> List[Tuple[str, str, str]]:
     entries.append((f"{stp_base}.3.0", "67", str(random.randint(100, 9999999))))
 
     # dot1dStpTopChanges
-    entries.append((f"{stp_base}.4.0", "41", str(random.randint(1, 50))))
+    entries.append((f"{stp_base}.4.0", "65", str(random.randint(1, 50))))
 
     # dot1dStpDesignatedRoot
     root_mac = ":".join(f"{random.randint(0,255):02x}" for _ in range(6))

@@ -2,20 +2,34 @@
 SNMPRec Generator - Creates .snmprec dataset files for SNMPSim.
 
 Format per line: OID|TYPE_CODE|VALUE
-Type codes:
-  2  = Integer32
-  4  = OctetString (UTF-8)
-  4x = OctetString (hex)
-  5  = Null
-  6  = OID
-  41 = Counter32    (0x41)
-  42 = Gauge32      (0x42)
-  44 = Counter64    (0x44 — unused, use 70 for Counter64)
-  64 = IPAddress    (0x40)
-  65 = NetworkAddress
-  67 = TimeTicks    (0x43 — BER APPLICATION tag 3)
-  70 = Counter64    (0x46)
-  71 = Opaque       (0x47)
+
+TYPE CODES ARE DECIMAL, NOT HEX. This is the trap in this format: the codes
+look like BER APPLICATION tags written in hex, and 0x41/0x42 happen to be the
+right *values* for Counter32/Gauge32 when read as decimal 65/66 — so writing
+"41" for a Counter32 looks reasonable and is silently wrong.
+
+snmpsim builds its table from pysnmp's own tag sets and raises on anything not
+in it, which means one bad line does not degrade to a wrong value: it takes out
+the request that lands on it, and a GETNEXT walk across the subtree returns
+nothing at all. Reproduce the authoritative list with:
+
+    python -c "from snmpsim.grammar.snmprec import SnmprecGrammar as G; \
+               print(sorted(G.TAG_MAP))"
+
+  2   = Integer32
+  4   = OctetString (UTF-8)
+  4x  = OctetString (hex)
+  5   = Null
+  6   = OID
+  64  = IpAddress
+  65  = Counter32
+  66  = Gauge32 / Unsigned32
+  67  = TimeTicks
+  68  = Opaque
+  70  = Counter64
+  128 = noSuchObject
+  129 = noSuchInstance
+  130 = endOfMibView
 """
 from __future__ import annotations
 import logging
@@ -578,7 +592,7 @@ class SNMPRecGenerator:
             _flo *= _DTC_IDLE_FACTOR
         for i in range(1, 5):
             rpm = 0 if off else max(0, int(base_rpm + (i - 2.5) * 110))
-            entries.append(_oid_entry(f"{BMC_BASE}.3.1.{i}", "42", str(rpm)))
+            entries.append(_oid_entry(f"{BMC_BASE}.3.1.{i}", "66", str(rpm)))
             # A powered-off chassis has stopped fans by design, not by fault.
             if off:
                 st = "1"
@@ -592,9 +606,9 @@ class SNMPRecGenerator:
         # PSUs ×2 — status (1=ok) + output watts (chassis load split)
         for i in range(1, 3):
             entries.append(_oid_entry(f"{BMC_BASE}.4.1.{i}", "2", "1"))
-            entries.append(_oid_entry(f"{BMC_BASE}.4.2.{i}", "42", str(int(watts / 2))))
+            entries.append(_oid_entry(f"{BMC_BASE}.4.2.{i}", "66", str(int(watts / 2))))
         entries += [
-            _oid_entry(f"{BMC_BASE}.5.1.0", "42", str(int(watts))),   # total draw W
+            _oid_entry(f"{BMC_BASE}.5.1.0", "66", str(int(watts))),   # total draw W
             _oid_entry(f"{BMC_BASE}.6.1.0", "4", device.model_name or device.vendor.value),
             _oid_entry(f"{BMC_BASE}.6.2.0", "4", device.vendor.value),
         ]
@@ -701,16 +715,16 @@ class SNMPRecGenerator:
                 out_pkts = out_oct // 1500
                 oper = 2 if unconnected else iface.oper_status
                 updates[f"{IF_TABLE}.8.{i}"]  = ("2",  str(oper))
-                updates[f"{IF_TABLE}.10.{i}"] = ("41", str(in_oct))
-                updates[f"{IF_TABLE}.11.{i}"] = ("41", str(in_pkts))
-                updates[f"{IF_TABLE}.13.{i}"] = ("41", str(in_err // 10))
-                updates[f"{IF_TABLE}.14.{i}"] = ("41", str(in_err))
-                updates[f"{IF_TABLE}.16.{i}"] = ("41", str(out_oct))
-                updates[f"{IF_TABLE}.17.{i}"] = ("41", str(out_pkts))
-                updates[f"{IF_TABLE}.19.{i}"] = ("41", str(out_err // 10))
-                updates[f"{IF_TABLE}.20.{i}"] = ("41", str(out_err))
-                updates[f"{ifx_base}.6.{i}"]  = ("44", str(in_oct  * 4))
-                updates[f"{ifx_base}.10.{i}"] = ("44", str(out_oct * 4))
+                updates[f"{IF_TABLE}.10.{i}"] = ("65", str(in_oct))
+                updates[f"{IF_TABLE}.11.{i}"] = ("65", str(in_pkts))
+                updates[f"{IF_TABLE}.13.{i}"] = ("65", str(in_err // 10))
+                updates[f"{IF_TABLE}.14.{i}"] = ("65", str(in_err))
+                updates[f"{IF_TABLE}.16.{i}"] = ("65", str(out_oct))
+                updates[f"{IF_TABLE}.17.{i}"] = ("65", str(out_pkts))
+                updates[f"{IF_TABLE}.19.{i}"] = ("65", str(out_err // 10))
+                updates[f"{IF_TABLE}.20.{i}"] = ("65", str(out_err))
+                updates[f"{ifx_base}.6.{i}"]  = ("70", str(in_oct  * 4))
+                updates[f"{ifx_base}.10.{i}"] = ("70", str(out_oct * 4))
 
             # Server-only: HR-MIB storage + processor load, UCD CPU/MEM/disk
             if device.device_type == DeviceType.SERVER:
@@ -1388,17 +1402,17 @@ class SNMPRecGenerator:
                 _oid_entry(f"{IF_TABLE}.7.{i}",  "2",  "1"),                # ifAdminStatus (1=up)
                 _oid_entry(f"{IF_TABLE}.8.{i}",  "2",  str(2 if unconnected else iface.oper_status)), # ifOperStatus
                 _oid_entry(f"{IF_TABLE}.9.{i}",  "67", str(device.sys_uptime)), # ifLastChange
-                _oid_entry(f"{IF_TABLE}.10.{i}", "41", str(in_oct)),   # ifInOctets Counter32
-                _oid_entry(f"{IF_TABLE}.11.{i}", "41", str(0 if unconnected else random.randint(0,9999))),  # ifInUcastPkts
-                _oid_entry(f"{IF_TABLE}.12.{i}", "41", "0"),                # ifInNUcastPkts
-                _oid_entry(f"{IF_TABLE}.13.{i}", "41", str(in_err // 10)), # ifInDiscards
-                _oid_entry(f"{IF_TABLE}.14.{i}", "41", str(in_err)),       # ifInErrors
-                _oid_entry(f"{IF_TABLE}.15.{i}", "41", "0"),                # ifInUnknownProtos
-                _oid_entry(f"{IF_TABLE}.16.{i}", "41", str(out_oct)),      # ifOutOctets
-                _oid_entry(f"{IF_TABLE}.17.{i}", "41", str(0 if unconnected else random.randint(0,9999))), # ifOutUcastPkts
-                _oid_entry(f"{IF_TABLE}.18.{i}", "41", "0"),                # ifOutNUcastPkts
-                _oid_entry(f"{IF_TABLE}.19.{i}", "41", str(out_err // 10)), # ifOutDiscards
-                _oid_entry(f"{IF_TABLE}.20.{i}", "41", str(out_err)),       # ifOutErrors
+                _oid_entry(f"{IF_TABLE}.10.{i}", "65", str(in_oct)),   # ifInOctets Counter32
+                _oid_entry(f"{IF_TABLE}.11.{i}", "65", str(0 if unconnected else random.randint(0,9999))),  # ifInUcastPkts
+                _oid_entry(f"{IF_TABLE}.12.{i}", "65", "0"),                # ifInNUcastPkts
+                _oid_entry(f"{IF_TABLE}.13.{i}", "65", str(in_err // 10)), # ifInDiscards
+                _oid_entry(f"{IF_TABLE}.14.{i}", "65", str(in_err)),       # ifInErrors
+                _oid_entry(f"{IF_TABLE}.15.{i}", "65", "0"),                # ifInUnknownProtos
+                _oid_entry(f"{IF_TABLE}.16.{i}", "65", str(out_oct)),      # ifOutOctets
+                _oid_entry(f"{IF_TABLE}.17.{i}", "65", str(0 if unconnected else random.randint(0,9999))), # ifOutUcastPkts
+                _oid_entry(f"{IF_TABLE}.18.{i}", "65", "0"),                # ifOutNUcastPkts
+                _oid_entry(f"{IF_TABLE}.19.{i}", "65", str(out_err // 10)), # ifOutDiscards
+                _oid_entry(f"{IF_TABLE}.20.{i}", "65", str(out_err)),       # ifOutErrors
                 _oid_entry(f"{IF_TABLE}.21.{i}", "66", "0"),                  # ifOutQLen (Gauge32)
                 _oid_entry(f"{IF_TABLE}.22.{i}", "6",  "0.0"),              # ifSpecific
             ]
@@ -1412,8 +1426,8 @@ class SNMPRecGenerator:
             out_oct = 0 if unconnected else iface.out_octets
             entries += [
                 _oid_entry(f"{ifx_base}.1.{i}",  "4",  iface.name),          # ifName
-                _oid_entry(f"{ifx_base}.6.{i}",  "44", str(in_oct * 4)),  # ifHCInOctets
-                _oid_entry(f"{ifx_base}.10.{i}", "44", str(out_oct * 4)), # ifHCOutOctets
+                _oid_entry(f"{ifx_base}.6.{i}",  "70", str(in_oct * 4)),  # ifHCInOctets
+                _oid_entry(f"{ifx_base}.10.{i}", "70", str(out_oct * 4)), # ifHCOutOctets
                 _oid_entry(f"{ifx_base}.15.{i}", "66", "1000"),               # ifHighSpeed (Mbps)
                 _oid_entry(f"{ifx_base}.18.{i}", "4",  iface.name),           # ifAlias
             ]
@@ -1428,10 +1442,10 @@ class SNMPRecGenerator:
         entries: List[OidEntry] = [
             _oid_entry(f"{IP_BASE}.1.0", "2", "1"),   # ipForwarding (1=forwarding for routers)
             _oid_entry(f"{IP_BASE}.2.0", "2", "64"),  # ipDefaultTTL
-            _oid_entry(f"{IP_BASE}.3.0", "41", str(random.randint(1000, 99999))),  # ipInReceives
-            _oid_entry(f"{IP_BASE}.5.0", "41", "0"),  # ipInDiscards
-            _oid_entry(f"{IP_BASE}.7.0", "41", str(random.randint(1000, 99999))),  # ipInDelivers
-            _oid_entry(f"{IP_BASE}.10.0","41", str(random.randint(1000, 99999))),  # ipOutRequests
+            _oid_entry(f"{IP_BASE}.3.0", "65", str(random.randint(1000, 99999))),  # ipInReceives
+            _oid_entry(f"{IP_BASE}.5.0", "65", "0"),  # ipInDiscards
+            _oid_entry(f"{IP_BASE}.7.0", "65", str(random.randint(1000, 99999))),  # ipInDelivers
+            _oid_entry(f"{IP_BASE}.10.0","65", str(random.randint(1000, 99999))),  # ipOutRequests
         ]
 
         # ipAddrTable — use mgmt_ip for management-only devices (ip_address is empty)
@@ -1455,11 +1469,11 @@ class SNMPRecGenerator:
     def _snmp_entries(self, device: Device) -> List[OidEntry]:
         snmp_base = "1.3.6.1.2.1.11"
         return [
-            _oid_entry(f"{snmp_base}.1.0",  "41", str(random.randint(100, 99999))),  # snmpInPkts
-            _oid_entry(f"{snmp_base}.2.0",  "41", str(random.randint(100, 99999))),  # snmpOutPkts
-            _oid_entry(f"{snmp_base}.3.0",  "41", "0"),   # snmpInBadVersions
-            _oid_entry(f"{snmp_base}.4.0",  "41", "0"),   # snmpInBadCommunityNames
-            _oid_entry(f"{snmp_base}.5.0",  "41", "0"),   # snmpInBadCommunityUses
+            _oid_entry(f"{snmp_base}.1.0",  "65", str(random.randint(100, 99999))),  # snmpInPkts
+            _oid_entry(f"{snmp_base}.2.0",  "65", str(random.randint(100, 99999))),  # snmpOutPkts
+            _oid_entry(f"{snmp_base}.3.0",  "65", "0"),   # snmpInBadVersions
+            _oid_entry(f"{snmp_base}.4.0",  "65", "0"),   # snmpInBadCommunityNames
+            _oid_entry(f"{snmp_base}.5.0",  "65", "0"),   # snmpInBadCommunityUses
             _oid_entry(f"{snmp_base}.30.0", "2",  "1"),   # snmpEnableAuthenTraps
         ]
 

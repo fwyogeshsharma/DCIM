@@ -306,6 +306,15 @@ class RedfishController:
         try:
             conn.settimeout(15.0)            # a stalled client can't pin a worker
             _RedfishHandler(conn, addr, _ConnServer(rdev))
+        except (BrokenPipeError, ConnectionResetError, socket.timeout) as exc:
+            # The client went away mid-response. Routine for any HTTP server and
+            # not a fault here: a poller whose own timeout fires cancels the
+            # request and closes the socket, and the response it abandoned has
+            # no reader left to care. Logged at DEBUG because an ERROR with a
+            # traceback for every such disconnect buries the dispatch failures
+            # that ARE this server's problem.
+            log.debug("[Redfish] client %s disconnected mid-response: %s",
+                      addr, exc.__class__.__name__)
         except Exception:
             log.exception("[Redfish] connection handler error from %s", addr)
         finally:
