@@ -1139,6 +1139,22 @@ class SNMPRecGenerator:
                 _ol_pwr_pfx  = _PDU_OUTLET_ENT + ".5."
                 _ol_off      = _is_pdu and _pdu_ol_out == 2
 
+                # hrProcessorLoad is a TABLE with one row per core, written at
+                # generation time from the device's CPU. Patched here by prefix
+                # for the same reason the outlet rows are: the instance count is
+                # whatever generate_device() chose, so the rows cannot be listed
+                # in `updates` without re-deriving it.
+                #
+                # Without this the table stayed at the value it was born with
+                # while ssCpuUser next to it tracked the live walk - and since
+                # hrProcessorLoad is the standard OID a poller reads for CPU,
+                # every consumer saw a server pinned at one number for ever. A
+                # fleet seeded uniformly across 5-95% then leaves roughly one
+                # server in twenty permanently above any 90% threshold, alarming
+                # for ever with no possible recovery.
+                _hr_load_pfx = HR_LOAD + "."
+                _cpu_now     = getattr(device, "cpu_usage", None)
+
                 patched = []
                 for line in lines:
                     sep = line.find("|")
@@ -1147,6 +1163,13 @@ class SNMPRecGenerator:
                         if oid in updates:
                             typ, val = updates[oid]
                             patched.append(f"{oid}|{typ}|{val}")
+                            continue
+                        if _cpu_now is not None and oid.startswith(_hr_load_pfx):
+                            # Per-core spread around the device figure, the same
+                            # +/-10 generate_device() uses, so a multi-core box
+                            # does not report every core at an identical load.
+                            _core = int(_cpu_now) + random.randint(-10, 10)
+                            patched.append(f"{oid}|2|{max(1, min(100, _core))}")
                             continue
                         if _is_pdu:
                             if oid.startswith(_ol_stat_pfx):
