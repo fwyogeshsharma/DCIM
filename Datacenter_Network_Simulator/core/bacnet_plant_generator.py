@@ -97,6 +97,20 @@ PLANT_SPEC: Dict[str, dict] = {
             ("Makeup_Flow",       _LPM,  5.0,  2.0),
             ("Vibration",         _MMS,  1.5,  0.6),
             ("Run_Hours",         _H, 22000.0,0.0),
+            # Outdoor air, appended LAST so no existing AI instance moves.
+            #
+            # The tower controller is where a BMS actually keeps these. A tower's
+            # whole job is approach to WET BULB, so its controller has the outdoor
+            # sensor wired to it (or reads it off the plant bus) — Marley, BAC and
+            # EVAPCO controllers all expose outdoor air temperature and wet bulb
+            # for exactly that reason. Dry bulb alone cannot tell you whether the
+            # plant can hold its condenser setpoint on a humid day.
+            #
+            # Amplitude 0: these are not random walks. They are driven from
+            # cooling_model's per-city climate via live_oa, and a weather reading
+            # that wanders on its own is a broken sensor, not weather.
+            ("OA_Dry_Bulb_Temp",  _C,  18.0,  0.0),
+            ("OA_Wet_Bulb_Temp",  _C,  13.0,  0.0),
         ],
         "bi": ["Fan_Status", "Alarm_HighVibration", "Alarm_LowBasin"],
         "on": {"Fan_Status"},
@@ -273,6 +287,7 @@ class PlantTelemetryEngine:
              plant_load_frac: float | None = None,
              live_speed: float | None = None,
              live_heat: float | None = None,
+             live_oa: tuple | None = None,
              running: bool = True) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
         # "on" for this device (Limits tab). Back-compat: force_leak maps to it.
@@ -280,8 +295,26 @@ class PlantTelemetryEngine:
         # driven by the load-/weather-coupled cooling model instead of the
         # nameplate×diurnal curve, so cooling draw tracks the real IT heat and the
         # site ambient.
+        # `live_oa` is (dry_bulb_c, wet_bulb_c) from the site's climate model.
+        # Outdoor air is a MEASUREMENT, not a signal the plant produces, so it is
+        # written straight through with only a sensor's worth of quantisation
+        # rather than being EMA'd toward the truth like the driven points below.
+        # A 0.1 K resolution is what a 10 K thermistor on a BMS input actually
+        # reports; publishing more digits would imply an instrument nobody fits.
         if forced is None:
             forced = {"Alarm_Leak"} if force_leak else set()
+        if live_oa is not None:
+            _dry, _wet = live_oa
+            if "OA_Dry_Bulb_Temp" in self._point_names and _dry is not None:
+                self._values["OA_Dry_Bulb_Temp"] = round(float(_dry), 1)
+            if "OA_Wet_Bulb_Temp" in self._point_names and _wet is not None:
+                # Wet bulb can never exceed dry bulb; clamping here means a bad
+                # climate constant shows up as equal readings rather than as a
+                # psychrometric impossibility the BMS would act on.
+                _w = float(_wet)
+                if _dry is not None:
+                    _w = min(_w, float(_dry))
+                self._values["OA_Wet_Bulb_Temp"] = round(_w, 1)
         mul = self._diurnal()
         out: Dict[str, float] = {}
         _pwr_out: float | None = None
@@ -296,6 +329,9 @@ class PlantTelemetryEngine:
                 if running:
                     self._values[name] += dt / 3600.0
                 out[name] = round(self._values[name], 2)
+                continue
+            if live_oa is not None and name in ("OA_Dry_Bulb_Temp", "OA_Wet_Bulb_Temp"):
+                out[name] = self._values[name]
                 continue
             if live_power is not None and name == self._power_point:
                 # Load-/weather-coupled draw + a little metering jitter.

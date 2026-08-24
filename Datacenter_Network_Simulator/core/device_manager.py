@@ -1616,6 +1616,13 @@ class Device:
         d["device_type"] = self.device_type.value
         d["vendor"] = self.vendor.value
         d["model_name"] = self.model_name
+        # Catalog nameplate, resolved here rather than left for the consumer to
+        # look up. The rating lives in a model->watts table in this module, so
+        # anything reading the export (the DCIM importer, a capacity report)
+        # would otherwise have to carry a copy of that table and keep it in
+        # step. 0 means "not a distribution SKU, or model not in the catalog" -
+        # not "rated at zero watts".
+        d["rated_power_w"] = rated_capacity_w(self.device_type, self.model_name)
         d["interface_groups"] = [
             {"iface_type": (g["iface_type"].value
                             if isinstance(g["iface_type"], InterfaceType)

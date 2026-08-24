@@ -430,6 +430,9 @@ class DeviceStateStore:
         self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
         self._plant_loadfrac_by_name: Dict[str, float] = {}  # {plant_name: DC duty frac}
         self._plant_speed_by_name: Dict[str, float] = {}  # {plant_name: VFD speed frac}
+        # {tower_name: (outdoor dry bulb C, outdoor wet bulb C)} — the site's
+        # weather, published on the tower controllers that actually carry it.
+        self._plant_oa_by_name: Dict[str, tuple] = {}
         self._cdu_loop_heat_kw: Dict[str, float] = {}     # {cdu_name: live loop heat kW}
         # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
         # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
@@ -3105,6 +3108,7 @@ class DeviceStateStore:
             # nameplate × clock curve.
             cool_ctx = self._cooling_context()
             from core.cooling_model import (
+                ambient_c, wet_bulb_c,
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
                 affinity_power_kw, chiller_electrical_w, CHILLER_PLF,
                 stage_modules, installed_modules_for, PLANT_MODULE_KW,
@@ -3738,6 +3742,19 @@ class DeviceStateStore:
             self._plant_cop_by_name = plant_cop
             self._plant_loadfrac_by_name = plant_loadfrac
             self._plant_speed_by_name = plant_speed
+            # Outdoor air per cooling tower. One climate per site, so every tower
+            # at a site reads the same numbers - which is the point: they share a
+            # sky. Built from plant_dc rather than a fresh device sweep so it
+            # cannot disagree with the plant the rest of this block just modelled.
+            _oa: Dict[str, tuple] = {}
+            for _dcx, _plist in plant_dc.items():
+                _cty = dc_city.get(_dcx)
+                _dry = ambient_c(_cty)
+                _wet = wet_bulb_c(_cty)
+                for _pn, _pw_, _pt in _plist:
+                    if _pt == "cooling_tower":
+                        _oa[_pn] = (_dry, _wet)
+            self._plant_oa_by_name = _oa
             self._cool_model_w = _cool_model_w
             self._cool_model_w_by_dc = _cool_model_by_dc
         except Exception:
@@ -5452,6 +5469,7 @@ class DeviceStateStore:
                                        plant_cop_by_name=self._plant_cop_by_name,
                                        plant_loadfrac_by_name=self._plant_loadfrac_by_name,
                                        plant_speed_by_name=self._plant_speed_by_name,
+                                       plant_oa_by_name=self._plant_oa_by_name,
                                        plant_heat_by_name=self._cdu_loop_heat_kw,
                                        plant_standby_names=self._plant_standby_names,
                                        plant_unpowered_names=self._plant_unpowered_names)

@@ -630,6 +630,7 @@ class BACnetController:
              plant_speed_by_name: dict | None = None,
              plant_heat_by_name: dict | None = None,
              plant_standby_names: set | None = None,
+             plant_oa_by_name: dict | None = None,
              plant_unpowered_names: set | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
@@ -683,6 +684,10 @@ class BACnetController:
                     _lf = (plant_loadfrac_by_name or {}).get(_nm)
                     _spd = (plant_speed_by_name or {}).get(_nm)
                     _hl = (plant_heat_by_name or {}).get(_nm)
+                    # Outdoor air for this site. Only the tower controllers carry
+                    # the points, so every other plant type gets None and the
+                    # engine leaves its (absent) OA points alone.
+                    _oa = (plant_oa_by_name or {}).get(_nm)
                     # Decided BEFORE the tick, because the engine needs it: a stopped
                     # machine must not accrue run-hours. Zeroing the published points
                     # afterwards was never enough — the counter had already advanced.
@@ -691,7 +696,8 @@ class BACnetController:
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
                                          live_speed=_spd,
-                                         live_heat=_hl, running=not _off)
+                                         live_heat=_hl, live_oa=_oa,
+                                         running=not _off)
                     # Staged-OFF (standby) chiller / pump: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and
                     # its dynamic signals at rest — so a staged-off unit reads "off",
