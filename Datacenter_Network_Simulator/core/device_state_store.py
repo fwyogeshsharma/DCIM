@@ -901,6 +901,14 @@ class DeviceStateStore:
             self._advance_clock()
             try:
                 self._tick()
+            except RuntimeError as e:
+                # Same interpreter-shutdown case as _sync_snmp: this thread is a
+                # daemon, so it outlives finalisation and would log a traceback
+                # every tick for as long as the process takes to die.
+                if "interpreter shutdown" in str(e):
+                    self._stop_ev.set()
+                    return
+                log.exception("[StateStore] Tick error")
             except Exception:
                 log.exception("[StateStore] Tick error")
 
@@ -7198,6 +7206,16 @@ class DeviceStateStore:
                 "[StateStore] SNMP sync — %d/%d file(s) patched (shard %d/%d).",
                 len(batch), total, shard_idx + 1, num_shards,
             )
+        except RuntimeError as e:
+            # "cannot schedule new futures after interpreter shutdown" - the
+            # process is exiting and this daemon thread outlived the executor
+            # machinery. Retrying once a tick, forever, is what turned a normal
+            # Ctrl+C into an endless wall of errors. Stand the ticker down.
+            if "interpreter shutdown" in str(e):
+                self._snmp_enabled = False
+                self._stop_ev.set()
+                return
+            log.error("[StateStore] SNMP sync error: %s", e)
         except Exception as e:
             log.error("[StateStore] SNMP sync error: %s", e)
 

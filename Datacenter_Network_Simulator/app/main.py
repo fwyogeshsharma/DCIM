@@ -149,6 +149,39 @@ def _force_dark_palette(app: QApplication) -> None:
     app.setPalette(p)
 
 
+def _flush_logs():
+    """Flush logging and the std streams. os._exit skips both."""
+    import logging
+    try:
+        logging.shutdown()
+    except Exception:
+        pass
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.flush()
+        except Exception:
+            pass
+
+
+def _watchdog(seconds: int, code, log):
+    """Exit unconditionally if the orderly shutdown wedges.
+
+    Every stop() in that sequence talks to a server that may be mid-poll, so any
+    one of them can block for as long as its own timeout. A shutdown that never
+    finishes looks, from the terminal, exactly like the hang it is meant to fix.
+    """
+    import threading
+    import time as _time
+
+    def _fire():
+        _time.sleep(seconds)
+        log.error("Shutdown still running after %ds - forcing exit.", seconds)
+        _flush_logs()
+        os._exit(code if isinstance(code, int) else 0)
+
+    threading.Thread(target=_fire, daemon=True, name="shutdown-watchdog").start()
+
+
 def _run_headless():
     """Start the simulator in headless mode (no GUI) — API only on port 8000.
     Uses QCoreApplication so Qt signals/slots work without a display."""
@@ -317,12 +350,32 @@ def _run_headless():
     log.info("REST API up - http://0.0.0.0:%d/docs", port)
 
     # Make Ctrl+C / SIGTERM actually stop headless. Qt's C++ event loop swallows
-    # SIGINT, so: (1) route the signals to _app.quit(), and (2) run an idle
-    # QTimer so the interpreter periodically regains control to deliver them.
+    # SIGINT, so: (1) route the signals to a handler that quits the loop, and
+    # (2) run an idle QTimer so the interpreter periodically regains control to
+    # deliver them.
+    #
+    # The handler escalates. The first signal asks for the orderly shutdown
+    # below; a second one is the operator telling us the orderly path is not
+    # working, and os._exit is the only thing that can still answer. A plain
+    # quit() cannot: by then the loop has already returned, and the default
+    # KeyboardInterrupt path was replaced by this handler, so further Ctrl+C
+    # does nothing at all.
     import signal
     from PySide6.QtCore import QTimer
-    signal.signal(signal.SIGINT,  lambda *_: _app.quit())
-    signal.signal(signal.SIGTERM, lambda *_: _app.quit())
+    _sig_count = {"n": 0}
+
+    def _on_signal(signum, _frame):
+        _sig_count["n"] += 1
+        if _sig_count["n"] == 1:
+            log.warning("Signal %s - stopping. Press Ctrl+C again to force.", signum)
+            _app.quit()
+            return
+        log.error("Second signal - forcing exit.")
+        _flush_logs()
+        os._exit(130)
+
+    signal.signal(signal.SIGINT,  _on_signal)
+    signal.signal(signal.SIGTERM, _on_signal)
     _sig_timer = QTimer()
     _sig_timer.start(200)
     _sig_timer.timeout.connect(lambda: None)
@@ -330,7 +383,30 @@ def _run_headless():
     log.info("Press Ctrl+C to stop.")
     rc = _app.exec()
     log.info("Shutting down... releasing port %d.", port)
-    sys.exit(rc)
+
+    # None of this is optional. The state-store ticker is a daemon thread, so
+    # interpreter finalisation does not stop it - it keeps ticking, and its SNMP
+    # sync keeps building a ThreadPoolExecutor, which after finalisation begins
+    # raises "cannot schedule new futures after interpreter shutdown" on every
+    # tick. That buried the actual shutdown under error spam forever. Stop the
+    # ticker first, because it is what drives the protocol controllers, then the
+    # servers it feeds.
+    _watchdog(20, rc, log)
+    for _what, _obj in (("state store", state_store), ("SNMP", snmpsim),
+                        ("gNMI", gnmi), ("sFlow", sflow), ("BACnet", bacnet),
+                        ("Redfish", redfish), ("Modbus", modbus),
+                        ("trap engine", trap_engine)):
+        try:
+            _obj.stop()
+        except Exception as exc:
+            log.warning("Stopping %s raised %s: %s", _what, type(exc).__name__, exc)
+
+    # gRPC and the protocol servers own non-daemon threads that a normal exit
+    # would try to join, which is what left the process parked in futex_wait
+    # after Ctrl+C. Everything durable has been written by the stops above, so
+    # skip the joins rather than hang on them.
+    _flush_logs()
+    os._exit(rc if isinstance(rc, int) else 0)
 
 
 def main():
