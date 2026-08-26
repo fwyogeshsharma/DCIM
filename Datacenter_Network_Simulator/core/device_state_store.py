@@ -7224,8 +7224,25 @@ class DeviceStateStore:
     # ------------------------------------------------------------------ #
 
     def _find_device(self, ip: str) -> Optional["Device"]:
+        """Resolve a device by ANY address it answers on.
+
+        Production IP *and* management IP. gNMI, SNMP and Redfish are all
+        addressed on the OOB management plane by anything that manages this
+        fleet the way a real NMS does - that is the whole point of an OOB plane
+        - while this lookup matched `ip_address`, the production address, only.
+
+        The failure it caused was silent and specific. `GNMIServicer._overlay`
+        asks this for live metrics and falls back to jittering the STATIC
+        dataset when it gets None, so every gNMI subscribe on a device's mgmt
+        IP served the value the template was born with, +/-10, for ever. A
+        switch whose generated CPU landed at 92% reported 82-100% for days
+        while the ticker walked the real figure down to 50 and nothing on the
+        wire ever saw it - and any NMS watching it raised a CPU alert that no
+        recovery could clear. SNMP was unaffected only because snmpsim is
+        file-backed and those files are named by the mgmt IP already.
+        """
         for d in self._dm.get_all_devices():
-            if d.ip_address == ip:
+            if ip in (d.ip_address, getattr(d, "mgmt_ip", "")):
                 return d
         return None
 
