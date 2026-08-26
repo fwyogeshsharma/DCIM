@@ -191,8 +191,9 @@ HR_SW_INST   = "1.3.6.1.2.1.25.6.3.1"     # hrSWInstalledTable
 #
 # Two families, because two kinds of NOS:
 #
-#   CISCO-PROCESS-MIB / CISCO-MEMORY-POOL-MIB for IOS and NX-OS, which is what
-#   an NMS polls on Cisco gear and what every Cisco-aware tool expects.
+#   CISCO-PROCESS-MIB / CISCO-MEMORY-POOL-MIB for IOS and NX-OS, which this
+#   plane has published all along - see `_cisco_perf_entries`. Nothing was
+#   missing on the Cisco side except a poller that knew to ask for it.
 #
 #   HOST-RESOURCES + UCD for the Linux-based network operating systems - Dell
 #   OS10, PAN-OS, F5 TMOS, Arista EOS, SONiC, Cumulus. Those genuinely do serve
@@ -203,12 +204,6 @@ HR_SW_INST   = "1.3.6.1.2.1.25.6.3.1"     # hrSWInstalledTable
 # memory pool. Real multi-RP chassis and multi-pool platforms carry more, and a
 # poller that assumes 1 there will read a supervisor's load as the whole
 # chassis - noted rather than modelled, because this fleet is fixed-config.
-CISCO_CPU_5MIN = "1.3.6.1.4.1.9.9.109.1.1.1.1.8"   # cpmCPUTotal5minRev
-CISCO_CPU_1MIN = "1.3.6.1.4.1.9.9.109.1.1.1.1.7"   # cpmCPUTotal1minRev
-CISCO_MEM_USED = "1.3.6.1.4.1.9.9.48.1.1.1.5"      # ciscoMemoryPoolUsed, bytes
-CISCO_MEM_FREE = "1.3.6.1.4.1.9.9.48.1.1.1.6"      # ciscoMemoryPoolFree, bytes
-CISCO_MEM_NAME = "1.3.6.1.4.1.9.9.48.1.1.1.2"      # ciscoMemoryPoolName
-
 # UCD-SNMP-MIB (Linux)
 UCD_BASE    = "1.3.6.1.4.1.2021"
 UCD_CPU     = f"{UCD_BASE}.11"
@@ -771,12 +766,11 @@ class SNMPRecGenerator:
                 _mem_total = int(device.memory_total)
                 _mem_used = int(device.memory_used) or int(_mem_total * 0.4)
                 _mem_free = max(0, _mem_total - _mem_used)
-                if _vendor_oids.vendor_key(device.vendor) == "cisco":
-                    updates[f"{CISCO_CPU_5MIN}.1"] = ("66", str(_cpu))
-                    updates[f"{CISCO_CPU_1MIN}.1"] = ("66", str(_cpu))
-                    updates[f"{CISCO_MEM_USED}.1"] = ("66", str(_mem_used))
-                    updates[f"{CISCO_MEM_FREE}.1"] = ("66", str(_mem_free))
-                else:
+                if _vendor_oids.vendor_key(device.vendor) != "cisco":
+                    # Cisco is patched by its own block above, in the units and
+                    # the type its entries were written with. Writing the same
+                    # OIDs from here as well would put two writers on one object
+                    # and leave the value depending on which ran last.
                     _sys = random.randint(2, 20)
                     updates[f"{HR_LOAD}.1"] = ("2", str(_cpu))
                     updates[f"{UCD_CPU}.9.0"] = ("2", str(_cpu))
@@ -2607,17 +2601,11 @@ class SNMPRecGenerator:
         mem_free = max(0, mem_total - mem_used)
 
         if _vendor_oids.vendor_key(device.vendor) == "cisco":
-            return [
-                # cpmCPUTotalTable, index 1 - the control-plane CPU. The 5-minute
-                # average is the one an NMS graphs; the 1-minute is here because
-                # every Cisco runbook quotes both and a poller that finds only
-                # one of them assumes the agent is broken.
-                _oid_entry(f"{CISCO_CPU_5MIN}.1", "66", str(cpu)),
-                _oid_entry(f"{CISCO_CPU_1MIN}.1", "66", str(cpu)),
-                _oid_entry(f"{CISCO_MEM_NAME}.1", "4", "Processor"),
-                _oid_entry(f"{CISCO_MEM_USED}.1", "66", str(mem_used)),
-                _oid_entry(f"{CISCO_MEM_FREE}.1", "66", str(mem_free)),
-            ]
+            # Nothing to add. Cisco gear already publishes CISCO-PROCESS-MIB and
+            # CISCO-MEMORY-POOL-MIB here - see `_cisco_perf_entries`, which has
+            # carried them all along. What was missing was never the Cisco side;
+            # it was everything else, and a poller that knew to ask.
+            return []
 
         # Linux-based NOS: the host MIBs, same as a server. Dell OS10, PAN-OS,
         # F5 TMOS, Arista EOS, SONiC and Cumulus are Linux underneath and do

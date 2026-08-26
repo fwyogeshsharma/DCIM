@@ -26,10 +26,8 @@ import pytest
 
 from core.device_manager import Device, DeviceType, Vendor
 from core.snmprec_generator import (
-    CISCO_CPU_1MIN,
-    CISCO_CPU_5MIN,
-    CISCO_MEM_FREE,
-    CISCO_MEM_USED,
+    _CISCO_CPU_MIB,
+    _CISCO_MEM_MIB,
     HR_LOAD,
     UCD_CPU,
     UCD_MEM,
@@ -59,36 +57,41 @@ def _oids(entries):
 # ------------------------------------------------------------------- Cisco
 
 
-def test_cisco_switch_publishes_the_process_mib(gen):
-    """cpmCPUTotal5minRev is the object an NMS graphs on Cisco gear."""
-    oids = _oids(gen._network_cpu_entries(_dev(DeviceType.SWITCH,
-                                               Vendor.CISCO_SYSTEMS, cpu=57)))
-    assert oids[f"{CISCO_CPU_5MIN}.1"] == "57"
-    assert oids[f"{CISCO_CPU_1MIN}.1"] == "57"
+def test_cisco_gear_is_left_to_its_own_publisher(gen):
+    """Cisco already published CISCO-PROCESS-MIB here, and still does.
+
+    `_cisco_perf_entries` has carried cpmCPUTotal5minRev and the memory pool all
+    along; what was missing was a poller that asked for them. Emitting the same
+    objects from the new helper as well put two writers on one OID - with
+    different units AND a different SNMP type - and the value on the wire then
+    depended on which one ran last.
+    """
+    entries = gen._network_cpu_entries(_dev(DeviceType.SWITCH,
+                                            Vendor.CISCO_SYSTEMS))
+    assert entries == [], "the new helper must not touch Cisco objects"
+
+    # And the original publisher is still the one doing it.
+    oids = _oids(gen._cisco_perf_entries(_dev(DeviceType.SWITCH,
+                                              Vendor.CISCO_SYSTEMS, cpu=57)))
+    assert oids[f"{_CISCO_CPU_MIB}.8.1"] == "57"
+    assert f"{_CISCO_MEM_MIB}.5.1" in oids
 
 
-def test_cisco_publishes_the_memory_pool_in_bytes(gen):
-    """ciscoMemoryPoolUsed/Free are BYTES, and they must sum to the total.
+def test_the_cisco_memory_pool_is_published_in_mib(gen):
+    """MiB, not the bytes the MIB definition says - deliberately, and the
+    consumer has to know.
 
-    A pool whose used and free do not add up is how a utilisation gauge ends up
-    over 100% on a chassis nobody has touched.
+    ciscoMemoryPoolUsed is a 32-bit Gauge and a real bytes value overflows it
+    on anything with more than 4 GB of pool; this fleet runs 8-32 GB switches.
+    Real Cisco has the same problem, which is why CISCO-ENHANCED-MEMPOOL-MIB
+    exists with 64-bit counters. Pinned here so the DCIM's scale factor and this
+    emission cannot drift apart silently.
     """
     dev = _dev(DeviceType.ROUTER, Vendor.CISCO_SYSTEMS,
-               mem_total=8 * 1024 ** 3, mem_used=3 * 1024 ** 3)
-    oids = _oids(gen._network_cpu_entries(dev))
-    used = int(oids[f"{CISCO_MEM_USED}.1"])
-    free = int(oids[f"{CISCO_MEM_FREE}.1"])
-    assert used == 3 * 1024 ** 3
-    assert used + free == 8 * 1024 ** 3
-
-
-def test_cisco_does_not_pretend_to_be_a_host(gen):
-    """No host MIBs on IOS. Publishing them would make the fiction convincing
-    enough for a poller to prefer them over the vendor objects."""
-    oids = _oids(gen._network_cpu_entries(_dev(DeviceType.SWITCH,
-                                               Vendor.CISCO_SYSTEMS)))
-    assert not any(o.startswith(HR_LOAD) for o in oids)
-    assert not any(o.startswith(UCD_MEM) for o in oids)
+               mem_total=2 * 1024 ** 3, mem_used=1 * 1024 ** 3)
+    oids = _oids(gen._cisco_perf_entries(dev))
+    assert oids[f"{_CISCO_MEM_MIB}.5.1"] == "1024"      # MiB, not 1073741824
+    assert oids[f"{_CISCO_MEM_MIB}.6.1"] == "1024"
 
 
 # ------------------------------------------------- Linux-based NOS (Dell, PAN, F5)
