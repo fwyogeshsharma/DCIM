@@ -48,6 +48,26 @@ def _as_number(device_id: str) -> int:
     return 65000 + (int(device_id[:4], 16) % 1000)
 
 
+# What speaks gNMI on this plane, and what deliberately does not.
+#
+# Switches and routers only. Arista, Cisco, Juniper and Nokia all ship a gNMI
+# agent and streaming telemetry off a fabric is what the protocol was built
+# for.
+#
+# Firewalls and load balancers are excluded ON PURPOSE, and the reason is the
+# vendors rather than the effort: Palo Alto PAN-OS exposes an XML/REST API and
+# F5 TMOS exposes iControl REST plus its own telemetry streaming - neither
+# serves gNMI. A firewall that genuinely speaks it is a Junos SRX or something
+# Arista-based. Generating datasets for PAN-OS and F5 boxes would put a
+# protocol on the wire that those SKUs do not answer, and an NMS built against
+# this plane would then be written against a device that does not exist.
+#
+# Their control-plane CPU and memory are published over SNMP instead, on the
+# host MIBs their Linux-based NOS genuinely serves - see
+# SNMPRecGenerator._network_cpu_entries.
+_GNMI_TYPES = (DeviceType.ROUTER, DeviceType.SWITCH)
+
+
 class GNMIDataGenerator:
     """Generate and save OpenConfig JSON data files for gNMI simulation."""
 
@@ -89,7 +109,7 @@ class GNMIDataGenerator:
         """
         expected = set()
         for d in topology.get_all_devices():
-            if d.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH):
+            if d.device_type not in _GNMI_TYPES:
                 continue
             key = d.mgmt_ip if d.mgmt_ip else d.ip_address
             if key:
@@ -112,7 +132,7 @@ class GNMIDataGenerator:
         Generate a .gnmi.json file for *device* and return the file path.
         Returns None if device type is not supported (e.g. server).
         """
-        if device.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH):
+        if device.device_type not in _GNMI_TYPES:
             return None
 
         data = self._build_document(device, topology)
@@ -127,7 +147,7 @@ class GNMIDataGenerator:
         Regenerate in-memory data (and re-save) for a single device.
         Returns the data dict so the gNMI server can hot-reload it.
         """
-        if device.device_type not in (DeviceType.ROUTER, DeviceType.SWITCH):
+        if device.device_type not in _GNMI_TYPES:
             return None
         data = self._build_document(device, topology)
         key  = device.mgmt_ip if device.mgmt_ip else device.ip_address

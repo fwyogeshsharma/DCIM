@@ -181,6 +181,34 @@ HR_PROC      = "1.3.6.1.2.1.25.3"
 HR_LOAD      = "1.3.6.1.2.1.25.3.3.1.2"   # hrProcessorLoad
 HR_SW_INST   = "1.3.6.1.2.1.25.6.3.1"     # hrSWInstalledTable
 
+# Network-gear CPU and memory.
+#
+# A switch is not a host, and until now nothing on this plane said what its CPU
+# was doing: HOST-RESOURCES is a HOST MIB and the network agents did not carry
+# it, so a poller asking a spine for hrProcessorLoad got noSuchInstance and the
+# control-plane load - the thing that decides whether the box still answers a
+# keepalive - was invisible to everything except a trap.
+#
+# Two families, because two kinds of NOS:
+#
+#   CISCO-PROCESS-MIB / CISCO-MEMORY-POOL-MIB for IOS and NX-OS, which is what
+#   an NMS polls on Cisco gear and what every Cisco-aware tool expects.
+#
+#   HOST-RESOURCES + UCD for the Linux-based network operating systems - Dell
+#   OS10, PAN-OS, F5 TMOS, Arista EOS, SONiC, Cumulus. Those genuinely do serve
+#   the host MIBs, because underneath they are Linux, and their operators
+#   genuinely do poll them that way.
+#
+# The index on both Cisco tables is 1: one control-plane CPU, one processor
+# memory pool. Real multi-RP chassis and multi-pool platforms carry more, and a
+# poller that assumes 1 there will read a supervisor's load as the whole
+# chassis - noted rather than modelled, because this fleet is fixed-config.
+CISCO_CPU_5MIN = "1.3.6.1.4.1.9.9.109.1.1.1.1.8"   # cpmCPUTotal5minRev
+CISCO_CPU_1MIN = "1.3.6.1.4.1.9.9.109.1.1.1.1.7"   # cpmCPUTotal1minRev
+CISCO_MEM_USED = "1.3.6.1.4.1.9.9.48.1.1.1.5"      # ciscoMemoryPoolUsed, bytes
+CISCO_MEM_FREE = "1.3.6.1.4.1.9.9.48.1.1.1.6"      # ciscoMemoryPoolFree, bytes
+CISCO_MEM_NAME = "1.3.6.1.4.1.9.9.48.1.1.1.2"      # ciscoMemoryPoolName
+
 # UCD-SNMP-MIB (Linux)
 UCD_BASE    = "1.3.6.1.4.1.2021"
 UCD_CPU     = f"{UCD_BASE}.11"
@@ -448,6 +476,11 @@ class SNMPRecGenerator:
 
         if device.device_type == DeviceType.SERVER:
             entries += self._server_entries(device)
+
+        if device.device_type in (DeviceType.ROUTER, DeviceType.SWITCH,
+                                  DeviceType.FIREWALL, DeviceType.LOAD_BALANCER,
+                                  DeviceType.OOB_SWITCH):
+            entries += self._network_cpu_entries(device)
 
         if device.device_type == DeviceType.SENSOR:
             entries += self._sensor_entries(device)
@@ -725,6 +758,33 @@ class SNMPRecGenerator:
                 updates[f"{IF_TABLE}.20.{i}"] = ("65", str(out_err))
                 updates[f"{ifx_base}.6.{i}"]  = ("70", str(in_oct  * 4))
                 updates[f"{ifx_base}.10.{i}"] = ("70", str(out_oct * 4))
+
+            # Network gear: control-plane CPU and memory on the vendor's MIB.
+            # Patched every tick for the same reason hrProcessorLoad is - a
+            # value written once at generation is a number that never recovers,
+            # and the alarm it raises can never clear.
+            if device.device_type in (DeviceType.ROUTER, DeviceType.SWITCH,
+                                      DeviceType.FIREWALL,
+                                      DeviceType.LOAD_BALANCER,
+                                      DeviceType.OOB_SWITCH):
+                _cpu = int(max(0, min(100, device.cpu_usage)))
+                _mem_total = int(device.memory_total)
+                _mem_used = int(device.memory_used) or int(_mem_total * 0.4)
+                _mem_free = max(0, _mem_total - _mem_used)
+                if _vendor_oids.vendor_key(device.vendor) == "cisco":
+                    updates[f"{CISCO_CPU_5MIN}.1"] = ("66", str(_cpu))
+                    updates[f"{CISCO_CPU_1MIN}.1"] = ("66", str(_cpu))
+                    updates[f"{CISCO_MEM_USED}.1"] = ("66", str(_mem_used))
+                    updates[f"{CISCO_MEM_FREE}.1"] = ("66", str(_mem_free))
+                else:
+                    _sys = random.randint(2, 20)
+                    updates[f"{HR_LOAD}.1"] = ("2", str(_cpu))
+                    updates[f"{UCD_CPU}.9.0"] = ("2", str(_cpu))
+                    updates[f"{UCD_CPU}.10.0"] = ("2", str(_sys))
+                    updates[f"{UCD_CPU}.11.0"] = ("2", str(max(1, 100 - _cpu - _sys)))
+                    updates[f"{UCD_MEM}.5.0"] = ("2", str(_mem_total // 1024))
+                    updates[f"{UCD_MEM}.6.0"] = ("2", str(_mem_free // 1024))
+                    updates[f"{UCD_MEM}.11.0"] = ("2", str(_mem_used // 1024))
 
             # Server-only: HR-MIB storage + processor load, UCD CPU/MEM/disk
             if device.device_type == DeviceType.SERVER:
@@ -2532,6 +2592,62 @@ class SNMPRecGenerator:
                     _oid_entry(f"{b}.5.1.{slot}", "2", "4"),     # state=normal
                 ]
         return entries
+
+    def _network_cpu_entries(self, device: "Device") -> List[OidEntry]:
+        """Control-plane CPU and memory for network gear, on its vendor's MIB.
+
+        Values come from the same `device.cpu_usage` the ticker walks, so the
+        SNMP plane and the gNMI plane cannot disagree about the same box - which
+        is exactly what happened when gNMI served a frozen dataset and nothing
+        else published the number at all.
+        """
+        cpu = int(max(0, min(100, device.cpu_usage)))
+        mem_total = int(device.memory_total)
+        mem_used = int(device.memory_used) or int(mem_total * 0.4)
+        mem_free = max(0, mem_total - mem_used)
+
+        if _vendor_oids.vendor_key(device.vendor) == "cisco":
+            return [
+                # cpmCPUTotalTable, index 1 - the control-plane CPU. The 5-minute
+                # average is the one an NMS graphs; the 1-minute is here because
+                # every Cisco runbook quotes both and a poller that finds only
+                # one of them assumes the agent is broken.
+                _oid_entry(f"{CISCO_CPU_5MIN}.1", "66", str(cpu)),
+                _oid_entry(f"{CISCO_CPU_1MIN}.1", "66", str(cpu)),
+                _oid_entry(f"{CISCO_MEM_NAME}.1", "4", "Processor"),
+                _oid_entry(f"{CISCO_MEM_USED}.1", "66", str(mem_used)),
+                _oid_entry(f"{CISCO_MEM_FREE}.1", "66", str(mem_free)),
+            ]
+
+        # Linux-based NOS: the host MIBs, same as a server. Dell OS10, PAN-OS,
+        # F5 TMOS, Arista EOS, SONiC and Cumulus are Linux underneath and do
+        # serve HOST-RESOURCES and UCD; their operators poll them that way.
+        #
+        # This is also the ONLY way a Palo Alto or an F5 in this fleet publishes
+        # its control-plane load, and that is deliberate: neither speaks gNMI,
+        # so SNMP is not a fallback for them, it is the interface.
+        #
+        # F5 additionally publishes F5-BIGIP-SYSTEM-MIB (sysGlobalHostCpu*) and
+        # Palo Alto publishes PAN-COMMON-MIB, and a production poller aimed at
+        # those platforms would often prefer them. Not modelled here: I could
+        # not verify those object OIDs against a real agent, and a mapping
+        # written against a guessed OID reads as a dead metric rather than as a
+        # mistake.
+        #
+        # One logical CPU is published rather than a core spread - a NOS reports
+        # its control plane as one number, and inventing cores here would invite
+        # a poller to average something with no physical meaning on this gear.
+        cpu_system = random.randint(2, 20)
+        cpu_idle = max(1, 100 - cpu - cpu_system)
+        return [
+            _oid_entry(f"{HR_LOAD}.1", "2", str(cpu)),
+            _oid_entry(f"{UCD_CPU}.9.0", "2", str(cpu)),          # ssCpuUser
+            _oid_entry(f"{UCD_CPU}.10.0", "2", str(cpu_system)),  # ssCpuSystem
+            _oid_entry(f"{UCD_CPU}.11.0", "2", str(cpu_idle)),    # ssCpuIdle
+            _oid_entry(f"{UCD_MEM}.5.0", "2", str(mem_total // 1024)),
+            _oid_entry(f"{UCD_MEM}.6.0", "2", str(mem_free // 1024)),
+            _oid_entry(f"{UCD_MEM}.11.0", "2", str(mem_used // 1024)),
+        ]
 
     def _sensor_entries(self, device: Device) -> List[OidEntry]:
         """Return vendor-specific OIDs for temp, humidity, dewpoint, and airflow."""
