@@ -416,7 +416,14 @@ class SNMPRecGenerator:
             # times out, and the NMS learns what it would learn from the real
             # thing. A file full of zeros would say "I am here and idle",
             # which is the opposite of what a dark chassis means.
+            #
+            # Removed, not just left unwritten. snmpsim serves whatever file is
+            # on disk, so skipping the write leaves the LAST one being served
+            # for ever: a live test found a de-energised server still answering
+            # SNMP, reporting an uptime of zero - which reads as a box that
+            # rebooted a moment ago rather than one with no power at all.
             if self._is_dark(device):
+                self._remove_dataset(device)
                 skipped += 1
                 continue
             filepath = self.generate_device(device, topology)
@@ -2971,6 +2978,25 @@ class SNMPRecGenerator:
         """
         from core.device_state_store import _is_unpowered
         return _is_unpowered(device.name)
+
+    def _remove_dataset(self, device: "Device") -> None:
+        """Take a dark device's dataset off disk, with its dbm index.
+
+        Both addresses: a server answers on its production IP and its BMC on
+        the management one, and both die with the cords.
+        """
+        for addr in {getattr(device, "ip_address", ""),
+                     getattr(device, "mgmt_ip", "")}:
+            if not addr:
+                continue
+            for suffix in (".snmprec", ".dbm"):
+                path = self.output_dir / f"{addr}{suffix}"
+                try:
+                    path.unlink()
+                except FileNotFoundError:
+                    pass          # already gone, which is the desired state
+                except OSError:
+                    pass          # busy or not ours; the next pass retries
 
     def _atomic_write(self, filepath: str, entries: List[OidEntry]) -> None:
         """Write entries atomically: temp file → pre-build dbm index → rename.

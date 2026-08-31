@@ -69,7 +69,14 @@ class RedfishDevice:
         # ── mutable server state (driven by Server Operations / actions) ──
         # Adopt the Device's chassis state so a Redfish restart doesn't
         # silently "power on" servers that were left Off.
-        self.power_state = getattr(device, "power_state", "On") or "On"  # On | Off
+        # Chassis power lives on the Device, not here.
+        #
+        # It used to be copied at construction, and the copy went stale the
+        # moment anything else turned the box off: pulling both cords set the
+        # Device to Off while this BMC went on reporting On, so the simulator's
+        # own API said a de-energised server was running. Read through instead;
+        # the setter writes back, so a Redfish power action still works.
+        self._power_state_fallback = getattr(device, "power_state", "On") or "On"
         self.indicator_led = "Off"     # Off | Lit | Blinking
         self.sel: list[dict] = []      # stored System Event Log entries
         self._sel_seq = 0
@@ -87,6 +94,18 @@ class RedfishDevice:
 
     # ── identity ───────────────────────────────────────────────────────────
     @property
+    @property
+    def power_state(self) -> str:
+        return getattr(self.device, "power_state", None) or self._power_state_fallback
+
+    @power_state.setter
+    def power_state(self, value: str) -> None:
+        self._power_state_fallback = value
+        try:
+            self.device.power_state = value
+        except AttributeError:
+            pass          # a BMC built around something that is not a Device
+
     def member_id(self) -> str:
         return rf.member_id(self.device)
 
