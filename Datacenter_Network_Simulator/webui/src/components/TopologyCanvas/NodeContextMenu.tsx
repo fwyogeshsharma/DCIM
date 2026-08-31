@@ -166,6 +166,11 @@ const MENU_S: React.CSSProperties = {
   userSelect: 'none',
 }
 
+// Tall enough for a 42-outlet strip to be worth scrolling, short enough that
+// the flyout still fits beside a row near the bottom of a laptop screen.
+const OUTLET_MENU_H = 380
+const OUTLET_MENU_W = 210
+
 function MenuDivider() {
   return <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 }
@@ -651,7 +656,45 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const [outlets, setOutlets] = useState<Outlet[]>([])
   const [outletBusy, setOutletBusy] = useState<number | null>(null)
   const [outletSub, setOutletSub] = useState(false)
+  // Screen coordinates for the outlet flyout.
+  //
+  // It cannot be positioned relative to its row. The submenu above it is a
+  // scroll box - `maxHeight` with `overflowY: auto` - and CSS will not let
+  // one axis scroll while the other overflows visibly: setting overflow-y
+  // computes overflow-x from `visible` to `auto`. That makes the submenu a
+  // clipping box, so a child at `left: 100%` is cut off at its edge. The
+  // flyout WAS rendering, with all its outlets, entirely inside that clip:
+  // 5 visible pixels of a 207px menu, and a horizontal scrollbar as the
+  // only hint it was there.
+  //
+  // `position: fixed` is not clipped by an ancestor's overflow, so the
+  // flyout escapes while staying a DOM child - which is what keeps the
+  // hover in and out of it working.
+  const [outletAt, setOutletAt] = useState<{ top: number; left: number } | null>(null)
+  const outletRowRef = useRef<HTMLDivElement>(null)
   const [fltBusy, setFltBusy] = useState<string | null>(null)
+
+  /** Pin the outlet flyout beside its row, in viewport coordinates.
+   *
+   *  Measured at open rather than tracked: the menu is dismissed by any scroll
+   *  or click elsewhere, so there is no window in which the row moves under a
+   *  flyout that is already showing.
+   *
+   *  Both axes are clamped. A 42-outlet strip is taller than the space below a
+   *  row near the foot of the screen, and a PDU right-clicked at the right edge
+   *  of the canvas would otherwise open its receptacles off-screen - which is
+   *  the same invisible-menu bug in a different direction.
+   */
+  function placeOutletFlyout() {
+    const row = outletRowRef.current
+    if (!row) return
+    const r = row.getBoundingClientRect()
+    const left = r.right + OUTLET_MENU_W > window.innerWidth
+      ? Math.max(4, r.left - OUTLET_MENU_W)
+      : r.right
+    const top = Math.max(4, Math.min(r.top, window.innerHeight - OUTLET_MENU_H - 8))
+    setOutletAt({ top, left })
+  }
   const snmpRunning = snmp?.running ?? false
   const plantEvents = PLANT_EVENTS[deviceType] ?? []
 
@@ -934,10 +977,10 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                 {outlets.length > 0 && (
                   <div
                     style={{ position: 'relative' }}
-                    onMouseEnter={() => setOutletSub(true)}
+                    onMouseEnter={() => { placeOutletFlyout(); setOutletSub(true) }}
                     onMouseLeave={() => setOutletSub(false)}
                   >
-                    <div style={{
+                    <div ref={outletRowRef} style={{
                       padding: '5px 14px', cursor: 'pointer', whiteSpace: 'nowrap',
                       color: outletsOff > 0 ? 'var(--crit)' : 'var(--text)',
                       background: outletSub ? 'rgba(255,255,255,0.06)' : 'transparent',
@@ -950,7 +993,11 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     </div>
                     {outletSub && (
                       <div
-                        style={{ ...MENU_S, position: 'absolute', top: 0, left: '100%', zIndex: 9002, maxHeight: 380, overflowY: 'auto' }}
+                        style={{
+                          ...MENU_S, position: 'fixed', zIndex: 9002,
+                          top: outletAt?.top ?? 0, left: outletAt?.left ?? 0,
+                          maxHeight: OUTLET_MENU_H, overflowY: 'auto',
+                        }}
                         onMouseEnter={() => setOutletSub(true)}
                         onMouseLeave={() => setOutletSub(false)}
                       >
