@@ -94,7 +94,6 @@ class RedfishDevice:
 
     # ── identity ───────────────────────────────────────────────────────────
     @property
-    @property
     def power_state(self) -> str:
         return getattr(self.device, "power_state", None) or self._power_state_fallback
 
@@ -106,6 +105,7 @@ class RedfishDevice:
         except AttributeError:
             pass          # a BMC built around something that is not a Device
 
+    @property
     def member_id(self) -> str:
         return rf.member_id(self.device)
 
