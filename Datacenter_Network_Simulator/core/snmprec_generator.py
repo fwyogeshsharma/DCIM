@@ -411,6 +411,14 @@ class SNMPRecGenerator:
                     and device.device_type != DeviceType.SERVER):
                 skipped += 1
                 continue   # no OOB connection → unreachable via SNMP
+            # A device with no live cord answers nothing at all. Not a dataset
+            # of zeros - no dataset: snmpsim has no file to serve, the poll
+            # times out, and the NMS learns what it would learn from the real
+            # thing. A file full of zeros would say "I am here and idle",
+            # which is the opposite of what a dark chassis means.
+            if self._is_dark(device):
+                skipped += 1
+                continue
             filepath = self.generate_device(device, topology)
             generated.append(filepath)
         if skipped:
@@ -476,6 +484,7 @@ class SNMPRecGenerator:
                                   DeviceType.FIREWALL, DeviceType.LOAD_BALANCER,
                                   DeviceType.OOB_SWITCH):
             entries += self._network_cpu_entries(device)
+            entries += self._network_sensor_entries(device)
 
         if device.device_type == DeviceType.SENSOR:
             entries += self._sensor_entries(device)
@@ -815,6 +824,19 @@ class SNMPRecGenerator:
                 updates[f"{UCD_DISK}.5.1"] = ("2",  str(disk_pct))
                 updates[f"{UCD_DISK}.6.1"] = ("2",  str(disk_total_kb))
                 updates[f"{UCD_DISK}.7.1"] = ("2",  str(disk_avail_kb))
+
+            # ENTITY-SENSOR-MIB temperature for network gear, patched every
+            # tick for the same reason the server block above is: a value
+            # written once at generation is a frozen number that reads as a
+            # healthy device for as long as nobody restarts the simulator.
+            if device.device_type in (DeviceType.SWITCH, DeviceType.ROUTER,
+                                      DeviceType.FIREWALL,
+                                      DeviceType.LOAD_BALANCER,
+                                      DeviceType.OOB_SWITCH):
+                updates["1.3.6.1.2.1.99.1.1.1.4.1"] = (
+                    "2", str(int(round((device.inlet_temp or 22.0) * 10))))
+                updates["1.3.6.1.2.1.99.1.1.1.4.2"] = (
+                    "2", str(int(round((device.cpu_temp or 45.0) * 10))))
 
             # CISCO-ENVMON-MIB temperature — Cisco switches / routers
             _CISCO_NET = (DeviceType.SWITCH, DeviceType.ROUTER,
@@ -2637,6 +2659,39 @@ class SNMPRecGenerator:
             _oid_entry(f"{UCD_MEM}.11.0", "2", str(mem_used // 1024)),
         ]
 
+    def _network_sensor_entries(self, device: "Device") -> List[OidEntry]:
+        """Chassis and die temperature for network gear, on ENTITY-SENSOR-MIB.
+
+        The vendor-neutral place this class of box reports how hot it is.
+        Arista, Juniper, Nokia and modern IOS-XE all populate it; the Cisco
+        boxes here also carry CISCO-ENVMON, and a poller may use either.
+
+        It exists because a console switch could be ramped to 93 C and nothing
+        anywhere would notice. The trap rule excluded the type - fixed
+        separately - and no OID carried the reading either, so a poller had
+        nothing to ask for. An operator watching that box saw a healthy switch.
+
+        Two sensors, at fixed indices, because a walk cannot tell them apart:
+        .1 is the chassis inlet and .2 the ASIC die, and a mapping that folded
+        both into one metric would file a 90 C die as room air.
+        """
+        return [
+            _oid_entry(f"{_ENTITY_SENSOR}.1.1", "2", "8"),   # type: celsius
+            _oid_entry(f"{_ENTITY_SENSOR}.1.2", "2", "8"),
+            _oid_entry(f"{_ENTITY_SENSOR}.2.1", "2", "9"),   # scale: units
+            _oid_entry(f"{_ENTITY_SENSOR}.2.2", "2", "9"),
+            _oid_entry(f"{_ENTITY_SENSOR}.3.1", "2", "1"),   # precision: 1 dp
+            _oid_entry(f"{_ENTITY_SENSOR}.3.2", "2", "1"),
+            # Values x10 so the decimal survives an integer encoding, which is
+            # what `precision` above declares.
+            _oid_entry(f"{_ENTITY_SENSOR}.4.1", "2",
+                       str(int(round((device.inlet_temp or 22.0) * 10)))),
+            _oid_entry(f"{_ENTITY_SENSOR}.4.2", "2",
+                       str(int(round((device.cpu_temp or 45.0) * 10)))),
+            _oid_entry(f"{_ENTITY_SENSOR}.5.1", "2", "1"),   # status: ok
+            _oid_entry(f"{_ENTITY_SENSOR}.5.2", "2", "1"),
+        ]
+
     def _sensor_entries(self, device: Device) -> List[OidEntry]:
         """Return vendor-specific OIDs for temp, humidity, dewpoint, and airflow."""
         entries: List[OidEntry] = []
@@ -2906,6 +2961,16 @@ class SNMPRecGenerator:
             os.replace(tmp_dir, dir_path)
         except Exception:
             pass  # non-fatal — SNMPSim will rebuild on next request
+
+    def _is_dark(self, device: "Device") -> bool:
+        """No live cord: nothing in this box is powered, including the BMC.
+
+        Asked of the state store rather than of the device, because losing a
+        feed is a property of the cabling and the relays, not of the chassis -
+        and the store is what tracks both.
+        """
+        from core.device_state_store import _is_unpowered
+        return _is_unpowered(device.name)
 
     def _atomic_write(self, filepath: str, entries: List[OidEntry]) -> None:
         """Write entries atomically: temp file → pre-build dbm index → rename.

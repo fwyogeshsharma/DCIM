@@ -136,11 +136,19 @@ DEFAULT_RULES: List[Rule] = [
     # (RPP/PDU/UPS/CRAH/chiller): those have no CPU and would emit a nonsensical
     # "CPU over-temperature" trap. Thermal alarms on power kit use their own metric
     # (e.g. the rack-PDU intake probe → pdu_temperature), not this rule.
+    # oob_switch is in this list because the console switches have an ASIC and
+    # a die sensor like everything else here, and because leaving them out made
+    # the simulator inconsistent with itself: APPLICABLE_TRAPS offers
+    # TEMPERATURE_ALERT for the type and the Inject Fault menu offers
+    # temp_high, so an operator could ramp an OOB switch to 93 C and watch
+    # nothing whatsoever happen. It stayed silent through a whole fault
+    # campaign for exactly that reason.
     _rule("HighTemperature",
           _threshold("temperature", ">", 90.0),
           "1.3.6.1.4.1.99999.1.3",
           severity="critical", priority=180,
-          device_types=["server", "switch", "router", "firewall", "load_balancer"]),
+          device_types=["server", "switch", "router", "firewall",
+                        "load_balancer", "oob_switch"]),
 
     # ── Chassis fan faults ────────────────────────────────────────────────────
     #
@@ -714,11 +722,15 @@ DEFAULT_RULES: List[Rule] = [
           device_types=["server"],
           recovery=True, recovery_of="FanFailure"),
 
+    # Same list as HighTemperature, and it has to stay that way: a recovery
+    # scoped more narrowly than the raise it clears leaves the excluded type
+    # able to raise an alarm and never able to end it.
     _rule("TemperatureNormal",
           _threshold("temperature", "<", 85.0),
           "1.3.6.1.4.1.99999.1.15",
           severity="informational", priority=100,
-          device_types=["server", "switch", "router", "firewall", "load_balancer"],
+          device_types=["server", "switch", "router", "firewall",
+                        "load_balancer", "oob_switch"],
           recovery=True, recovery_of="HighTemperature"),
 
     # ── Management layer: OOB switch link events ──────────────────────────────

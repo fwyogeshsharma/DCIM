@@ -41,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 from typing import Callable, Dict, List, Optional, TYPE_CHECKING
 
-from simulator.redfish_device import RedfishDevice
+from simulator.redfish_device import PowerOff, RedfishDevice
 
 if TYPE_CHECKING:
     from core.device_manager import Device
@@ -103,6 +103,14 @@ class _RedfishHandler(BaseHTTPRequestHandler):
         try:
             status, extra, payload = dev.dispatch(
                 method, self.path, self.headers, body)
+        except PowerOff:
+            # No power, no answer. The connection closes with nothing on it,
+            # which is what a poller sees when it reaches a dead chassis - an
+            # error document would be a working BMC describing its own outage.
+            log.debug("[Redfish] %s is unpowered - dropping the connection",
+                      getattr(dev.device, "name", "?"))
+            self.close_connection = True
+            return
         except Exception:
             log.exception("[Redfish] dispatch error for %s %s", method, self.path)
             status, extra, payload = 500, {}, {

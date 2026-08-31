@@ -34,6 +34,16 @@ if TYPE_CHECKING:
 Result = Tuple[int, dict, Optional[dict]]
 
 
+class PowerOff(Exception):
+    """Raised when a request reaches a BMC that has no power.
+
+    Its own type rather than a ConnectionError so the server layer can tell it
+    apart from a transport fault and answer the way a dead box does - by not
+    answering. Anything with a status code in it, 500 included, is a reply, and
+    a reply is proof of power.
+    """
+
+
 class RedfishDevice:
     """Routes Redfish requests for a single server and manages its sessions."""
 
@@ -369,6 +379,19 @@ class RedfishDevice:
     # ── main dispatch ──────────────────────────────────────────────────────
     def dispatch(self, method: str, path: str, headers,
                  body: Optional[dict]) -> Result:
+        # A BMC runs on standby power drawn from the chassis cords. Pull every
+        # cord and it stops answering with everything else - it does not sit
+        # there reporting PowerState: Off, because reporting anything requires
+        # the power that just went away.
+        #
+        # This is what makes a de-energised server look de-energised to a DCIM.
+        # Before it, cutting both feeds left the BMC serving Redfish happily
+        # and the platform saw a healthy machine; a fault campaign cut both
+        # cords on a dual-corded server and never raised a single alarm.
+        from core.device_state_store import _is_unpowered
+        if _is_unpowered(self.device.name):
+            raise PowerOff(self.device.name)
+
         # Normalise: drop query string, collapse trailing slash (keep root).
         path = path.split("?", 1)[0]
         if len(path) > 1 and path.endswith("/"):

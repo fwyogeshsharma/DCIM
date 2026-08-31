@@ -191,6 +191,12 @@ _plant_state_cache: Dict[str, dict] = {}
 # read it here — the same way they read _ext_state_cache.
 _liquid_server_cache: set = set()
 
+#: Loads with no live cord. Published here because the dataset generators have
+#: no store reference and must agree with it about which boxes are dark - a
+#: generator that kept writing a dataset for a de-energised server would have
+#: snmpsim answering on behalf of a machine with no power.
+_unpowered_cache: set = set()
+
 
 def _get_ext_state(device_name: str) -> dict:
     return _ext_state_cache.get(device_name, {})
@@ -198,6 +204,11 @@ def _get_ext_state(device_name: str) -> dict:
 
 def _is_liquid_server(device_name: str) -> bool:
     return device_name in _liquid_server_cache
+
+
+def _is_unpowered(device_name: str) -> bool:
+    """True when every cord feeding this load is switched off."""
+    return device_name in _unpowered_cache
 
 
 def _get_plant_state(device_name: str) -> dict:
@@ -558,6 +569,9 @@ class DeviceStateStore:
         # IT loads whose every feed sits on a switched-off outlet — see
         # _compute_unpowered_loads(). Same shape and purpose as the plant set above.
         self._load_unpowered_names: set = set()
+        #: Loads this store powered off because every cord went dead, so it
+        #: knows which ones are its to turn back on.
+        self._powered_off_by_cord: set = set()
         # {frozenset((load_id, pdu_id))} for cords whose outlet relay is open. Same
         # shape as _broken_power because it has the same consequence: the cord
         # carries nothing, so the parent must drop out of the load's active set and
@@ -2208,11 +2222,12 @@ class DeviceStateStore:
 
         dead: set = set()
         dead_cords: set = set()
-        if not off_by_pdu:
-            self._load_unpowered_names = dead
-            self._dead_cord_pairs = dead_cords
-            return
-        for dev in self._dm.get_all_devices():
+        # No open relay anywhere still has to run to the end: the loads that
+        # were dark a moment ago need their chassis powered back on and the
+        # published set needs emptying. Returning here left a restored server
+        # switched off for ever and the dataset generators still treating it as
+        # dark - the outage outlived the outage.
+        for dev in (self._dm.get_all_devices() if off_by_pdu else ()):
             if dev.device_type.value not in self._IT_LEAF_TYPES:
                 continue
             try:
@@ -2236,6 +2251,39 @@ class DeviceStateStore:
                 dead.add(dev.name)
         self._load_unpowered_names = dead
         self._dead_cord_pairs = dead_cords
+        global _unpowered_cache
+        _unpowered_cache = dead
+
+        # A load with no live cord is not a load drawing zero watts. It is off.
+        #
+        # Until this, cutting both cords on a dual-corded server zeroed its
+        # power and changed nothing else: the chassis still read On, the OS
+        # agent still answered SNMP, the BMC still served Redfish. A DCIM
+        # watching it saw a perfectly healthy machine that happened to be
+        # drawing nothing, which is the one thing a de-energised server cannot
+        # look like. A whole fault campaign cut both feeds and never produced
+        # an unreachable alarm.
+        #
+        # The BMC dies with it, deliberately: standby power comes from the same
+        # cords. A BMC that answers after both feeds are pulled would be
+        # running on nothing.
+        restored = self._powered_off_by_cord - dead
+        if dead or restored:
+            by_name = {d.name: d for d in self._dm.get_all_devices()}
+            for name in dead:
+                device = by_name.get(name)
+                if device is not None and getattr(device, "power_state", "On") != "Off":
+                    device.power_state = "Off"
+                    log.warning("[Power] %s lost every feed - chassis off", name)
+            # Back on when a cord returns, unless something else turned it off:
+            # a thermal trip needs a hand on the button, which is what makes it
+            # a trip rather than a hiccup.
+            for name in restored:
+                device = by_name.get(name)
+                if device is not None and name not in self._thermal_shutdown:
+                    device.power_state = "On"
+                    log.info("[Power] %s has a live feed again - chassis on", name)
+        self._powered_off_by_cord = set(dead)
 
     def _mcc_tie_state(self, dc: str, ctx: dict) -> tuple:
         """Which MCCs have a source, and whether the bus tie is closed.
