@@ -53,6 +53,17 @@ from core.trap_definitions import TrapType
 SYNTHETIC_PEN = 99999
 SYNTHETIC_BASE = f"1.3.6.1.4.1.{SYNTHETIC_PEN}"
 
+#: Which receptacle a SYNTHETIC PDU notification is about.
+#:
+#: Most recovery rules have no TrapType, so they are never rewritten to a
+#: vendor OID and go out on this tree. Their identity varbind has to live here
+#: too: a trap may only name varbinds its own enterprise could have sent, and
+#: hanging an APC leaf off a 99999 notification is a lookup that always misses -
+#: the same stranded-varbind fault that once had traps reporting "0 C, limit
+#: 0 C". Sits in the PDU ext block (99999.5.x) beside the readings it belongs
+#: with.
+SYNTH_PDU_OUTLET_NAME = f"{SYNTHETIC_BASE}.5.20"
+
 # ── IANA Private Enterprise Numbers ───────────────────────────────────────────
 # Keyed by the normalised vendor key returned by vendor_key().
 VENDOR_PEN: dict[str, int] = {

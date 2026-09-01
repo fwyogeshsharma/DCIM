@@ -1474,8 +1474,13 @@ def set_device_fault(device_id: str, body: FaultRequest):
                     detail=f"{dev.name} has no outlet {outlet} (1-{max(valid)}) - "
                            f"outlet numbers are 1-based, as silk-screened")
             st.pdu_fault_outlet[device_id] = int(outlet)
-        else:
-            st.pdu_fault_outlet.pop(device_id, None)
+        # NOT dropped on clear. The recovery rule fires a tick or two LATER, off
+        # the metric falling back, and its trap has to name the same receptacle
+        # the raise did - an alarm is keyed on (device, type, instance), so a
+        # clear that arrives without the outlet resolves a row that was never
+        # opened and leaves the real one standing. Dropping it here did exactly
+        # that: every raise said "Outlet 12" and the clear said nothing.
+        # It stays until the next outlet-scoped fault names a different one.
     # State conditions (latching ATS faults) toggle a modeled state rather than
     # ramping a metric; the store fires the raise/clear trap and runs any cascade.
     if "state" in spec:

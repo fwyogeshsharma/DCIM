@@ -525,6 +525,22 @@ class TrapEngine(QObject):
                 (_oid('1.3.6.1.6.3.1.1.4.1.0'), _oid(send_oid)),
                 (_oid('1.3.6.1.2.1.1.5.0'), rfc1902.OctetString(device.name)),
             ]
+            # A recovery for a per-outlet condition has to name the same outlet
+            # its raise did. Most recoveries have no TrapType of their own and so
+            # arrive here, on the deliberately minimal path - which meant an
+            # outlet-scoped clear could not carry the receptacle at all, and the
+            # DCIM (keying on device+type+instance) resolved a row nobody had
+            # opened while the real alarm stayed up.
+            # Named on the SYNTHETIC tree, not the vendor one. This path is by
+            # definition the unmapped path - send_oid is still 99999 - and a trap
+            # may only carry varbinds its own enterprise could have sent. An APC
+            # leaf hung off a 99999 notification is a lookup that always misses,
+            # which is the stranded-varbind fault that once printed "0 C, limit
+            # 0 C" on a device sitting at 93.
+            outlet_label = str(extra.get("pdu_outlet_instance", "") or "")
+            if outlet_label:
+                varbinds.append((_oid(vendor_oids.SYNTH_PDU_OUTLET_NAME),
+                                 rfc1902.OctetString(outlet_label)))
             proto_v2c.apiPDU.set_varbinds(pdu, varbinds)
             ntforg.NotificationOriginator().send_pdu(
                 self._snmp_engine, target, None, b'', pdu,
@@ -645,9 +661,10 @@ class TrapEngine(QObject):
                     _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
                 ]
                 # An over-current on a metered-by-outlet SKU belongs to a
-                # receptacle, not to the strip. A whole-strip load condition
-                # carries no outlet and must not pretend to.
-                if _outlet_no:
+                # receptacle. A whole-strip load condition and a bank breaker do
+                # NOT - they are about the strip and the branch - so they must not
+                # inherit an outlet just because one happens to be targeted.
+                if _outlet_no and trap_type == TrapType.PDU_OUTLET_CURRENT_HIGH:
                     vbs[4:4] = [_i(APC["rpdu2OutletNumber"], _outlet_no),
                                 _s(APC["rpdu2OutletName"], _outlet_name)]
                 return vbs
