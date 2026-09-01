@@ -399,6 +399,15 @@ class DeviceStateStore:
         # inlet_temp), e.g. pin a server to 99% CPU to drive a hotspot + traps.
         self.device_overrides: Dict[str, Dict[str, float]] = {}
 
+        # Which OUTLET a per-outlet PDU fault is about, {device_id: outlet index}.
+        # A rack PDU condition is not always about the strip: an outlet failure or
+        # an over-current on a metered-by-outlet SKU belongs to one receptacle, and
+        # a notification that cannot say which one leaves an operator to walk 42
+        # cords. Held here rather than in ext state because it is the identity of a
+        # fault, not a reading the tick recomputes - and because raise and clear
+        # must agree on it or the DCIM clears a different row than it opened.
+        self.pdu_fault_outlet: Dict[str, int] = {}
+
         # Inject Fault ramps (right-click → Inject Fault). Unlike device_overrides
         # (instant pin), these EASE a metric toward a target over several ticks so
         # it crosses the SNMP threshold organically — the rule engine then fires
@@ -2308,6 +2317,15 @@ class DeviceStateStore:
         any_ok = any(own.values())
         tie_closed = any_ok and not all(own.values())
         return {m: (own[m] or tie_closed) for m in mccs}, tie_closed
+
+    def _pdu_outlet_label(self, device: "Device") -> str:
+        """The outlet a per-outlet fault on this PDU names, as a vendor label.
+
+        Empty when the condition is about the strip rather than a receptacle,
+        which is most of them - a phase imbalance has no outlet to blame.
+        """
+        idx = self.pdu_fault_outlet.get(device.id)
+        return f"Outlet {idx}" if idx else ""
 
     def ext_state_for(self, device: "Device") -> dict:
         """The LIVE ext-state dict for a device, created if the tick has not yet.
@@ -7177,6 +7195,7 @@ class DeviceStateStore:
                     pdu_smoke=ext.get("pdu_smoke", "no"),
                     pdu_outlet_current=float(ext.get("pdu_outlet_current", 0.0)),
                     pdu_breaker_rating_a=float(getattr(device, "pdu_breaker_a", 0.0) or 0.0),
+                    pdu_outlet_instance=self._pdu_outlet_label(device),
                     pdu_ground_fault=ext.get("pdu_ground_fault", "no"),
                     pdu_frequency=float(ext.get("pdu_frequency", 50.0)),
                     pdu_temperature=float(ext.get("pdu_temperature", 0.0)),

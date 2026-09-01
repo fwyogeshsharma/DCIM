@@ -1,6 +1,8 @@
 """Device CRUD REST endpoints."""
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -1161,6 +1163,15 @@ def switch_outlet(device_id: str, body: OutletSwitch):
     ext["pdu_outlets_off"] = sorted(off)
     s.notify_ui("console_log",
                 f"[PDU] {dev.name} outlet {body.outlet} -> {body.state}", "info")
+    # A switched rack PDU ANNUNCIATES a relay change - APC rPDU2 outlet traps,
+    # Raritan outletSensorStateChange - and names the outlet in the notification.
+    # Without this the relay moved, the load dropped, and the NMS saw nothing at
+    # all: the outlet went dark and the only record was a line in a local log.
+    if s.trap_engine is not None:
+        from core.trap_definitions import TrapType as _TT
+        s.trap_engine.send_trap(
+            dev, _TT.PDU_OUTLET_ON if body.state == "on" else _TT.PDU_OUTLET_OFF,
+            outlet_label=f"Outlet {body.outlet}")
     return OkResponse(message=f"{dev.name} outlet {body.outlet} {body.state}")
 
 
@@ -1314,6 +1325,7 @@ FAULT_MAP = {
     "pdu_breaker_trip": {"pducond": "breaker_trip", "label": "Breaker Trip",
                          "types": ["pdu", "floor_pdu"]},
     "pdu_outlet_fail":  {"override": "pdu_outlet_failure", "value": "failed",
+                         "scope": "outlet",
                          "label": "Outlet Failure",     "types": ["pdu", "floor_pdu"]},
     "pdu_outlet_off":   {"override": "pdu_outlet_status",  "value": "off",
                          "label": "Outlet Off",         "types": ["pdu", "floor_pdu"]},
@@ -1337,6 +1349,7 @@ FAULT_MAP = {
     # so the injected fault was barely separable from the walk. A fault you cannot
     # tell apart from noise is a poor fault, whatever the rule says.
     "pdu_current_high": {"override": "pdu_outlet_current", "value": 38.0,
+                         "scope": "outlet",
                          "label": "Outlet Current High", "types": ["pdu", "floor_pdu"]},
     "pdu_temp_high":    {"override": "pdu_temperature",    "value": 37.0,
                          "label": "Intake Temp High",    "types": ["pdu", "floor_pdu"]},
@@ -1364,6 +1377,11 @@ _STATE_TO_FAULT = {v["state"]: k for k, v in FAULT_MAP.items() if "state" in v}
 class FaultRequest(BaseModel):
     fault: str
     action: str = "start"   # "start" | "clear"
+    #: Which sub-object the condition is about, for faults that have one - today
+    #: the outlet number on a rack PDU. Omitted, an outlet-scoped fault picks a
+    #: receptacle that actually feeds something, because a failed outlet with
+    #: nothing plugged into it is not a fault anybody is paged for.
+    instance: Optional[int] = None
 
 
 @router.get("/{device_id}/faults")
@@ -1374,7 +1392,10 @@ def get_device_faults(device_id: str):
     if dev is None:
         raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
     dtype = dev.device_type.value
-    available = [{"fault": k, "label": v["label"]}
+    available = [{"fault": k, "label": v["label"],
+                  # "outlet" means the caller may name a receptacle; anything
+                  # else is about the device as a whole.
+                  "scope": v.get("scope", "device")}
                  for k, v in FAULT_MAP.items() if dtype in v["types"]]
     st = getattr(s, "state_store", None)
     active_metrics = st.get_faults(device_id) if st else {}
@@ -1436,6 +1457,25 @@ def set_device_fault(device_id: str, body: FaultRequest):
     if st is None:
         raise HTTPException(status_code=503, detail="State store not initialized")
     on = body.action != "clear"
+    # Per-outlet conditions name a receptacle. Resolved once here so the raise and
+    # the clear agree on it - the DCIM keys an alarm on (device, type, instance),
+    # so disagreeing would clear a different row than the one that was opened.
+    if spec.get("scope") == "outlet":
+        if on:
+            valid = [o.index for o in (dev.outlets or [])]
+            outlet = body.instance
+            if outlet is None:
+                loads = s.topology.outlet_loads(dev.id) if s.topology else {}
+                fed = sorted(i for i in valid if (loads.get(i) or {}).get("load_name"))
+                outlet = fed[0] if fed else (valid[0] if valid else 1)
+            elif valid and outlet not in valid:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{dev.name} has no outlet {outlet} (1-{max(valid)}) - "
+                           f"outlet numbers are 1-based, as silk-screened")
+            st.pdu_fault_outlet[device_id] = int(outlet)
+        else:
+            st.pdu_fault_outlet.pop(device_id, None)
     # State conditions (latching ATS faults) toggle a modeled state rather than
     # ramping a metric; the store fires the raise/clear trap and runs any cascade.
     if "state" in spec:
@@ -1474,6 +1514,9 @@ def set_device_fault(device_id: str, body: FaultRequest):
     # the same device_overrides path the Metric-Tick panel uses; the rule engine then
     # fires the alarm's own raise trap on set and its recovery trap on clear.
     if "override" in spec:
+        _where = ""
+        if spec.get("scope") == "outlet" and on:
+            _where = f" outlet {st.pdu_fault_outlet.get(device_id)}"
         ov = st.device_overrides
         if on:
             ov.setdefault(device_id, {})[spec["override"]] = spec["value"]
@@ -1484,7 +1527,7 @@ def set_device_fault(device_id: str, body: FaultRequest):
                 if not dov:
                     ov.pop(device_id, None)
         verb = "Injecting" if on else "Clearing"
-        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}{_where}")
     if not on:
         st.clear_fault(device_id, spec["metric"])
         return OkResponse(message=f"Clearing {spec['label']} on {dev.name}")

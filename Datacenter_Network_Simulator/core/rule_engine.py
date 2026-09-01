@@ -618,6 +618,7 @@ class RuleEngine:
             "pdu_smoke":             fact.pdu_smoke,
             "pdu_outlet_current":    fact.pdu_outlet_current,
             "pdu_breaker_rating_a":  fact.pdu_breaker_rating_a,
+            "pdu_outlet_instance":   fact.pdu_outlet_instance,
             "pdu_ground_fault":      fact.pdu_ground_fault,
             "pdu_frequency":         fact.pdu_frequency,
             "pdu_temperature":       fact.pdu_temperature,
@@ -678,6 +679,11 @@ class RuleEngine:
         # to travel with the action or rPDULoadStatusLoad goes out as 0.
         if fact.device_type in ("pdu", "floor_pdu"):
             extra.setdefault("pdu_outlet_current", fact.pdu_outlet_current)
+            # Which receptacle, when the condition is about one. The rule fires on
+            # a strip-level metric either way; the identity rides alongside so the
+            # notification can name the outlet.
+            if fact.pdu_outlet_instance:
+                extra.setdefault("pdu_outlet_instance", fact.pdu_outlet_instance)
         return TrapAction(rule=rule, device_id=fact.device_id, extra=dict(extra))
 
     # ── Generic scalar rule evaluator ─────────────────────────────────────────

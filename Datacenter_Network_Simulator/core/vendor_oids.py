@@ -140,6 +140,16 @@ APC = {
     "rpdu2BankState":   "1.3.6.1.4.1.318.1.1.26.8.3.1.4",    # rPDU2BankStatusLoadState
     "rpdu2BankCurrent": "1.3.6.1.4.1.318.1.1.26.8.3.1.5",    # rPDU2BankStatusCurrent (0.1 A)
     "rpdu2OutletState": "1.3.6.1.4.1.318.1.1.26.9.2.3.1.5",  # rPDU2OutletSwitchedStatusState
+    # Which outlet a notification is about. Anchored on the State column above:
+    # rPDU2OutletSwitchedStatusTable is (Index, ModuleIndex, OutletIndex,
+    # OutletName, State), so the two identity columns sit at .3 and .4.
+    # UNVERIFIED against PowerNet-MIB itself - the column ORDER is the
+    # conventional rPDU2 status-table shape and is consistent with .5 being
+    # State, but no MIB was available to confirm it. Wrong here means an
+    # operator reads the right outlet number off the wrong leaf, so check it
+    # against a real strip before trusting the OID rather than the value.
+    "rpdu2OutletNumber":"1.3.6.1.4.1.318.1.1.26.9.2.3.1.3",  # rPDU2OutletSwitchedStatusOutletIndex
+    "rpdu2OutletName":  "1.3.6.1.4.1.318.1.1.26.9.2.3.1.4",  # rPDU2OutletSwitchedStatusOutletName
     "rpdu2SensorTempC": "1.3.6.1.4.1.318.1.1.26.10.2.2.1.8", # rPDU2SensorTempHumidityStatusTempC
     "rpdu2SensorHumid": "1.3.6.1.4.1.318.1.1.26.10.2.2.1.10",# ...StatusRelativeHumidity
 }

@@ -93,6 +93,10 @@ class DeviceFact:
     # Carried on the fact so an overload rule can measure a strip against its
     # OWN nameplate instead of a fleet-wide constant.
     pdu_breaker_rating_a: float = 0.0     # A
+    # The receptacle a per-outlet condition names ("Outlet 12"), empty when the
+    # condition belongs to the strip. Travels to the trap so the notification
+    # can say which outlet, the way a real metered-by-outlet PDU does.
+    pdu_outlet_instance: str = ""
     pdu_ground_fault: str = "no"          # no | yes
     pdu_frequency: float = 50.0           # Hz
     pdu_temperature: float = 0.0          # °C ambient inside PDU

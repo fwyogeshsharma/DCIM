@@ -334,6 +334,8 @@ class TrapEngine(QObject):
             kwargs["down_count"] = action.extra.get("down_count", 0)
         if "pdu_outlet_current" in action.extra:
             kwargs["outlet_current"] = action.extra["pdu_outlet_current"]
+        if "pdu_outlet_instance" in action.extra:
+            kwargs["outlet_label"] = action.extra["pdu_outlet_instance"]
         if "metric_value" in action.extra:
             kwargs["metric_value"] = action.extra["metric_value"]
         elif "cpu_usage" in action.extra:
@@ -599,6 +601,15 @@ class TrapEngine(QObject):
         def _g(oid, val):
             return (_oid(oid), rfc1902.Gauge32(max(0, int(val))))
 
+        # Which receptacle this notification is about, when it is about one.
+        # A metered-by-outlet strip names the outlet; a phase imbalance has none
+        # to name, and inventing one would be worse than leaving it out.
+        _outlet_name = str(kwargs.get("outlet_label", "") or "")
+        _outlet_no = 0
+        if _outlet_name:
+            _digits = "".join(c for c in _outlet_name if c.isdigit())
+            _outlet_no = int(_digits) if _digits else 0
+
         mv = kwargs.get("metric_value", None)
         _PDU_LOAD = (TrapType.PDU_LOAD_HIGH, TrapType.PDU_LOAD_CRITICAL,
                      TrapType.PDU_LOAD_NORMAL, TrapType.PDU_OUTLET_CURRENT_HIGH,
@@ -626,13 +637,20 @@ class TrapEngine(QObject):
                 state = {TrapType.PDU_LOAD_HIGH: 3, TrapType.PDU_LOAD_CRITICAL: 4,
                          TrapType.PDU_OUTLET_CURRENT_HIGH: 4,
                          TrapType.PDU_BREAKER_TRIPPED: 4}.get(trap_type, 2)
-                return [
+                vbs = [
                     _s(APC["identName"], device.name),
                     _s(APC["identSerial"], f"SN-{device.name}"),
                     _g(APC["loadStatusLoad"], amps10),
                     _i(APC["loadStatusState"], state),
                     _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
                 ]
+                # An over-current on a metered-by-outlet SKU belongs to a
+                # receptacle, not to the strip. A whole-strip load condition
+                # carries no outlet and must not pretend to.
+                if _outlet_no:
+                    vbs[4:4] = [_i(APC["rpdu2OutletNumber"], _outlet_no),
+                                _s(APC["rpdu2OutletName"], _outlet_name)]
+                return vbs
             if trap_type in _PDU_ENV or trap_type in _AMBIENT or trap_type in _HUMID:
                 temp = _num(mv if trap_type in (_PDU_ENV[:2] + _AMBIENT) else
                             getattr(device, "pdu_temperature", 0))
@@ -644,13 +662,22 @@ class TrapEngine(QObject):
                     _g(APC["probeHumidity"], humid),
                     _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
                 ]
-            if trap_type in (TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF):
-                return [
-                    _s(APC["identName"], device.name),
+            if trap_type in (TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF,
+                             TrapType.PDU_OUTLET_FAILURE):
+                # A switched-outlet notification is ABOUT one receptacle - that is
+                # the entire content of the event - so the identity columns are not
+                # optional here the way they are on a load condition.
+                vbs = [_s(APC["identName"], device.name)]
+                if _outlet_no:
+                    vbs += [_i(APC["rpdu2OutletNumber"], _outlet_no),
+                            _s(APC["rpdu2OutletName"], _outlet_name)]
+                vbs += [
                     _i(APC["rpdu2OutletState"],
                        1 if trap_type == TrapType.PDU_OUTLET_ON else 2),
-                    _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
+                    _s(APC["trapArgs"],
+                       f"{trap_type.value} on {_outlet_name or device.name}"),
                 ]
+                return vbs
             return None
 
         # ── Raritan / PDU2-MIB ───────────────────────────────────────────────
