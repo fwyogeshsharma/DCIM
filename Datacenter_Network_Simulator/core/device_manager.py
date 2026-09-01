@@ -955,9 +955,22 @@ _MODEL_RATED_W = {
     "px3-5878":     22000,   # UNVERIFIED — real unit looks like 6xC13/18xC19 @415V, not this
     "ap8959":        8600,   # UNVERIFIED
     "ap8681":        3700,   # APC Metered-by-Outlet 1U, 16A 230V single-phase
-    "px3-5190r":     8600,   # Raritan Switched 1U, 30A 208V
-    "px3-5161r":     5700,   # Raritan Switched 1U, 16A 208V
-    "px2-5170cr":    8600,   # Raritan Switched 0U, 30A 208V
+    # VERIFIED 2026-09-01 against the breaker each one actually has. All three
+    # Raritan strips below are SINGLE-phase 208 V and were carrying three-phase
+    # class numbers - px2-5170cr claimed 8.6 kW on a 30 A 208 V inlet, which is a
+    # 6240 VA nameplate. North American rack PDUs are rated for continuous duty
+    # at 80% of the breaker (NEC 210.20(A)), so the usable figure is 24 A x 208 V
+    # = 4992 VA - the number this catalog already carries for the ap8941, which
+    # is the same electrical spec from the other vendor.
+    #
+    # It was not a harmless label. rated_power_w is the denominator of load%, and
+    # an injected 85% load derives its current back out of it: against 8600 W
+    # that produced 42.6 A on a 30 A strip, so one injected fault raised Load
+    # High AND tripped the over-current rule. The rating has to agree with the
+    # breaker or the two alarms contradict each other.
+    "px3-5190r":     4992,   # Raritan Switched 1U, 30A 208V 1-phase (24A cont.)
+    "px3-5161r":     2662,   # Raritan Switched 1U, 16A 208V 1-phase (12.8A cont.)
+    "px2-5170cr":    4992,   # Raritan Switched 0U, 30A 208V 1-phase (24A cont.)
     "epdu g3 ma 1u 32a": 7400,
     "epdu g3 mi 1u 32a": 7400,
     "epdu g3 ma 1u 16a": 3700,
