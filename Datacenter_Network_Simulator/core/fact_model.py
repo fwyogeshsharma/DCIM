@@ -88,7 +88,11 @@ class DeviceFact:
     pdu_breaker_status: str = "ok"        # ok | tripped
     pdu_outlet_failure: str = "ok"        # ok | failed
     pdu_smoke: str = "no"                 # no | yes
-    pdu_outlet_current: float = 0.0       # A
+    pdu_outlet_current: float = 0.0       # A, PER PHASE
+    # Per-phase input breaker rating (A) from the SKU catalog; 0 = unknown.
+    # Carried on the fact so an overload rule can measure a strip against its
+    # OWN nameplate instead of a fleet-wide constant.
+    pdu_breaker_rating_a: float = 0.0     # A
     pdu_ground_fault: str = "no"          # no | yes
     pdu_frequency: float = 50.0           # Hz
     pdu_temperature: float = 0.0          # °C ambient inside PDU

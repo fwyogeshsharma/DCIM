@@ -23,6 +23,17 @@ def _threshold(metric: str, op: str, value: float, duration: float = 0.0) -> Con
                      threshold=value, duration_sec=duration)
 
 
+def _nameplate(metric: str, op: str, nameplate_metric: str,
+               scale: float = 1.0, fallback: float = 0.0) -> Condition:
+    """Compare a metric against the DEVICE'S OWN nameplate, scaled.
+
+    `fallback` applies when the device does not carry that nameplate, so a SKU
+    missing from the catalog still evaluates rather than silently never firing.
+    """
+    return Condition("threshold", metric=metric, operator=op,
+                     threshold=fallback, threshold_metric=nameplate_metric,
+                     threshold_scale=scale)
+
 def _state_change(metric: str, from_s: str | None, to_s: str | None) -> Condition:
     return Condition("state_change", metric=metric, from_state=from_s, to_state=to_s)
 
@@ -570,28 +581,34 @@ DEFAULT_RULES: List[Rule] = [
           device_types=["pdu", "floor_pdu"],
           recovery=True, recovery_of="PDUSmokeDetected"),
 
-    # KNOWN MISCALIBRATION — the clear below is correct, the ALARM is not.
+    # A strip's overload reference is its OWN input breaker, per phase, so both
+    # rules read the rating off the device (pdu_breaker_rating_a, filled from the
+    # SKU catalog) instead of a fleet-wide constant. The constants below are only
+    # the fallback for a SKU the catalog does not name.
     #
-    # pdu_outlet_current is computed as a SINGLE-PHASE EQUIVALENT, I = P/(V*PF) on
-    # the strip's whole throughput, to line up with the EV2 branch-CT model. The
-    # deployed strips (APC AP8886, 22 kW) are 3-phase, where 32 A is the PER-PHASE
-    # rating — the true per-phase current is P/(3*V_LN*PF), i.e. a THIRD of what
-    # this metric carries. So a rack pulling 7.5 kW per side reads 34 A here against
-    # a real 11 A, and 4 of the seeded racks sit permanently above the threshold:
-    # the alarm is always raised and this clear can never fire for them.
+    # This replaces a known miscalibration. pdu_outlet_current used to be a
+    # SINGLE-PHASE EQUIVALENT of the whole strip, I = P/(V*PF), while the 32 A it
+    # was compared against is a PER-PHASE rating. On the 3-phase AP8886 that
+    # over-read by exactly 3x, so a 27%-loaded strip reported 31.9 A against its
+    # 32 A breaker and several seeded racks sat permanently over the threshold —
+    # the alarm could not clear, because the current could never fall back under
+    # the 30 A clear point. The metric is now per phase (see DeviceStateStore) and
+    # the mixed fleet is handled properly: 32 A for the 3-phase AP8886, 30 A for
+    # the single-phase AP8941 and PX2-5170CR, which one constant could never be.
     #
-    # Left as-is deliberately. Correcting it means either dividing the metric by 3
-    # for 3-phase SKUs (touches the EV2 CT reconciliation, which is load-bearing) or
-    # deriving the threshold from the SKU's own rating (which then largely duplicates
-    # PDULoadHigh/Critical). That is a power-model decision, not a trap-rule one.
+    # The clear sits at 90% of the rating, not at the rating itself, so a strip
+    # hovering on its breaker cannot chatter alarm/clear each tick — the same
+    # inset convention as the voltage and imbalance pairs above.
     _rule("PDUOutletCurrentHigh",
-          _threshold("pdu_outlet_current", ">", 32.0),   # 32A rack-PDU breaker
+          _nameplate("pdu_outlet_current", ">", "pdu_breaker_rating_a",
+                     scale=1.0, fallback=32.0),
           "1.3.6.1.4.1.99999.6.12",
           severity="major", priority=170,
           device_types=["pdu", "floor_pdu"]),
 
     _rule("PDUOutletCurrentNormal",
-          _threshold("pdu_outlet_current", "<", 30.0),
+          _nameplate("pdu_outlet_current", "<", "pdu_breaker_rating_a",
+                     scale=0.9, fallback=30.0),
           "1.3.6.1.4.1.99999.6.30",
           severity="informational", priority=100,
           device_types=["pdu", "floor_pdu"],

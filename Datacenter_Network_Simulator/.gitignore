@@ -27,6 +27,8 @@ dist/
 
 # ── Generated runtime data ───────────────────────────────────────────────────
 datasets/
+# Operator settings (trap receiver, ...) — per-install, not source.
+sim_settings.json
 
 # ── Claude Code traces ───────────────────────────────────────────────────────
 .claude/

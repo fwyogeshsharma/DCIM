@@ -1057,8 +1057,14 @@ class SNMPRecGenerator:
                     updates[f"{_PDU_ENT}.9.0"]  = ("2", str(pdu_cur))
                     updates[f"{_PDU_ENT}.10.0"] = ("2", str(pdu_gf))
                 # Derived power metrics
-                pdu_real_w    = int(round(pdu_volt * ext.get("pdu_outlet_current", 10.0) * ext.get("pdu_power_factor", 0.95)))
-                pdu_appar_va  = int(round(pdu_volt * ext.get("pdu_outlet_current", 10.0)))
+                # pdu_outlet_current is PER PHASE, so the device-level power and
+                # apparent power are the sum across phases. Multiplying a single
+                # phase by the line voltage under-reports a 3-phase strip by 3x —
+                # and rPDU2DeviceStatusPower is what the DCIM divides by the
+                # nameplate to derive load%, so a 28%-loaded PDU would read 9%.
+                _pdu_ph = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+                pdu_real_w    = int(round(_pdu_ph * pdu_volt * ext.get("pdu_outlet_current", 10.0) * ext.get("pdu_power_factor", 0.95)))
+                pdu_appar_va  = int(round(_pdu_ph * pdu_volt * ext.get("pdu_outlet_current", 10.0)))
                 pdu_outlet_w  = pdu_real_w  # per-outlet (single outlet model)
                 pdu_energy_x10 = int(round(ext.get("pdu_energy_kwh", 0.0) * 10))
                 pdu_freq_x10  = int(round(ext.get("pdu_frequency", 50.0) * 10))

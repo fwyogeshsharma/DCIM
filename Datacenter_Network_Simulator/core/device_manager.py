@@ -1040,6 +1040,58 @@ _DIST_RATED_TYPES = {DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.RPP,
                      DeviceType.ATS, DeviceType.MCC, DeviceType.MPP}
 
 
+#: Supply phases and per-phase breaker rating (A) per rack/floor-PDU SKU.
+#:
+#: A strip's overload reference is its OWN input breaker, per phase — not a
+#: fleet-wide constant. Both numbers are already stated in the _MODEL_RATED_W
+#: comments above; this makes them machine-readable so the current a PDU reports
+#: and the current it alarms on are derived from the same nameplate.
+#:
+#: Phases matter twice over. A 3-phase strip carries its load on three
+#: conductors, so per-phase current is a THIRD of the single-phase equivalent —
+#: computing it single-phase and then comparing against a per-phase breaker
+#: over-reads by 3x, which is how a 27%-loaded AP8886 read as sitting on its
+#: 32 A breaker.
+_MODEL_PHASES_BREAKER: dict[str, tuple[int, float]] = {
+    # ── Rack PDU (0U/1U) ──
+    "ap8886":       (3, 32.0),   # 22.0 kW, 230 V 3-phase, 32 A/phase
+    "ap8865":       (3, 30.0),   # 8.6 kW, 208 V 3-phase, 30 A/phase
+    "ap8941":       (1, 30.0),   # 4992 VA, 208 V 1-phase, L6-30P
+    "ap8959":       (1, 30.0),   # 208 V 1-phase 30 A
+    "ap8681":       (1, 16.0),   # 3.7 kW, 230 V 1-phase 16 A
+    "px3-5878":     (3, 32.0),   # UNVERIFIED — rating unconfirmed, see above
+    "px3-5190r":    (1, 30.0),
+    "px3-5161r":    (1, 16.0),
+    "px2-5170cr":   (1, 30.0),
+    "epdu g3 ma 1u 32a": (1, 32.0),
+    "epdu g3 mi 1u 32a": (1, 32.0),
+    "epdu g3 ma 1u 16a": (1, 16.0),
+    "geist rpdu2 30a":   (1, 30.0),
+    "geist rpdu2 15a":   (1, 15.0),
+    "sentry pt40":       (1, 30.0),
+    "sentry 4805-xls":   (1, 30.0),
+}
+
+
+def pdu_phases_breaker(device_type: "DeviceType",
+                       model_name: str = "") -> tuple[int, float]:
+    """(phases, per-phase breaker A) for a PDU SKU.
+
+    Returns (0, 0.0) for anything not in the catalog, which callers read as "no
+    nameplate known" and fall back on. Deliberately NOT guessed from the wattage:
+    8.6 kW is a 3-phase 30 A strip in one SKU and a 1-phase 40 A one in another,
+    so a guess would be wrong silently rather than absent honestly.
+    """
+    if device_type not in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+        return (0, 0.0)
+    m = (model_name or "").lower()
+    if m:
+        for key, spec in _MODEL_PHASES_BREAKER.items():
+            if key in m:
+                return spec
+    return (0, 0.0)
+
+
 def rated_capacity_w(device_type: "DeviceType", model_name: str = "") -> int:
     """Rated continuous THROUGHPUT (W) for a distribution/backup SKU, for filling
     an unset rated_power_w. 0 if the type isn't a distribution node or the model
@@ -1119,6 +1171,11 @@ class Device:
     # nameplate sum (÷0.8) and freeze at that install baseline. IT devices leave
     # this 0 (they are loads, not distribution nodes).
     rated_power_w: int = 0
+    # Supply phases and per-phase input breaker (A) for a PDU. 0 = SKU not in the
+    # catalog. Current is derived per PHASE from these, and the overload rules
+    # measure against this device's own breaker rather than a fleet constant.
+    pdu_phases: int = 0
+    pdu_breaker_a: float = 0.0
     # NO power_source / power_source_a / power_source_b. Which PDU feeds a device is a
     # fact about the CORD, so it is read from the power edge — TopologyEngine.power_feeds
     # (psu index -> supply id/name/model, outlet, A|B side) — exactly as PowerSupply
@@ -1202,6 +1259,13 @@ class Device:
         # and fall back to that self-derivation in the power model.
         if (not self.rated_power_w or self.rated_power_w <= 0):
             self.rated_power_w = rated_capacity_w(self.device_type, self.model_name)
+        # Supply phases and input-breaker rating, from the same per-SKU catalog.
+        # Both stay 0 for an unknown SKU; the current model treats that as
+        # single-phase with no breaker reference rather than inventing one.
+        if not self.pdu_phases or not self.pdu_breaker_a:
+            _ph, _br = pdu_phases_breaker(self.device_type, self.model_name)
+            self.pdu_phases = self.pdu_phases or _ph
+            self.pdu_breaker_a = self.pdu_breaker_a or _br
         # Normalize interface_groups (str → InterfaceType)
         if (self.device_type in FACILITY_PASSIVE_TYPES
                 or self.modbus_role == "rtu_slave"

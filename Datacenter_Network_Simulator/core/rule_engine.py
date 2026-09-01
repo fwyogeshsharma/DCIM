@@ -66,6 +66,14 @@ class Condition:
     metric: str = ""
     operator: str = ">"
     threshold: float = 0.0
+    #: Compare against ANOTHER metric on the same device instead of the constant
+    #: above, scaled by threshold_scale. This is how a rule states "over its own
+    #: nameplate": a rack PDU's overload reference is its own input breaker, which
+    #: differs per SKU, so a fleet-wide constant is right for one strip and wrong
+    #: for the next. Falls back to `threshold` when the metric is absent or zero,
+    #: so a device whose nameplate is unknown keeps the constant.
+    threshold_metric: str = ""
+    threshold_scale: float = 1.0
     duration_sec: float = 0.0
     from_state: Optional[str] = None
     to_state: Optional[str] = None
@@ -154,6 +162,11 @@ def _condition_to_dict(c: Condition) -> dict:
         "metric": c.metric,
         "operator": c.operator,
         "threshold": c.threshold,
+        # Must round-trip: a ruleset exported and re-imported without these
+        # would silently fall back to the constant threshold, re-applying one
+        # fleet-wide breaker rating to every PDU SKU.
+        "threshold_metric": c.threshold_metric,
+        "threshold_scale": c.threshold_scale,
         "duration_sec": c.duration_sec,
         "from_state": c.from_state,
         "to_state": c.to_state,
@@ -171,6 +184,8 @@ def _condition_from_dict(d: dict) -> Condition:
         metric=d.get("metric", ""),
         operator=d.get("operator", ">"),
         threshold=float(d.get("threshold", 0)),
+        threshold_metric=d.get("threshold_metric", ""),
+        threshold_scale=float(d.get("threshold_scale", 1.0)),
         duration_sec=float(d.get("duration_sec", 0)),
         from_state=d.get("from_state"),
         to_state=d.get("to_state"),
@@ -602,6 +617,7 @@ class RuleEngine:
             "pdu_outlet_failure":    fact.pdu_outlet_failure,
             "pdu_smoke":             fact.pdu_smoke,
             "pdu_outlet_current":    fact.pdu_outlet_current,
+            "pdu_breaker_rating_a":  fact.pdu_breaker_rating_a,
             "pdu_ground_fault":      fact.pdu_ground_fault,
             "pdu_frequency":         fact.pdu_frequency,
             "pdu_temperature":       fact.pdu_temperature,
@@ -656,6 +672,12 @@ class RuleEngine:
         state.last_fire_ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now))
         state.last_fire_epoch = now
         log.debug("[RuleEngine] Rule '%s' fired for device %s", rule.rule_name, fact.device_id)
+        # An APC rPDU / Raritan PX notification carries the live load CURRENT, not
+        # the load percentage the rule tripped on. That current lives on the fact,
+        # never on the Device record the trap engine builds varbinds from, so it has
+        # to travel with the action or rPDULoadStatusLoad goes out as 0.
+        if fact.device_type in ("pdu", "floor_pdu"):
+            extra.setdefault("pdu_outlet_current", fact.pdu_outlet_current)
         return TrapAction(rule=rule, device_id=fact.device_id, extra=dict(extra))
 
     # ── Generic scalar rule evaluator ─────────────────────────────────────────
@@ -741,7 +763,16 @@ class RuleEngine:
             if val is None:
                 return False
             override = self.get_device_threshold(device_id, rule_name, field_path) if rule_name else None
-            threshold = override if override is not None else cond.threshold
+            if override is not None:
+                # An operator-written threshold (SNMP SET) outranks the nameplate:
+                # they configured this device deliberately.
+                threshold = override
+            else:
+                threshold = cond.threshold
+                if cond.threshold_metric:
+                    nameplate = metrics.get(cond.threshold_metric)
+                    if isinstance(nameplate, (int, float)) and nameplate > 0:
+                        threshold = nameplate * cond.threshold_scale
             return _compare(val, cond.operator, threshold)
 
         if t == "state_change":

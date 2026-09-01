@@ -6536,8 +6536,16 @@ class DeviceStateStore:
                 st["pdu_power_factor"] = 0.701; changed = True
             if st.get("pdu_phase_imbalance", 0.0) > 19.9:          # imbalance > 20
                 st["pdu_phase_imbalance"] = 19.9; changed = True
-            if st.get("pdu_outlet_current", 0.0) > 31.9:           # current > 32A breaker
-                st["pdu_outlet_current"] = 31.9; changed = True
+            # pdu_outlet_current is NOT scrubbed, for the same reason the facility
+            # electrical loading above is not: it is computed per phase from the
+            # live power graph, not walked, so there is no spurious excursion to
+            # suppress. The old ceiling of 31.9 A sat between the raise (>32) and
+            # the clear (<30) of the outlet-current rules, so a strip whose real
+            # current reached it was parked in a dead band — unable to raise on its
+            # own and, once a fault was injected, unable to ever clear. A strip
+            # genuinely over its breaker should read as over its breaker.
+            # The random-walk branch (unrated SKU) tops out at 28 A by construction
+            # and cannot reach any breaker rating in the catalog.
             clamp("pdu_frequency", 49.6, 50.9, 50.0)               # fault < 49.5
             if st.get("pdu_temperature", 0.0) > 34.9:              # temp > 35
                 st["pdu_temperature"] = 34.9; changed = True
@@ -6941,12 +6949,19 @@ class DeviceStateStore:
 
             if mf["pdu_outlet_current"]:
                 if _pdu_rated > 0:
-                    # Live: single-phase equivalent I = P / (V·PF), matching the EV2
-                    # branch CT model (one CT per rack PDU) so the PDU's own current
-                    # and the EV2 clamp agree, and V·I·PF reconciles to the real draw.
+                    # Live PER-PHASE current: I = P / (phases·V·PF). A 3-phase strip
+                    # carries the load on three conductors, so the single-phase
+                    # equivalent this used to report over-read by 3x and put a
+                    # 27%-loaded AP8886 on its 32 A breaker — load% and current, both
+                    # derived from the same draw, disagreed by exactly the phase
+                    # count. Unknown SKUs stay single-phase (phases=0 → 1), which is
+                    # the old behaviour for anything the catalog does not name.
+                    # Still reconciles with the EV2 branch CT: that clamp reads one
+                    # phase too.
                     _v = st.get("pdu_voltage", 230.0)
                     _pf = st.get("pdu_power_factor", 0.95)
-                    oc = max(0.0, _pdu_thr / max(1.0, _v * _pf)
+                    _ph = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+                    oc = max(0.0, _pdu_thr / max(1.0, _ph * _v * _pf)
                              + random.uniform(-0.2, 0.2))
                 else:
                     oc = st.get("pdu_outlet_current", 10.0)
@@ -7161,6 +7176,7 @@ class DeviceStateStore:
                     pdu_outlet_failure=ext.get("pdu_outlet_failure", "ok"),
                     pdu_smoke=ext.get("pdu_smoke", "no"),
                     pdu_outlet_current=float(ext.get("pdu_outlet_current", 0.0)),
+                    pdu_breaker_rating_a=float(getattr(device, "pdu_breaker_a", 0.0) or 0.0),
                     pdu_ground_fault=ext.get("pdu_ground_fault", "no"),
                     pdu_frequency=float(ext.get("pdu_frequency", 50.0)),
                     pdu_temperature=float(ext.get("pdu_temperature", 0.0)),

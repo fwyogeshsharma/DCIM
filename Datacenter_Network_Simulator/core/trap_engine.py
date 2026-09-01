@@ -24,6 +24,7 @@ from core.trap_definitions import (
     # sensor trap types imported explicitly for varbind dispatch
 )
 from core import vendor_oids
+from core import sim_settings
 from core.vendor_oids import APC, CISCO, DELL, HPE, LENOVO, LIEBERT, RARITAN, PET
 # Convenience aliases used in _build_extra_varbinds / _format_details
 _HUMIDITY_ALERT = TrapType.HUMIDITY_ALERT
@@ -182,8 +183,12 @@ class TrapEngine(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._receiver_ip   = "127.0.0.1"
-        self._receiver_port = 162
+        # Restored from the saved settings, exactly as a real NMC restores its
+        # trap receivers from NVRAM at boot. Without this the default silently
+        # redirected every trap to 127.0.0.1:162 on each restart, which reads
+        # downstream as "the alarm path is broken" while telemetry stays healthy.
+        self._receiver_ip   = str(sim_settings.get("trap_receiver_ip", "127.0.0.1"))
+        self._receiver_port = int(sim_settings.get("trap_receiver_port", 162))
         self._loop:   Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
 
@@ -210,6 +215,20 @@ class TrapEngine(QObject):
         self._receiver_port = port
         # Targets embed the receiver address, so the shared stack must be rebuilt.
         self._engine_epoch += 1
+        # Persist here rather than in the REST handler: this is the one choke
+        # point every caller goes through, so the desktop trap panel and the web
+        # UI save the same way and neither can set a receiver that a restart
+        # would then quietly drop.
+        sim_settings.set_many({"trap_receiver_ip": ip, "trap_receiver_port": port})
+
+    @property
+    def receiver_ip(self) -> str:
+        """Where traps are actually being sent — the restored or configured value."""
+        return self._receiver_ip
+
+    @property
+    def receiver_port(self) -> int:
+        return self._receiver_port
 
     def set_rule_engine(self, engine: "RuleEngine", device_manager: "DeviceManager"):
         """Attach a rule engine and device manager for rule-driven trap dispatch."""
@@ -313,6 +332,8 @@ class TrapEngine(QObject):
         if "rack_id" in action.extra:
             kwargs["rack_id"] = action.extra["rack_id"]
             kwargs["down_count"] = action.extra.get("down_count", 0)
+        if "pdu_outlet_current" in action.extra:
+            kwargs["outlet_current"] = action.extra["pdu_outlet_current"]
         if "metric_value" in action.extra:
             kwargs["metric_value"] = action.extra["metric_value"]
         elif "cpu_usage" in action.extra:

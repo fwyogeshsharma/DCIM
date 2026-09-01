@@ -162,6 +162,13 @@ class AppState:
         self.trap_engine = trap_engine
         self.snmp_datasets_dir = snmp_datasets_dir
         self.gnmi_datasets_dir = gnmi_datasets_dir
+        # The trap engine restored the saved receiver at construction; adopt it
+        # so /snmp/status reports where traps are ACTUALLY going. Reporting this
+        # object's own default instead is how a restart looked correct while
+        # every trap went to 127.0.0.1:162.
+        if trap_engine is not None:
+            self.trap_receiver_ip = trap_engine.receiver_ip
+            self.trap_receiver_port = trap_engine.receiver_port
 
     def create_job(self, operation: str) -> str:
         """Register a job as ENQUEUED. started_at is stamped later, by submit_job,
