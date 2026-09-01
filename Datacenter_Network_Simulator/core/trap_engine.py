@@ -725,9 +725,16 @@ class TrapEngine(QObject):
                 value = _num(mv if mv is not None else getattr(device, "pdu_frequency", 0), scale=10)
                 state = (ss["normal"] if trap_type == TrapType.PDU_FREQUENCY_NORMAL
                          else ss["aboveUpperWarning"])
-            elif trap_type in (TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF):
+            elif trap_type in (TrapType.PDU_OUTLET_ON, TrapType.PDU_OUTLET_OFF,
+                               TrapType.PDU_OUTLET_FAILURE):
+                # PDU2-MIB gives an outlet current, voltage, power and an onOff
+                # sensor - there is no "failed" sensor - so a dead receptacle is
+                # its onOff sensor reading fail(14), which is the state PDU2-MIB
+                # defines for exactly this.
                 table, sensor = "outlet", st["onOff"]
-                state = ss["on"] if trap_type == TrapType.PDU_OUTLET_ON else ss["off"]
+                state = (ss["on"] if trap_type == TrapType.PDU_OUTLET_ON else
+                         ss["off"] if trap_type == TrapType.PDU_OUTLET_OFF else
+                         ss["fail"])
             elif trap_type == TrapType.PDU_SMOKE_DETECTED:
                 sensor, state = st["smokeDetection"], ss["alarmed"]
             elif trap_type == TrapType.PDU_GROUND_FAULT:
