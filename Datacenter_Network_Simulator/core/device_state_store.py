@@ -6414,10 +6414,13 @@ class DeviceStateStore:
         except (TypeError, ValueError):
             return
         _v = float(st.get("pdu_voltage", 230.0) or 230.0)
-        _pf = float(st.get("pdu_power_factor", 0.95) or 0.95)
         _ph = max(1, int(getattr(device, "pdu_phases", 0) or 1))
-        watts = pct / 100.0 * rated
-        st["pdu_outlet_current"] = round(watts / max(1.0, _ph * _v * _pf), 1)
+        # The inverse of the live relation above, and it must stay the inverse:
+        # the rating is volt-amps, so the percentage is a share of VA and the
+        # current follows without the power factor. Dividing by PF here as well
+        # is what put 32.4 A on a 32 A breaker at 85% load.
+        va = pct / 100.0 * rated
+        st["pdu_outlet_current"] = round(va / max(1.0, _ph * _v), 1)
         _ext_state_cache[device.name] = dict(st)
 
     def _apply_fault_ramps(self, device: "Device") -> None:
@@ -6922,8 +6925,21 @@ class DeviceStateStore:
             _pdu_thr = self._through_live.get(device.id, 0.0)
             if mf["pdu_load"]:
                 if _pdu_rated > 0:
-                    # Live: load % = watts drawn by downstream gear / breaker rating.
-                    ld = max(0.0, min(100.0, _pdu_thr / _pdu_rated * 100.0
+                    # Live: load % is an APPARENT-power ratio, because a PDU's
+                    # capacity is a current limit and its nameplate is volt-amps.
+                    # Every figure in the catalog is V x A - ap8941 4992 is 24 x
+                    # 208, ap8886 22000 is 3 x 230 x 32 - so dividing real watts
+                    # by it compared two different quantities and understated the
+                    # load by the power factor.
+                    #
+                    # It read as a rounding error and behaved like a fault: the
+                    # current a strip draws is S/(phases x V), so a PDU reported
+                    # at 85% was already at 101% of its breaker, and one injected
+                    # load raised Load High and tripped the over-current rule with
+                    # it. Against apparent power the two agree by construction.
+                    _pf_now = float(st.get("pdu_power_factor", 0.95) or 0.95)
+                    _va = _pdu_thr / max(0.1, _pf_now)
+                    ld = max(0.0, min(100.0, _va / _pdu_rated * 100.0
                                       + random.uniform(-0.5, 0.5)))
                 else:
                     # Not wired into the power graph — legacy self-contained walk.
