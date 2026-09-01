@@ -1086,6 +1086,61 @@ _MODEL_PHASES_BREAKER: dict[str, tuple[int, float]] = {
 }
 
 
+#: Whether a PDU SKU has OUTLET RELAYS - i.e. whether an outlet can be switched.
+#:
+#: A rack PDU is sold in tiers, and only the Switched tier can open a receptacle:
+#: a Metered strip measures and never interrupts, and Metered-by-Outlet measures
+#: PER outlet and still has no relay. On real hardware the difference is not a
+#: policy, it is the absence of the object: rPDU2OutletSwitchedControlCommand and
+#: Raritan's outletSwitchingOperation do not exist on a metered strip, so a SET
+#: comes back noSuchObject. There is nothing to command.
+#:
+#: Floor PDUs are False for a different reason - a panelboard distributes through
+#: breakers, and a breaker is not a remotely operable outlet.
+#:
+#: None means the catalog does not know, and callers must NOT read that as False.
+#: Refusing an operation because we are ignorant of the SKU is worse than
+#: allowing one the hardware might not have; the entries here are the ones whose
+#: tier the vendor states.
+_MODEL_OUTLET_SWITCHING: dict[str, bool] = {
+    # ── switched: has relays ──
+    "ap8941":            True,   # APC Switched ZeroU
+    "ap8959":            True,   # APC Switched 1U
+    "px2-5170cr":        True,   # Raritan Switched 0U
+    "px3-5878":          True,   # Raritan Switched 0U
+    "px3-5190r":         True,   # Raritan Switched 1U
+    "px3-5161r":         True,   # Raritan Switched 1U
+    "sentry 4805-xls":   True,   # ServerTech Switched 1U
+    "epdu g3 ma":        True,   # Eaton MANAGED - metered plus switched outlets
+    # ── metered only: measures, never interrupts ──
+    "ap8886":            False,  # APC Metered ZeroU
+    "ap8865":            False,  # APC Metered ZeroU
+    "ap8681":            False,  # APC Metered-BY-OUTLET: per-outlet metering, no relay
+    "epdu g3 mi":        False,  # Eaton Metered Input
+    # ── floor PDUs: breakers, not outlets ──
+    "flexpdu":           False,
+    "eaton pdu":         False,
+    "px3-5000 floor":    False,
+}
+
+
+def pdu_outlet_switching(device_type: "DeviceType",
+                         model_name: str = "") -> bool | None:
+    """Can an outlet on this SKU be switched? None when the catalog cannot say.
+
+    Substring-matched on the lowercased model name, the same way the rating
+    catalog is, so it covers both spellings a topology may carry.
+    """
+    if device_type not in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+        return None
+    m = (model_name or "").lower()
+    if m:
+        for key, switched in _MODEL_OUTLET_SWITCHING.items():
+            if key in m:
+                return switched
+    return None
+
+
 def pdu_phases_breaker(device_type: "DeviceType",
                        model_name: str = "") -> tuple[int, float]:
     """(phases, per-phase breaker A) for a PDU SKU.

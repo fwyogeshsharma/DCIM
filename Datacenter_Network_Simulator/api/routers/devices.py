@@ -1125,7 +1125,12 @@ def get_outlets(device_id: str):
     off = {int(o) for o in (ext.get("pdu_outlets_off") or [])}
     loads = s.topology.outlet_loads(dev.id) if s.topology else {}
     strip_off = ext.get("pdu_outlet_status", "on") == "off"
-    return {"device": dev.name, "strip_off": strip_off, "outlets": [
+    # So a caller can grey the control out rather than offer an action that will
+    # be refused. null = the catalog does not know this SKU's tier.
+    from core.device_manager import pdu_outlet_switching
+    switched = pdu_outlet_switching(dev.device_type, dev.model_name)
+    return {"device": dev.name, "strip_off": strip_off, "switched": switched,
+            "outlets": [
         {"index": o.index, "type": o.type, "bank": o.bank, "phase": o.phase,
          "state": "off" if (strip_off or o.index in off) else "on",
          "feeds": (loads.get(o.index) or {}).get("load_name")}
@@ -1148,6 +1153,19 @@ def switch_outlet(device_id: str, body: OutletSwitch):
         raise HTTPException(status_code=404, detail=f"No rack PDU '{device_id}'")
     if body.state not in ("on", "off"):
         raise HTTPException(status_code=400, detail="state must be 'on' or 'off'")
+    # A metered strip has no relay to operate. The tier is the whole difference:
+    # rPDU2OutletSwitchedControlCommand simply does not exist on one, so real
+    # gear answers a switch attempt with noSuchObject rather than an error about
+    # permission. Refusing here keeps the plane honest - otherwise the simulator
+    # offers an operation the modelled hardware cannot perform, and then
+    # annunciates an outletOff trap that strip could never have sent.
+    from core.device_manager import pdu_outlet_switching
+    if pdu_outlet_switching(dev.device_type, dev.model_name) is False:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{dev.name} is a {dev.model_name}, which is metered rather "
+                   f"than switched - its outlets have no relay to open. Switched "
+                   f"SKUs on this estate: APC AP8941, APC AP8959, Raritan PX2/PX3.")
     valid = {o.index for o in (dev.outlets or [])}
     if valid and body.outlet not in valid:
         raise HTTPException(
