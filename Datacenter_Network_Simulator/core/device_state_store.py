@@ -6262,6 +6262,12 @@ class DeviceStateStore:
         if st is None:
             return
         st.update(ext)
+
+        # A pinned load has to move the current with it (see the helper).
+        # An explicitly pinned current still wins - the operator asked for that
+        # number specifically.
+        if "pdu_load" in ext and "pdu_outlet_current" not in ext:
+            self._sync_pdu_current_to_load(device, ext["pdu_load"])
         _ext_state_cache[device.name] = dict(st)
 
     # ------------------------------------------------------------------ #
@@ -6379,6 +6385,41 @@ class DeviceStateStore:
                 st[field] = round(value, 1)
                 _ext_state_cache[device.name] = dict(st)
 
+    def _sync_pdu_current_to_load(self, device: "Device", load_pct) -> None:
+        """Derive a strip's current from a LOAD the operator forced onto it.
+
+        pdu_load is a percentage of nameplate that nothing downstream consumes.
+        The trap carries current, the published power is computed from current,
+        and the DCIM derives ITS load% from that power - so pinning the
+        percentage on its own raised "Load High" on a strip still reporting 1.4 A
+        and 2.65%. The alarm had no corroborating evidence anywhere in the
+        pipeline, and the console printed the condition beside a reading that
+        contradicted it.
+
+        I = (load% x rated) / (phases x V x PF) - the same relation the live path
+        uses in the other direction, so the injected state is one a real strip
+        could actually be in. A SKU with no rating is left alone rather than
+        given a made-up current.
+        """
+        if device.device_type not in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+            return
+        st = self._ext_states.get(device.name)
+        if st is None:
+            return
+        rated = self._power_context()["rated_w"].get(device.id, 0.0)
+        if rated <= 0:
+            return
+        try:
+            pct = float(load_pct)
+        except (TypeError, ValueError):
+            return
+        _v = float(st.get("pdu_voltage", 230.0) or 230.0)
+        _pf = float(st.get("pdu_power_factor", 0.95) or 0.95)
+        _ph = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+        watts = pct / 100.0 * rated
+        st["pdu_outlet_current"] = round(watts / max(1.0, _ph * _v * _pf), 1)
+        _ext_state_cache[device.name] = dict(st)
+
     def _apply_fault_ramps(self, device: "Device") -> None:
         """Advance each active fault ramp one tick. Runs after the walk and the
         static overrides so the injected value wins, and independent of the
@@ -6411,6 +6452,15 @@ class DeviceStateStore:
             cur = max(lo, min(hi, cur))
             r["current"] = cur
             self._ramp_write(device, kind, field, cur)
+            # A load ramp drags the current with it, for the same reason a pinned
+            # load does: every number downstream is derived from the current, so
+            # a ramp that moved only the percentage produced an alarm nothing
+            # else in the pipeline agreed with. Skipped when the current is
+            # itself being ramped or pinned.
+            if metric == "pdu_load" and "pdu_outlet_current" not in ramps:
+                if "pdu_outlet_current" not in (
+                        self.device_overrides.get(device.id) or {}):
+                    self._sync_pdu_current_to_load(device, cur)
             # Clearing ramp that has reached baseline → fault fully resolved.
             if r["clearing"] and abs(cur - target) < max(0.5, rate):
                 done.append(metric)
