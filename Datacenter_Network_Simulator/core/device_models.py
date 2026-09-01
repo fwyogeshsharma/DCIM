@@ -492,13 +492,20 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
     ],
 
     # ── APC — PDU ─────────────────────────────────────────────────────────────
+    # These strings are DISPLAY ONLY. PDU_OUTLET_CATALOG in device_manager.py is
+    # the authority for receptacle counts, phases, breaker rating and voltage,
+    # and it is checked against the vendor datasheets - the runtime builds real
+    # outlets from it while nothing reads a word of this. Two of them had drifted
+    # into describing strips that do not exist: the AP8886 was written up as a
+    # 20A/208V (21)C13 unit and the AP8865 carried the 22kW/32A/415V figures from
+    # the same fabrication. Change the catalog first, then match it here.
     (DeviceType.PDU, Vendor.APC): [
         DeviceModel("APC AP8941", Vendor.APC, DeviceType.PDU,
                     [_g(_GE, 1)],
                     "Switched ZeroU, 30A/208V, 21×C13 + 3×C19"),
         DeviceModel("APC AP8886", Vendor.APC, DeviceType.PDU,
                     [_g(_GE, 1)],
-                    "Metered ZeroU, 20A/208V, 21×C13 + 3×C19"),
+                    "Metered ZeroU, 22kW 400V 3-phase 32A, 30×C13 + 12×C19"),
         DeviceModel("APC AP8959", Vendor.APC, DeviceType.PDU,
                     [_g(_GE, 1)],
                     "Switched 1U, 30A/208V, 12×C13 + 4×C19"),
@@ -507,7 +514,7 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
                     "Metered-by-Outlet 1U, 16A/230V, 12×C13 + 4×C19"),
         DeviceModel("APC AP8865", Vendor.APC, DeviceType.PDU,
                     [_g(_GE, 1)],
-                    "Metered ZeroU, 32A/415V 3-phase (22kW), 21×C13 + 12×C19"),
+                    "Metered ZeroU, 8.6kW 208V 3-phase 30A, 36×C13 + 6×C19"),
     ],
 
     # ── Raritan — PDU ─────────────────────────────────────────────────────────
