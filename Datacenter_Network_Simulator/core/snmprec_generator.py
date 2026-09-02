@@ -176,6 +176,11 @@ IP_BASE     = "1.3.6.1.2.1.4"
 
 # HOST-RESOURCES-MIB (servers)
 HR_DEVICE    = "1.3.6.1.2.1.25"
+# HOST-RESOURCES-MIB hrStorage. The TABLE is 25.2.3 (hrStorageTable ->
+# hrStorageEntry at 25.2.3.1); 25.2.2 is the hrMemorySize scalar and 25.2.1 is
+# hrStorageNumber. This constant is the group, and the table arc is appended by
+# the rows below - which for a long time appended ".2.1." and published the
+# whole table underneath hrMemorySize, where no NMS would ever look for it.
 HR_STORAGE   = "1.3.6.1.2.1.25.2"
 HR_PROC      = "1.3.6.1.2.1.25.3"
 HR_LOAD      = "1.3.6.1.2.1.25.3.3.1.2"   # hrProcessorLoad
@@ -806,10 +811,10 @@ class SNMPRecGenerator:
                 disk_avail_kb = (device.disk_total  - device.disk_used) // 1024
                 disk_pct = int(device.disk_used * 100 / device.disk_total) if device.disk_total else 0
 
-                updates[f"{HR_STORAGE}.2.1.5.1"] = ("2",  str(mem_total_kb))
-                updates[f"{HR_STORAGE}.2.1.6.1"] = ("2",  str(mem_used_kb))
-                updates[f"{HR_STORAGE}.2.1.5.2"] = ("2",  str(disk_total_kb // 4))
-                updates[f"{HR_STORAGE}.2.1.6.2"] = ("2",  str(disk_used_kb  // 4))
+                updates[f"{HR_STORAGE}.3.1.5.1"] = ("2",  str(mem_total_kb))
+                updates[f"{HR_STORAGE}.3.1.6.1"] = ("2",  str(mem_used_kb))
+                updates[f"{HR_STORAGE}.3.1.5.2"] = ("2",  str(disk_total_kb // 4))
+                updates[f"{HR_STORAGE}.3.1.6.2"] = ("2",  str(disk_used_kb  // 4))
 
                 cpu_user   = device.cpu_usage
                 cpu_system = random.randint(2, 20)
@@ -1601,24 +1606,24 @@ class SNMPRecGenerator:
         mem_total_kb = device.memory_total // 1024
         mem_used_kb  = device.memory_used  // 1024
         entries += [
-            _oid_entry(f"{HR_STORAGE}.2.1.1.1",  "2",  "1"),                      # hrStorageIndex
-            _oid_entry(f"{HR_STORAGE}.2.1.2.1",  "6",  "1.3.6.1.2.1.25.2.1.2"), # hrStorageType RAM
-            _oid_entry(f"{HR_STORAGE}.2.1.3.1",  "4",  "Physical Memory"),        # hrStorageDescr
-            _oid_entry(f"{HR_STORAGE}.2.1.4.1",  "2",  "1024"),                   # hrStorageAllocationUnits (1KB)
-            _oid_entry(f"{HR_STORAGE}.2.1.5.1",  "2",  str(mem_total_kb)),        # hrStorageSize
-            _oid_entry(f"{HR_STORAGE}.2.1.6.1",  "2",  str(mem_used_kb)),         # hrStorageUsed
+            _oid_entry(f"{HR_STORAGE}.3.1.1.1",  "2",  "1"),                      # hrStorageIndex
+            _oid_entry(f"{HR_STORAGE}.3.1.2.1",  "6",  "1.3.6.1.2.1.25.2.1.2"), # hrStorageType RAM
+            _oid_entry(f"{HR_STORAGE}.3.1.3.1",  "4",  "Physical Memory"),        # hrStorageDescr
+            _oid_entry(f"{HR_STORAGE}.3.1.4.1",  "2",  "1024"),                   # hrStorageAllocationUnits (1KB)
+            _oid_entry(f"{HR_STORAGE}.3.1.5.1",  "2",  str(mem_total_kb)),        # hrStorageSize
+            _oid_entry(f"{HR_STORAGE}.3.1.6.1",  "2",  str(mem_used_kb)),         # hrStorageUsed
         ]
 
         # Entry 2: Disk
         disk_total_kb = device.disk_total // 1024
         disk_used_kb  = device.disk_used  // 1024
         entries += [
-            _oid_entry(f"{HR_STORAGE}.2.1.1.2",  "2",  "2"),
-            _oid_entry(f"{HR_STORAGE}.2.1.2.2",  "6",  "1.3.6.1.2.1.25.2.1.4"), # hrStorageType Fixed
-            _oid_entry(f"{HR_STORAGE}.2.1.3.2",  "4",  "/"),
-            _oid_entry(f"{HR_STORAGE}.2.1.4.2",  "2",  "4096"),
-            _oid_entry(f"{HR_STORAGE}.2.1.5.2",  "2",  str(disk_total_kb // 4)),  # in 4KB units
-            _oid_entry(f"{HR_STORAGE}.2.1.6.2",  "2",  str(disk_used_kb  // 4)),
+            _oid_entry(f"{HR_STORAGE}.3.1.1.2",  "2",  "2"),
+            _oid_entry(f"{HR_STORAGE}.3.1.2.2",  "6",  "1.3.6.1.2.1.25.2.1.4"), # hrStorageType Fixed
+            _oid_entry(f"{HR_STORAGE}.3.1.3.2",  "4",  "/"),
+            _oid_entry(f"{HR_STORAGE}.3.1.4.2",  "2",  "4096"),
+            _oid_entry(f"{HR_STORAGE}.3.1.5.2",  "2",  str(disk_total_kb // 4)),  # in 4KB units
+            _oid_entry(f"{HR_STORAGE}.3.1.6.2",  "2",  str(disk_used_kb  // 4)),
         ]
 
         # HOST-RESOURCES-MIB hrSWInstalled — OS entry (index 1 = operating system)
