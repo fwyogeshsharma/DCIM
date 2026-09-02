@@ -1174,6 +1174,84 @@ def rated_capacity_w(device_type: "DeviceType", model_name: str = "") -> int:
     return 0
 
 
+# ---------------------------------------------------------------- serials
+
+# Vendor serial-number formats, as the real ones read.
+#
+#   Dell        7-char Service Tag, alphanumeric.
+#   HPE         10 chars: 2 letters, 3 digits, 5 alphanumerics ("SGH421X9KL").
+#   Cisco       11 chars: 3-letter site code, 2-digit year, 2-digit week,
+#               4-char sequence ("FOC2314A1B2").
+#   APC         12 chars, alphanumeric, no fixed public structure.
+#   default     8 alphanumerics.
+#
+# Format matters because a DCIM will one day parse it - a Cisco serial carries
+# its manufacturing site and week, and vendor tooling matches on the shape. A
+# simulator that emits one flat hash for every vendor cannot exercise any of
+# that, and the day real gear arrives the parsing has never been tested.
+#
+# The CHARSET excludes I, O, 0 and 1 the way real service tags do: a serial is
+# read off a sticker by a person under a rack, and a font where those pairs
+# collide is how an asset gets filed against the wrong machine.
+_SERIAL_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+_SERIAL_DIGITS = "23456789"
+_SERIAL_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+# Real Cisco manufacturing site codes.
+_CISCO_SITES = ("FOC", "FDO", "JAE", "SAL", "TAE")
+
+
+def _from_hash(digest: bytes, offset: int, count: int, alphabet: str) -> str:
+    """Pick `count` characters out of the digest, deterministically."""
+    return "".join(alphabet[digest[(offset + i) % len(digest)] % len(alphabet)]
+                   for i in range(count))
+
+
+def device_serial(device: "Device") -> str:
+    """The chassis serial for one device. ONE string, every protocol.
+
+    This is the single source of truth, and that is the whole point of it
+    existing. Before it, SNMP served ``sha1(id)[:7]`` through ENTITY-MIB while
+    Redfish served ``SN-<id[:8]>`` for the SAME machine, so a DCIM polling both
+    planes read two different serials off one server and had every reason to
+    file it as two assets. Real hardware has one serial burned in at manufacture
+    and reports it identically over Redfish, IPMI FRU and entPhysicalSerialNum;
+    a simulator whose planes disagree is teaching the collector a lesson that is
+    false.
+
+    Deterministic in the device id, so it survives a restart and a re-export -
+    which is what makes reconciliation testable at all. An explicitly set
+    ``serial_number`` always wins: a serial is a physical fact somebody may have
+    recorded, not something the simulator gets to overwrite.
+    """
+    explicit = (getattr(device, "serial_number", "") or "").strip()
+    if explicit:
+        return explicit
+
+    import hashlib
+    seed = (device.id or device.name or "").encode()
+    d = hashlib.sha256(seed).digest()
+    vendor = getattr(device, "vendor", None)
+    vendor_value = getattr(vendor, "value", vendor) or ""
+
+    if vendor_value == Vendor.DELL.value:
+        return _from_hash(d, 0, 7, _SERIAL_CHARS)
+    if vendor_value == Vendor.HPE.value:
+        return (_from_hash(d, 0, 2, _SERIAL_LETTERS)
+                + _from_hash(d, 2, 3, _SERIAL_DIGITS)
+                + _from_hash(d, 5, 5, _SERIAL_CHARS))
+    if vendor_value == Vendor.CISCO_SYSTEMS.value:
+        site = _CISCO_SITES[d[0] % len(_CISCO_SITES)]
+        # Year 21-25 and week 01-52: a plausible in-service age, not a date the
+        # simulator pretends to know.
+        year = 21 + (d[1] % 5)
+        week = 1 + (d[2] % 52)
+        return f"{site}{year:02d}{week:02d}{_from_hash(d, 3, 4, _SERIAL_CHARS)}"
+    if vendor_value == Vendor.APC.value:
+        return _from_hash(d, 0, 12, _SERIAL_CHARS)
+    return _from_hash(d, 0, 8, _SERIAL_CHARS)
+
+
 @dataclass
 class Device:
     name: str
@@ -1188,6 +1266,12 @@ class Device:
     model_name: str = ""
     metrics_enabled: bool = True
     id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    # Chassis serial. Persisted in the topology because a serial is a physical
+    # fact about the unit, not something regenerated per run - and because a
+    # DCIM reconciles against it, so it has to survive an export/import round
+    # trip unchanged. Left empty it is filled deterministically from the device
+    # id in __post_init__; set explicitly it is never overwritten.
+    serial_number: str = ""
     interfaces: List[Interface] = field(default_factory=list)
     # Power terminations. A PDU has outlets; a load device has PSUs. Which of them
     # a given cord uses lives on the EDGE, not here — these are inventory only.
@@ -1327,6 +1411,12 @@ class Device:
         # and fall back to that self-derivation in the power model.
         if (not self.rated_power_w or self.rated_power_w <= 0):
             self.rated_power_w = rated_capacity_w(self.device_type, self.model_name)
+        # Materialise the serial onto the device so every plane reads the same
+        # attribute rather than each re-deriving it - which is how SNMP and
+        # Redfish came to disagree in the first place. Derived AFTER vendor
+        # coercion above, because the format depends on the vendor.
+        if not self.serial_number:
+            self.serial_number = device_serial(self)
         # Supply phases and input-breaker rating, from the same per-SKU catalog.
         # Both stay 0 for an unknown SKU; the current model treats that as
         # single-phase with no breaker reference rather than inventing one.

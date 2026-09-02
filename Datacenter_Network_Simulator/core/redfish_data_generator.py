@@ -22,7 +22,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Optional
 
-from core.device_manager import outlet_voltage
+from core.device_manager import device_serial, outlet_voltage
 
 if TYPE_CHECKING:
     from core.device_manager import Device
@@ -132,7 +132,7 @@ def computer_system(device: "Device", power_state: str = "On",
         "SystemType": "Physical",
         "Manufacturer": vendor,
         "Model": device.model_name or vendor,
-        "SerialNumber": f"SN-{(device.id or device.name)[:8].upper()}",
+        "SerialNumber": device_serial(device),
         "UUID": _device_uuid(device),
         "HostName": device.name,
         "BiosVersion": "U30 v2.66",
@@ -238,7 +238,7 @@ def chassis(device: "Device") -> dict:
         "ChassisType": "RackMount",
         "Manufacturer": vendor,
         "Model": device.model_name or vendor,
-        "SerialNumber": f"SN-{(device.id or device.name)[:8].upper()}",
+        "SerialNumber": device_serial(device),
         "PowerState": "On",
         "Status": {"State": "Enabled", "Health": "OK"},
         "Thermal": {"@odata.id": f"/redfish/v1/Chassis/{cid}/Thermal"},

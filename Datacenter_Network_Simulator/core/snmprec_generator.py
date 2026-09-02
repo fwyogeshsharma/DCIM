@@ -141,7 +141,8 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
 
 from core import dataset_fingerprint as _fingerprint
 from core import vendor_oids as _vendor_oids
-from core.device_manager import Device, DeviceType, Vendor, SERVER_OS_INFO
+from core.device_manager import (Device, DeviceType, Vendor, SERVER_OS_INFO,
+                                 device_serial)
 from core.lldp_generator import (generate_lldp_entries, generate_cdp_entries,
                                   LLDP_BASE, CDP_BASE)
 from core.mac_table_generator import generate_mac_table, generate_stp_entries
@@ -1449,11 +1450,15 @@ class SNMPRecGenerator:
 
     @staticmethod
     def _entity_serial(device: Device) -> str:
-        """Deterministic 7-char service-tag-style serial, stable across restarts
-        (derived from the topology device id)."""
-        import hashlib
-        h = hashlib.sha1((device.id or device.name).encode()).hexdigest().upper()
-        return h[:7]
+        """The device's chassis serial, from the one place that owns it.
+
+        This used to derive its own ``sha1(id)[:7]`` while Redfish derived
+        ``SN-<id[:8]>`` for the same machine. Two planes, one chassis, two
+        serials - and a DCIM that polls both had every reason to file the server
+        twice. Real gear reports one serial over entPhysicalSerialNum, Redfish
+        and IPMI FRU alike.
+        """
+        return device_serial(device)
 
     def _entity_entries(self, device: Device) -> List[OidEntry]:
         """ENTITY-MIB (RFC 4133) chassis row: entPhysicalEntry columns for a single
