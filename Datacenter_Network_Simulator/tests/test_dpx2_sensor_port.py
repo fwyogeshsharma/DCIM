@@ -56,10 +56,17 @@ def test_a_probe_is_hosted_by_a_pdu_in_its_own_rack(shipped):
                (d.datacenter, d.room, d.rack_row, d.rack_num), d.name
 
 
-def test_slots_do_not_overlap_on_a_chain(shipped):
-    """A T3H1 occupies four consecutive slots and a CC2 two; two probes sharing a
-    slot would silently overwrite each other's readings in the PDU's table."""
-    width = {"Raritan DPX2-T3H1": 4, "Raritan DPX2-CC2": 2}
+def test_two_probes_never_claim_the_same_index(shipped):
+    """Two probes sharing an index would overwrite each other in the strip's
+    table, and the width of a claim depends on how the strip enumerates.
+
+    A Raritan PX daisy-chains: every channel takes its own consecutive slot,
+    so a T3H1 claims four and a CC2 two. An APC AP8000 has discrete sensor
+    PORTS: a probe is one row and its temperature and humidity are columns on
+    it, so it claims exactly one index however many channels it carries.
+    """
+    from core.device_manager import probe_channels
+
     by_host: dict = {}
     for d in shipped:
         if d.host_pdu_ip:
@@ -68,9 +75,11 @@ def test_slots_do_not_overlap_on_a_chain(shipped):
     for host, probes in by_host.items():
         used = set()
         for p in probes:
-            for off in range(width.get(p.model_name, 2)):
+            chained = p.model_name.startswith("Raritan")
+            width = len(probe_channels(p.model_name)) if chained else 1
+            for off in range(width):
                 slot = p.sensor_slot + off
-                assert slot not in used, f"{host}: slot {slot} claimed twice"
+                assert slot not in used, f"{host}: index {slot} claimed twice"
                 used.add(slot)
 
 

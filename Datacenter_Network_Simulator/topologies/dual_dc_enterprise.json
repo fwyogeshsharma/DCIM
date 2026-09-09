@@ -155456,7 +155456,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.11.30",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -155633,7 +155633,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.11.34",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -155751,7 +155751,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.12.27",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -155928,7 +155928,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.12.31",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -156046,7 +156046,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.21.30",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -156223,7 +156223,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.21.33",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -156341,7 +156341,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.22.27",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     },
     {
@@ -156518,7 +156518,7 @@
         "outlets": [],
         "psus": [],
         "host_pdu_ip": "10.52.22.30",
-        "sensor_slot": 3
+        "sensor_slot": 2
       }
     }
   ],
