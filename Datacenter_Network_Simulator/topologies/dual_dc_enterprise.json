@@ -155363,7 +155363,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155422,7 +155422,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155481,7 +155481,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155540,7 +155540,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155599,7 +155599,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155658,7 +155658,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155717,7 +155717,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155776,7 +155776,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155835,7 +155835,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155894,7 +155894,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -155953,7 +155953,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156012,7 +156012,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156071,7 +156071,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156130,7 +156130,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156189,7 +156189,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156248,7 +156248,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156307,7 +156307,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156366,7 +156366,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156425,7 +156425,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -156484,7 +156484,7 @@
         "interfaces": [],
         "mgmt_ip": "",
         "mgmt_vlan": 10,
-        "power_draw_w": 5,
+        "power_draw_w": 0,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -170311,139 +170311,6 @@
       "layer": "management"
     },
     {
-      "src": "d450281c",
-      "dst": "197fcc71",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "d450281c",
-      "dst": "1629fda9",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "d5a804eb",
-      "dst": "fe9a82a9",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "bfddc3d9",
-      "dst": "6c4f7c37",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "30a900ad",
-      "dst": "b4556fbc",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "d8f9fde3",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "e26a32c8",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "075de7ee",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "cd67c3be",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "30a900ad",
-      "dst": "b699b366",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "8dedf9fb",
-      "dst": "a9a85a82",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "0b2c782a",
-      "dst": "7c036924",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "1327f1bc",
-      "dst": "07356413",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "d450281c",
-      "dst": "47e364b0",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "d5a804eb",
-      "dst": "b0bc32c1",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "bfddc3d9",
-      "dst": "e9051e55",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "409d3602",
-      "dst": "3a077722",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "b2c08394",
-      "dst": "921cfe39",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "efc2999b",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
-    },
-    {
       "src": "e667fbd5",
       "dst": "68d79a70",
       "src_iface": null,
@@ -178348,13 +178215,6 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "cooling"
-    },
-    {
-      "src": "b77350ca",
-      "dst": "a3f19c07",
-      "src_iface": null,
-      "dst_iface": null,
-      "layer": "power"
     },
     {
       "src": "brtrdc101",

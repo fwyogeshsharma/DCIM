@@ -1443,7 +1443,16 @@ class Device:
             self.vendor = Vendor(self.vendor)
         # Fill an unset nameplate so the power cascade reflects real IT load
         # instead of reading 0 for devices the topology never sized.
-        if not self.power_draw_w or self.power_draw_w <= 0:
+        #
+        # A probe on a strip's sensor port is the exception, and it is not an
+        # unset nameplate: it has no plug at all. The strip's own logic supply
+        # drives it down the same lead that carries the reading, so its draw
+        # is already inside the strip's consumption and giving it one of its
+        # own would bill the same fraction of a watt twice - on whichever
+        # outlet a cord it does not have was said to land.
+        if self.host_pdu_ip:
+            self.power_draw_w = 0
+        elif not self.power_draw_w or self.power_draw_w <= 0:
             self.power_draw_w = nameplate_power_w(self.device_type, self.model_name)
         # Fill an unset THROUGHPUT rating for distribution/backup gear from the
         # real per-SKU catalog, so load% is measured against the device's true

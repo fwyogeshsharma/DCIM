@@ -503,3 +503,60 @@ def test_a_pair_on_one_rack_reads_two_heights(shipped):
         units = sorted(p.rack_unit for p in probes)
         assert units[0] < units[-1], [p.name for p in probes]
         assert units[-1] - units[0] >= 20, "a pair should span the rack"
+
+
+def test_a_probe_has_no_power_cord(shipped):
+    """It is bus-powered off the sensor port it plugs into.
+
+    An AP9335 and a DPX2 have no plug: the strip's own logic supply drives
+    them down the same lead that carries the reading. Giving one a cord to
+    the B-side strip modelled a second, independent feed the hardware does
+    not have - it would read as dual-fed when in truth it dies with its host
+    - and it billed a phantom load to whichever strip the cord landed on.
+    """
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    by_id = {n["id"]: n["device"] for n in data["nodes"]}
+    probes = {n["id"] for n in data["nodes"] if n["device"].get("host_pdu_ip")}
+    assert probes
+    for e in data["edges"]:
+        if e.get("layer") != "power":
+            continue
+        assert e["src"] not in probes and e["dst"] not in probes, (
+            f"{by_id[e['src']]['name']} -> {by_id[e['dst']]['name']}")
+    for d in shipped:
+        if d.host_pdu_ip:
+            assert not d.power_draw_w, f"{d.name} draws its own power"
+
+
+def test_a_sensor_lead_never_leaves_its_rack(shipped):
+    """An RJ-45 sensor lead is a metre long. A fieldbus edge that crosses a
+    rack is a cable nobody could run, and one that crosses a room or a
+    datacentre is a reading attributed to the wrong floor."""
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    by_id = {n["id"]: n["device"] for n in data["nodes"]}
+    probes = {n["id"] for n in data["nodes"] if n["device"].get("host_pdu_ip")}
+    seen = 0
+    for e in data["edges"]:
+        if e.get("layer") != "fieldbus":
+            continue
+        a, b = by_id[e["src"]], by_id[e["dst"]]
+        if e["src"] not in probes and e["dst"] not in probes:
+            continue
+        seen += 1
+        here = (a["datacenter"], a["room"], a["rack_row"], a["rack_num"])
+        there = (b["datacenter"], b["room"], b["rack_row"], b["rack_num"])
+        assert here == there, f"{a['name']} -> {b['name']}"
+    assert seen, "no probe leads in the topology"
+
+
+def test_nothing_is_wired_across_datacentres(shipped):
+    """Two sites share no cable, no bus and no pipe. An edge that crosses
+    them is a wiring error that reads back as a real termination."""
+    data = json.loads(TOPOLOGY.read_text(encoding="utf-8"))
+    by_id = {n["id"]: n["device"] for n in data["nodes"]}
+    for e in data["edges"]:
+        a, b = by_id.get(e["src"]), by_id.get(e["dst"])
+        if not a or not b:
+            continue
+        assert a["datacenter"] == b["datacenter"], (
+            f"{e.get('layer')}: {a['name']} -> {b['name']}")
