@@ -363,3 +363,76 @@ def test_the_fixture_models_rack_probes_on_a_pdu():
     slots = [d.sensor_slot for d in probes]
     assert len(slots) == len(set(slots)), "two probes share a slot"
     assert set(host.sensor_children) == {d.name for d in probes}
+
+
+# ─────────────────────────────────────────────────
+#  Which probe spoke
+# ─────────────────────────────────────────────────
+def _probe(name, model, slot):
+    from core.device_manager import Vendor
+
+    d = Device(name=name, device_type=DeviceType.SENSOR, vendor=Vendor.RARITAN,
+               ip_address="", model_name=model)
+    d.attach_to_sensor_port("10.52.11.30", slot)
+    return d
+
+
+def _slot_in_trap(device, trap_type):
+    from core import vendor_oids
+    from core.trap_engine import TrapEngine
+
+    vbs = {str(o): v for o, v in TrapEngine._vendor_varbinds(device, trap_type)}
+    return vbs.get(vendor_oids.RARITAN["externalNumber"])
+
+
+def test_a_notification_names_the_slot_it_came_from():
+    """Intake, mid-rack and exhaust are three temperatures from one strip, on
+    one OID, with one sensor type. The slot is the only thing that separates
+    them, and it is the index a poller reads them at."""
+    from core.trap_definitions import TrapType
+
+    probe = _probe("SEN1-DC1-HA-R2-01", "Raritan DPX2-T3H1", 3)
+    assert int(_slot_in_trap(probe, TrapType.SENSOR_AMBIENT_TEMP_HIGH)) == 3
+    assert int(_slot_in_trap(probe, TrapType.SENSOR_MID_TEMP_HIGH)) == 4
+    assert int(_slot_in_trap(probe, TrapType.SENSOR_OUTLET_TEMP_HIGH)) == 5
+    assert int(_slot_in_trap(probe, TrapType.SENSOR_HIGH_HUMIDITY)) == 6
+    # A recovery names the same slot as its raise, or the clear would land on
+    # a different probe than the alarm it ends.
+    assert (_slot_in_trap(probe, TrapType.SENSOR_AMBIENT_TEMP_NORMAL)
+            == _slot_in_trap(probe, TrapType.SENSOR_AMBIENT_TEMP_HIGH))
+
+
+def test_the_slot_is_the_one_the_table_publishes_it_at():
+    """The notification and the polled table index off one layout. When they
+    drifted, a trap pointed at a reading the table did not hold."""
+    from core.trap_definitions import TrapType
+
+    leak = _probe("LEAK1-DC1-HA-R2-01", "Raritan DPX2-CC2", 1)
+    _publish("LEAK1-DC1-HA-R2-01", "Raritan DPX2-CC2", 1)
+    pdu = Device(name="PDUA-DC1-HA-R2-01", device_type=DeviceType.PDU,
+                 vendor=Vendor.RARITAN, ip_address="", mgmt_ip="10.52.11.30",
+                 model_name="Raritan PX2-5170CR")
+    pdu.sensor_children = ["LEAK1-DC1-HA-R2-01"]
+    table = _by_oid(SNMPRecGenerator._pdu_sensor_entries(pdu))
+
+    # A CC2 puts its water rope first, so its temperature is the SECOND slot.
+    slot = int(_slot_in_trap(leak, TrapType.SENSOR_AMBIENT_TEMP_HIGH))
+    assert slot == 2
+    assert table[f"{_RARITAN_SENSOR}.3.1.{slot}"] == "10"   # a temperature
+    dss._ext_state_cache.pop("LEAK1-DC1-HA-R2-01", None)
+
+
+def test_a_condition_with_no_channel_sends_no_slot():
+    """A dew point is derived from two other readings and a load is not on the
+    sensor port at all. Naming a slot for either would invent an index."""
+    from core.trap_definitions import TrapType
+
+    probe = _probe("SEN1-DC1-HA-R2-01", "Raritan DPX2-T3H1", 3)
+    assert _slot_in_trap(probe, TrapType.DEWPOINT_ALERT) is None
+    pdu = Device(name="PDUA-DC1-HA-R2-01", device_type=DeviceType.PDU,
+                 vendor=Vendor.RARITAN, ip_address="", mgmt_ip="10.52.11.30",
+                 model_name="Raritan PX2-5170CR")
+    assert _slot_in_trap(pdu, TrapType.PDU_LOAD_HIGH) is None
+    # The strip's own probe has no chain slot; it is the one the PDU publishes
+    # at slot 1 when nothing is plugged into its sensor port.
+    assert int(_slot_in_trap(pdu, TrapType.PDU_TEMP_HIGH)) == 1

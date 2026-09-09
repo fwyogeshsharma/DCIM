@@ -172,6 +172,12 @@ RARITAN = {
     "pduName":          "1.3.6.1.4.1.13742.6.3.2.2.1.13",    # pduName
     "pduSerial":        "1.3.6.1.4.1.13742.6.3.2.1.1.4",     # pduSerialNumber
     "typeOfSensor":     "1.3.6.1.4.1.13742.6.0.0.10",        # typeOfSensor
+    # Which slot on the sensor chain spoke: the index column of
+    # externalSensorConfigurationTable, whose sensor type sits at .2 and
+    # decimal digits at .17 below. Without it a notification says only that
+    # "a temperature on this strip" moved, and the intake, mid-rack and
+    # exhaust probes on one chain cannot be told apart.
+    "externalNumber":   "1.3.6.1.4.1.13742.6.3.6.3.1.1",     # externalSensorNumber
     "oldSensorState":   "1.3.6.1.4.1.13742.6.0.0.2",         # oldSensorState
     "inletValue":       "1.3.6.1.4.1.13742.6.5.2.3.1.4",     # measurementsInletSensorValue
     "inletState":       "1.3.6.1.4.1.13742.6.5.2.3.1.3",     # measurementsInletSensorState

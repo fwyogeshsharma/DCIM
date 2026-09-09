@@ -82,6 +82,58 @@ def _fmt(value, decimals: int = 1) -> str:
 
 # ── Value object emitted on every sent trap ───────────────────────────────────
 
+#: Which channel of a rack probe each sensor-port condition reports.
+#:
+#: A DPX2 puts one reading in each slot it occupies, so naming the channel is
+#: what turns "a temperature on this strip" into "the intake of the probe in
+#: slot 3". Conditions with no channel of their own - a dew point, which is
+#: derived from two other readings, and smoke, which no DPX2 carries - are
+#: absent on purpose and send no slot.
+_TRAP_CHANNEL = {
+    TrapType.SENSOR_AMBIENT_TEMP_HIGH: "inlet",
+    TrapType.SENSOR_AMBIENT_TEMP_CRITICAL: "inlet",
+    TrapType.SENSOR_AMBIENT_TEMP_NORMAL: "inlet",
+    TrapType.TEMPERATURE_ALERT: "inlet",
+    TrapType.PDU_TEMP_HIGH: "inlet",
+    TrapType.PDU_TEMP_NORMAL: "inlet",
+    TrapType.SENSOR_MID_TEMP_HIGH: "mid",
+    TrapType.SENSOR_MID_TEMP_NORMAL: "mid",
+    TrapType.SENSOR_OUTLET_TEMP_HIGH: "outlet",
+    TrapType.SENSOR_OUTLET_TEMP_NORMAL: "outlet",
+    TrapType.SENSOR_HIGH_HUMIDITY: "humidity",
+    TrapType.SENSOR_CRITICAL_HUMIDITY: "humidity",
+    TrapType.SENSOR_LOW_HUMIDITY: "humidity",
+    TrapType.SENSOR_HUMIDITY_NORMAL: "humidity",
+    TrapType.HUMIDITY_ALERT: "humidity",
+    TrapType.PDU_HUMIDITY_HIGH: "humidity",
+    TrapType.PDU_HUMIDITY_NORMAL: "humidity",
+}
+
+#: Where a strip's OWN probe sits when nothing is chained off its sensor port.
+#: The same two slots the PDU publishes in that case.
+_OWN_PROBE_SLOT = {"inlet": 1, "humidity": 2}
+
+
+def _external_slot(device: Device, trap_type: Optional[TrapType]) -> int:
+    """The sensor-chain slot this condition is about, or 0 if it has none.
+
+    A probe is addressed by the slot it occupies on its host's chain, because
+    that is the only thing that separates the intake, mid-rack and exhaust
+    readings of one unit - they are three temperatures from one strip and
+    nothing else about them differs.
+    """
+    from core.device_manager import dpx2_slot
+
+    channel = _TRAP_CHANNEL.get(trap_type)
+    if channel is None:
+        return 0
+    base = int(getattr(device, "sensor_slot", 0) or 0)
+    if base:
+        return dpx2_slot(getattr(device, "model_name", ""), channel, base)
+    # The strip's own built-in probe, which occupies no chain slot.
+    return _OWN_PROBE_SLOT.get(channel, 0)
+
+
 def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str:
     """IP of the agent that conceptually sent this trap.
 
@@ -771,7 +823,7 @@ class TrapEngine(QObject):
             # PDU2-MIB says the value field does not apply to them.
             if sensor in (st["trip"], st["onOff"], st["smokeDetection"]):
                 value = 0
-            return [
+            vbs = [
                 _s(RARITAN["pduName"], device.name),
                 _s(RARITAN["pduSerial"], f"SN-{device.name}"),
                 _i(RARITAN["typeOfSensor"], sensor),
@@ -779,6 +831,14 @@ class TrapEngine(QObject):
                 _i(RARITAN[f"{table}State"], state),
                 _i(RARITAN["oldSensorState"], ss["normal"]),
             ]
+            # Which slot on the sensor chain spoke. Only the sensor port has
+            # slots: an inlet, a breaker and an outlet are addressed by their
+            # own tables, and a condition with no channel of its own sends
+            # nothing rather than a made-up index.
+            _slot = _external_slot(device, trap_type) if table == "external" else 0
+            if _slot:
+                vbs.insert(3, _i(RARITAN["externalNumber"], _slot))
+            return vbs
 
         # ── Liebert / Vertiv ─────────────────────────────────────────────────
         if key == "liebert":

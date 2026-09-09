@@ -2569,11 +2569,9 @@ class SNMPRecGenerator:
     @staticmethod
     def _dpx2_slots(model_name: str) -> int:
         """How many external-sensor slots a DPX2 unit occupies on the chain."""
-        if model_name == "Raritan DPX2-T3H1":
-            return 4          # inlet, mid, exhaust, humidity
-        if model_name == "Raritan DPX2-CC2":
-            return 2          # water rope, temperature
-        return 2              # T1H1: temperature, humidity
+        from core.device_manager import dpx2_channels
+
+        return len(dpx2_channels(model_name))
 
     @classmethod
     def _pdu_probe_updates(cls, device: Device, pdu_temp_x10: int,
@@ -2621,6 +2619,7 @@ class SNMPRecGenerator:
         Slots are assigned per child from sensor_slot and run consecutively for
         the width of that model, which is how a daisy chain enumerates.
         """
+        from core.device_manager import dpx2_channels
         from core.device_state_store import _get_ext_state
 
         children = list(getattr(device, "sensor_children", []) or [])
@@ -2641,13 +2640,14 @@ class SNMPRecGenerator:
             humid = int(round(float(st.get("probe_humidity_pct", 0.0)) * 10))
             model = str(st.get("probe_model", ""))
 
-            if model == "Raritan DPX2-T3H1":
-                rows = [("10", inlet), ("10", mid), ("10", outlet), ("11", humid)]
-            elif model == "Raritan DPX2-CC2":
-                wet = 1 if st.get("water_detection", "dry") == "wet" else 0
-                rows = [("28", wet), ("10", inlet)]
-            else:
-                rows = [("10", inlet), ("11", humid)]
+            # The row list and the slot a trap names come from ONE channel
+            # layout, so a notification cannot point at a reading this table
+            # does not publish.
+            wet = 1 if st.get("water_detection", "dry") == "wet" else 0
+            reading = {"inlet": ("10", inlet), "mid": ("10", mid),
+                       "outlet": ("10", outlet), "humidity": ("11", humid),
+                       "water": ("28", wet)}
+            rows = [reading[c] for c in dpx2_channels(model)]
 
             for off, (stype, val) in enumerate(rows):
                 slot = base + off

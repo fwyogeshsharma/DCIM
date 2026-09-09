@@ -529,6 +529,38 @@ SERVER_OS_INFO = {
 }
 
 
+#: What each DPX2 model puts on its host's sensor chain, in slot order.
+#:
+#: A unit occupies one slot per channel, consecutively from its base
+#: `sensor_slot`, which is how an RJ-12 daisy chain enumerates. Defined once
+#: because two things index off it: the external-sensor TABLE the PDU serves to
+#: a poller, and the SLOT a sensor notification names. When those two disagree,
+#: a trap points at a reading the table does not hold.
+DPX2_CHANNELS = {
+    "Raritan DPX2-T3H1": ("inlet", "mid", "outlet", "humidity"),
+    "Raritan DPX2-CC2": ("water", "inlet"),
+}
+#: A T1H1 or T2H1: one temperature and one humidity.
+DPX2_DEFAULT_CHANNELS = ("inlet", "humidity")
+
+
+def dpx2_channels(model_name: str) -> tuple:
+    """The channels this DPX2 model reports, in the order it occupies slots."""
+    return DPX2_CHANNELS.get(str(model_name or ""), DPX2_DEFAULT_CHANNELS)
+
+
+def dpx2_slot(model_name: str, channel: str, base: int) -> int:
+    """The chain slot a model's channel sits at, or 0 if it has no such channel.
+
+    A T3H1 at base 3 reads its intake at 3, mid-rack at 4 and exhaust at 5; a
+    CC2 at base 1 has its water rope at 1 and its temperature at 2.
+    """
+    channels = dpx2_channels(model_name)
+    if not base or channel not in channels:
+        return 0
+    return int(base) + channels.index(channel)
+
+
 @dataclass
 class Outlet:
     """One receptacle on a rack PDU — what a power cord actually plugs into.
