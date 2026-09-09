@@ -37,7 +37,7 @@ import os
 import random
 import threading
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)   # needed so INFO-level direct-write diagnostics appear in app.log
@@ -1138,15 +1138,9 @@ class SNMPRecGenerator:
                     updates[f"{R['outletValue']}.1.1.{ST['current']}"] = ("66", str(int(round(_pdu_amps * 1000))))
                     updates[f"{R['outletState']}.1.1.{ST['onOff']}"]   = ("2", str(SS["on"] if pdu_out == 1 else SS["off"]))
                     updates[f"{R['ocpState']}.1.1.{ST['trip']}"]       = ("2", str(SS["open"] if pdu_brk != 1 else SS["closed"]))
-                    # DPX2 temperature/humidity probes on the PDU's sensor port
-                    updates[f"{R['externalValue']}.1.1"]    = ("66", str(pdu_temp_x10))
-                    updates[f"{R['externalState']}.1.1"]    = ("2",  str(SS["normal"]))
-                    updates[f"{R['externalDecimals']}.1.1"] = ("66", "1")
-                    updates[f"{R['externalType']}.1.1"]     = ("2",  str(ST["temperature"]))
-                    updates[f"{R['externalValue']}.1.2"]    = ("66", str(pdu_hum_x10))
-                    updates[f"{R['externalState']}.1.2"]    = ("2",  str(SS["normal"]))
-                    updates[f"{R['externalDecimals']}.1.2"] = ("66", "1")
-                    updates[f"{R['externalType']}.1.2"]     = ("2",  str(ST["humidity"]))
+                    # DPX2 probes on the PDU's sensor port.
+                    updates.update(self._pdu_probe_updates(device, pdu_temp_x10,
+                                                           pdu_hum_x10))
                 # Store outlet status for per-outlet table update below
                 _pdu_ol_out = pdu_out
                 # Individually switched outlets. The strip flag above is still the
@@ -2580,6 +2574,39 @@ class SNMPRecGenerator:
         if model_name == "Raritan DPX2-CC2":
             return 2          # water rope, temperature
         return 2              # T1H1: temperature, humidity
+
+    @classmethod
+    def _pdu_probe_updates(cls, device: Device, pdu_temp_x10: int,
+                           pdu_hum_x10: int) -> Dict[str, Tuple[str, str]]:
+        """The per-tick rewrite of a Raritan PDU's external-sensor table.
+
+        A strip that carries named DPX2 probes republishes THEIR readings at
+        their slots - the same rows generate_device() wrote - so a T3H1's three
+        temperatures stay three temperatures. This used to write one number at
+        slot 1 and a humidity at slot 2 whatever hung off the port, which put the
+        strip's own probe over the DPX2's inlet and a humidity over its mid-rack
+        temperature; the physically modelled probe reading was computed every
+        tick and discarded at the SNMP boundary.
+
+        A strip with no named probes keeps the implicit single probe at slot 1
+        (temperature) and slot 2 (humidity), from the strip's own reading.
+        """
+        chain = cls._pdu_sensor_entries(device)
+        if chain:
+            return {oid: (typ, val) for oid, typ, val in chain}
+        R = _vendor_oids.RARITAN
+        ST = _vendor_oids.RARITAN_SENSOR_TYPE
+        SS = _vendor_oids.RARITAN_SENSOR_STATE
+        return {
+            f"{R['externalValue']}.1.1":    ("66", str(pdu_temp_x10)),
+            f"{R['externalState']}.1.1":    ("2",  str(SS["normal"])),
+            f"{R['externalDecimals']}.1.1": ("66", "1"),
+            f"{R['externalType']}.1.1":     ("2",  str(ST["temperature"])),
+            f"{R['externalValue']}.1.2":    ("66", str(pdu_hum_x10)),
+            f"{R['externalState']}.1.2":    ("2",  str(SS["normal"])),
+            f"{R['externalDecimals']}.1.2": ("66", "1"),
+            f"{R['externalType']}.1.2":     ("2",  str(ST["humidity"])),
+        }
 
     @staticmethod
     def _pdu_sensor_entries(device: Device) -> List[OidEntry]:

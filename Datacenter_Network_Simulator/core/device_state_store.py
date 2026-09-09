@@ -6566,13 +6566,14 @@ class DeviceStateStore:
         # ceiling) makes the plant page report a temperature the loop never had.
         # Forcing 30.1 % RH onto a thermowell is worse — an instrument that does
         # not exist reporting a value it cannot measure.
+        # A rack probe's three temperatures are likewise NOT scrubbed: inlet is
+        # the room supply air (mid and exhaust follow it), so capping it at 31.9
+        # would hide the one reading a real floor sees first on a CRAH failure.
+        # Humidity, dew point and airflow are still walks and keep their caps.
         if dt == DeviceType.SENSOR and _probe_role(device) is None:
-            device.inlet_temp  = min(device.inlet_temp, 31.9)        # ambient > 32
             device.humidity    = min(max(device.humidity, 30.1), 69.9)  # <30 / >70
             device.dewpoint    = min(device.dewpoint, 20.9)          # > 21
             device.airflow     = min(max(device.airflow, 0.31), 3.49)   # <0.3 / >3.5
-            device.mid_temp    = min(device.mid_temp, 37.9)          # > 38
-            device.outlet_temp = min(device.outlet_temp, 44.9)       # > 45
         # Facility electrical loading (swgr_/mcc_/mpp_/gen_load_pct) is likewise NOT
         # scrubbed, for the same reason: it is computed from the live power graph,
         # not walked, so there is no spurious excursion to suppress. A board at 97 %
@@ -6618,8 +6619,9 @@ class DeviceStateStore:
             # The random-walk branch (unrated SKU) tops out at 28 A by construction
             # and cannot reach any breaker rating in the catalog.
             clamp("pdu_frequency", 49.6, 50.9, 50.0)               # fault < 49.5
-            if st.get("pdu_temperature", 0.0) > 34.9:              # temp > 35
-                st["pdu_temperature"] = 34.9; changed = True
+            # pdu_temperature is NOT scrubbed: it is the room supply air, not a
+            # walk, so a reading over 35 °C is a cooling failure the strip's
+            # environmental alarm should see, not a phantom to suppress.
             if st.get("pdu_humidity", 0.0) > 69.9:                 # humidity > 70
                 st["pdu_humidity"] = 69.9; changed = True
 
@@ -7070,13 +7072,26 @@ class DeviceStateStore:
                                        random.uniform(51.1, 53.0)])
                 st["pdu_frequency"] = round(self._num_limit("pdu_frequency", f), 2)
 
-            # PDU intake probe sits in the cold aisle, so it mean-reverts toward
-            # the ~23 °C supply rather than drifting up (a high drift would re-
-            # appear as a false hot rack via the floor-plan inlet max()).
+            # PDU intake probe: the strip's built-in sensor, or the single DPX2
+            # a strip with no named probes publishes at slot 1. It breathes the
+            # SAME cold-aisle air as the servers and the rack probes beside it,
+            # so it is driven from the room supply plus a mid-strip height
+            # gradient - the identical formula the server inlet and the DPX2
+            # probe use, and the same 45 °C ceiling so a real failure is not
+            # pinned under the alarm line.
+            #
+            # It used to be a random walk mean-reverting to 23 °C and capped at
+            # 30, kept flat on purpose so it could never read as a hot rack.
+            # The cost was the opposite lie: through a total loss of CRAH
+            # airflow every PDU probe on the floor read 23 °C while the servers
+            # beside it read 36, and a DCIM that takes intake from the rack
+            # probe first - as real ones do - reported the hall 100 % in band
+            # under 300 inlet alarms.
             if mf["pdu_temperature"]:
-                t = st.get("pdu_temperature", 23.0)
-                t = max(18.0, min(30.0, t + (23.0 - t) * 0.08 + random.uniform(-0.25, 0.25)))
-                st["pdu_temperature"] = round(self._num_limit("pdu_temperature", t), 1)
+                _base = self._room_supply_temp(device)
+                t = _base + 1.5 + random.uniform(-0.3, 0.3)
+                st["pdu_temperature"] = round(self._num_limit("pdu_temperature",
+                                                              max(15.0, min(45.0, t))), 1)
 
             # RH mean-reverts to the controlled ~50% setpoint (see sensor humidity).
             if mf["pdu_humidity"]:

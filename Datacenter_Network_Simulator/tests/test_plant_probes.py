@@ -114,17 +114,21 @@ def test_probes_are_exempt_from_the_quiet_baseline_scrub(probed):
     assert cwr.humidity == 0.0, "a thermowell must not be given a humidity reading"
 
 
-def test_rack_probes_are_still_scrubbed(probed):
-    """Surgical, again — the cold-aisle walk still gets tamed."""
+def test_rack_probes_walks_are_still_scrubbed_but_not_their_air(probed):
+    """Surgical, again - the cold-aisle WALKS (humidity, dew point, airflow)
+    still get tamed. The temperature is not a walk any more: it is the room
+    supply air, so a 40 °C reading is a cooling failure and must survive the
+    scrub, exactly as a header thermowell's does."""
     from core.device_manager import Device, DeviceType, Vendor
 
     rack = Device(name="SEN1-DC1-HA-R2-01", device_type=DeviceType.SENSOR,
                   vendor=Vendor.VERTIV, ip_address="10.7.7.7",
                   model_name="Vertiv Geist GTHD")
-    rack.inlet_temp = 40.0
+    rack.inlet_temp, rack.humidity, rack.dewpoint, rack.airflow = 40.0, 80.0, 25.0, 5.0
     probed.store._ext_states[rack.name] = {}
     probed.store._scrub_numeric_faults(rack)
-    assert rack.inlet_temp == 31.9
+    assert rack.inlet_temp == 40.0
+    assert (rack.humidity, rack.dewpoint, rack.airflow) == (69.9, 20.9, 3.49)
 
 
 def test_probes_serve_one_point_on_entity_sensor_mib(probed):
