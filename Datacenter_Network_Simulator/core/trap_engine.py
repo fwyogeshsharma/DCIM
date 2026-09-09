@@ -745,6 +745,10 @@ class TrapEngine(QObject):
                 value = _num(mv if mv is not None else getattr(device, "humidity", 0), scale=10)
                 state = (ss["normal"] if trap_type in (TrapType.SENSOR_HUMIDITY_NORMAL,
                                                        TrapType.PDU_HUMIDITY_NORMAL)
+                         else ss["aboveUpperCritical"]
+                         if trap_type == TrapType.SENSOR_CRITICAL_HUMIDITY
+                         else ss["belowLowerWarning"]
+                         if trap_type == TrapType.SENSOR_LOW_HUMIDITY
                          else ss["aboveUpperWarning"])
             elif trap_type in (TrapType.SENSOR_HIGH_AIRFLOW, TrapType.SENSOR_LOW_AIRFLOW,
                                TrapType.SENSOR_AIRFLOW_NORMAL, _AIRFLOW_ALERT):
@@ -758,7 +762,8 @@ class TrapEngine(QObject):
                 state = (ss["normal"] if trap_type in (TrapType.SENSOR_AMBIENT_TEMP_NORMAL,
                                                        TrapType.PDU_TEMP_NORMAL,
                                                        TrapType.SENSOR_MID_TEMP_NORMAL,
-                                                       TrapType.SENSOR_OUTLET_TEMP_NORMAL)
+                                                       TrapType.SENSOR_OUTLET_TEMP_NORMAL,
+                                                       TrapType.SENSOR_DEWPOINT_NORMAL)
                          else ss["aboveUpperCritical"]
                          if trap_type == TrapType.SENSOR_AMBIENT_TEMP_CRITICAL
                          else ss["aboveUpperWarning"])
