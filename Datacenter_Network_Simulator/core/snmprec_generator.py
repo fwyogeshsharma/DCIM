@@ -506,7 +506,7 @@ class SNMPRecGenerator:
             entries += self._ups_entries(device)
 
         if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
-            entries += self._pdu_entries(device)
+            entries += self._pdu_entries(device, topology)
             entries += self._pdu_outlet_entries(device, topology)
 
         if device.device_type == DeviceType.GENERATOR:
@@ -561,7 +561,7 @@ class SNMPRecGenerator:
 
         # A PDU publishes every DPX2 chained off its sensor port.
         if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
-            entries += self._pdu_sensor_entries(device)
+            entries += self._pdu_sensor_entries(device, topology)
 
         # Sort and write
         # Output layout:  datasets/snmp/<snmp_addr>.snmprec
@@ -1782,7 +1782,7 @@ class SNMPRecGenerator:
     #  PDU OIDs (enterprise)                                               #
     # ------------------------------------------------------------------ #
 
-    def _pdu_entries(self, device: Device) -> List[OidEntry]:
+    def _pdu_entries(self, device: Device, topology=None) -> List[OidEntry]:
         """PDU status OIDs for PDU/floor_pdu devices.
 
         APC and Raritan units seed their own MIB's tables (PowerNet rPDU2 /
@@ -1799,7 +1799,7 @@ class SNMPRecGenerator:
         # probe is fitted, and a strip with empty ports publishes none - a
         # walk of its sensor table returns nothing, which is what the real
         # hardware does and what a DCIM has to be able to tell.
-        probes = SNMPRecGenerator._attached_probes(device)
+        probes = SNMPRecGenerator._attached_probes(device, topology)
         if vkey == "apc":
             A = _vendor_oids.APC
             rows = [
@@ -2600,7 +2600,7 @@ class SNMPRecGenerator:
         return entries
 
     @staticmethod
-    def _attached_probes(device: Device) -> List[dict]:
+    def _attached_probes(device: Device, topology=None) -> List[dict]:
         """Every probe fitted to this strip's sensor port, in port order.
 
         A rack strip has no environmental sensor of its own. It has a SENSOR
@@ -2616,28 +2616,53 @@ class SNMPRecGenerator:
         from core.device_manager import probe_channels
         from core.device_state_store import _get_ext_state
 
+        children = list(getattr(device, "sensor_children", []) or [])
+        if not children:
+            return []
+        # What is FITTED comes from inventory; what it READS comes from the
+        # tick. Those arrive at different times: datasets are generated before
+        # the store has stepped, so the live cache is empty and a strip that
+        # carries two probes would have written no sensor rows at all - and
+        # the per-tick patch only rewrites rows that already exist, so the
+        # table would have stayed empty for the life of the dataset. The probe
+        # device itself is the fallback, and it is the same object the tick
+        # copies from.
+        fallback = {}
+        if topology is not None:
+            wanted = set(children)
+            fallback = {d.name: d for d in topology.get_all_devices()
+                        if d.name in wanted}
+
         out: List[dict] = []
-        for child in (getattr(device, "sensor_children", []) or []):
+        for child in children:
             st = _get_ext_state(child)
-            if not st:
-                continue
-            slot = int(st.get("probe_slot", 0) or 0)
-            if not slot:
-                continue
-            model = str(st.get("probe_model", ""))
-            out.append({
-                "name": child,
-                "slot": slot,
-                "model": model,
-                "channels": probe_channels(model),
-                "values": {
+            dev = fallback.get(child)
+            if st:
+                slot = int(st.get("probe_slot", 0) or 0)
+                model = str(st.get("probe_model", ""))
+                values = {
                     "inlet": float(st.get("probe_inlet_c", 0.0)),
                     "mid": float(st.get("probe_mid_c", 0.0)),
                     "outlet": float(st.get("probe_outlet_c", 0.0)),
                     "humidity": float(st.get("probe_humidity_pct", 0.0)),
                     "water": 1.0 if st.get("water_detection", "dry") == "wet" else 0.0,
-                },
-            })
+                }
+            elif dev is not None:
+                slot = int(getattr(dev, "sensor_slot", 0) or 0)
+                model = str(getattr(dev, "model_name", ""))
+                values = {
+                    "inlet": float(getattr(dev, "inlet_temp", 0.0) or 0.0),
+                    "mid": float(getattr(dev, "mid_temp", 0.0) or 0.0),
+                    "outlet": float(getattr(dev, "outlet_temp", 0.0) or 0.0),
+                    "humidity": float(getattr(dev, "humidity", 0.0) or 0.0),
+                    "water": 0.0,
+                }
+            else:
+                continue
+            if not slot:
+                continue
+            out.append({"name": child, "slot": slot, "model": model,
+                        "channels": probe_channels(model), "values": values})
         return sorted(out, key=lambda x: x["slot"])
 
     @staticmethod
@@ -2666,7 +2691,7 @@ class SNMPRecGenerator:
         return {oid: (typ, val) for oid, typ, val in cls._pdu_sensor_entries(device)}
 
     @staticmethod
-    def _pdu_sensor_entries(device: Device) -> List[OidEntry]:
+    def _pdu_sensor_entries(device: Device, topology=None) -> List[OidEntry]:
         """A PDU's external-sensor table: every DPX2 chained off its sensor port.
 
         This is where the Raritan table actually belongs. A DPX2 is an RJ-12 lead
@@ -2678,42 +2703,25 @@ class SNMPRecGenerator:
         Slots are assigned per child from sensor_slot and run consecutively for
         the width of that model, which is how a daisy chain enumerates.
         """
-        from core.device_manager import probe_channels
-        from core.device_state_store import _get_ext_state
-
-        children = list(getattr(device, "sensor_children", []) or [])
-        if not children:
-            return []
         b = _RARITAN_SENSOR
         entries: List[OidEntry] = []
-        for child in children:
-            st = _get_ext_state(child)
-            if not st:
-                continue
-            base = int(st.get("probe_slot", 0) or 0)
-            if not base:
-                continue
-            inlet = int(round(float(st.get("probe_inlet_c", 0.0)) * 10))
-            mid = int(round(float(st.get("probe_mid_c", 0.0)) * 10))
-            outlet = int(round(float(st.get("probe_outlet_c", 0.0)) * 10))
-            humid = int(round(float(st.get("probe_humidity_pct", 0.0)) * 10))
-            model = str(st.get("probe_model", ""))
-
-            # The row list and the slot a trap names come from ONE channel
-            # layout, so a notification cannot point at a reading this table
-            # does not publish.
-            wet = 1 if st.get("water_detection", "dry") == "wet" else 0
-            reading = {"inlet": ("10", inlet), "mid": ("10", mid),
-                       "outlet": ("10", outlet), "humidity": ("11", humid),
-                       "water": ("28", wet)}
-            rows = [reading[c] for c in probe_channels(model)]
-
-            for off, (stype, val) in enumerate(rows):
-                slot = base + off
+        # One source for what is fitted and what it reads, shared with the
+        # APC table and with the slot a notification names. Keeping a second
+        # copy here is how the trap and the table drifted apart before.
+        sensor_type = {"inlet": "10", "mid": "10", "outlet": "10",
+                       "humidity": "11", "water": "28"}
+        for probe in SNMPRecGenerator._attached_probes(device, topology):
+            for off, channel in enumerate(probe["channels"]):
+                slot = probe["slot"] + off
+                value = probe["values"][channel]
+                # PDU2-MIB scales by the sensor's own decimalDigits, which
+                # this table publishes as one; water detection is a state,
+                # not a measurement, so it is not scaled.
+                raw = int(value) if channel == "water" else int(round(value * 10))
                 entries += [
                     _oid_entry(f"{b}.2.1.{slot}", "2", str(slot)),
-                    _oid_entry(f"{b}.3.1.{slot}", "2", stype),
-                    _oid_entry(f"{b}.4.1.{slot}", "2", str(val)),
+                    _oid_entry(f"{b}.3.1.{slot}", "2", sensor_type[channel]),
+                    _oid_entry(f"{b}.4.1.{slot}", "2", str(raw)),
                     _oid_entry(f"{b}.5.1.{slot}", "2", "4"),     # state=normal
                 ]
         return entries
