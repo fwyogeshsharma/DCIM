@@ -46,7 +46,10 @@ from core.bacnet_object_model import (
 )
 from core.bacnet_ev2_generator import DEFAULT_CIRCUITS, MAX_CIRCUITS, clamp_circuit_count
 from core.bacnet_telemetry import EV2TelemetryEngine
-from core.bacnet_plant_generator import build_plant_object_tree, PlantTelemetryEngine
+from core.bacnet_plant_generator import (
+    build_plant_object_tree, PlantTelemetryEngine, apply_stopped,
+    _RUNNING_BINARIES,
+)
 from simulator.bacnet_device import EV2BACnetDevice
 
 log = logging.getLogger(__name__)
@@ -90,6 +93,13 @@ class BACnetController:
 
         # Per-device telemetry engines
         self._telemetry: Dict[int, EV2TelemetryEngine]     = {}
+
+        # Discharge-air temperature carried across ticks for units that are
+        # STOPPED, by device name. A stopped air handler's supply sensor soaks
+        # toward the room over minutes rather than jumping, and the engine's own
+        # walk is no use for it: that walk mean-reverts to setpoint, which is the
+        # one number a unit with no fan cannot be holding.
+        self._stopped_air_c: Dict[str, float]              = {}
 
         # Guards the device/telemetry dicts against concurrent mutation: the recv
         # thread and the ticker iterate them while fleet-lifecycle commissioning
@@ -691,7 +701,15 @@ class BACnetController:
                     # Decided BEFORE the tick, because the engine needs it: a stopped
                     # machine must not accrue run-hours. Zeroing the published points
                     # afterwards was never enough — the counter had already advanced.
-                    _off = ((plant_standby_names and _nm in plant_standby_names)
+                    # A unit an operator or a rule has commanded OFF is stopped in
+                    # exactly the way a staged-off one is, and until this read the
+                    # override it was not: a tripped CRAH kept publishing setpoint
+                    # discharge, 80 % airflow and a healthy 5.6 K air-side delta
+                    # while its hall heated, so one binary was the only tell.
+                    _cmd_off = any(_p in _RUNNING_BINARIES and float(_v) < 0.5
+                                   for _p, _v in ovr.items())
+                    _off = (_cmd_off
+                            or (plant_standby_names and _nm in plant_standby_names)
                             or (plant_unpowered_names and _nm in plant_unpowered_names))
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
@@ -710,40 +728,24 @@ class BACnetController:
                     # the cooling-loss penalty but NOT unpowered ones, because a
                     # unit that isn't turning genuinely isn't rejecting heat.
                     if _off:
-                        for _pt in list(values.keys()):
-                            if _pt in ("Chiller_Running", "Run_Status",
-                                       "Fan_Status", "Unit_Running"):
-                                values[_pt] = 0.0            # stopped
-                            elif any(_k in _pt for _k in ("Power", "Speed", "Flow",
-                                                          "Frequency", "Load", "Capacity",
-                                                          "Position", "Valve", "Vibration")):
-                                values[_pt] = 0.0            # no draw/flow/rotation/valve
-                        # A stopped unit does no thermodynamic work: efficiency is
-                        # undefined (COP→0), the temperature ΔT collapses (no flow →
-                        # no heat exchange, so supply≈return), and the refrigerant
-                        # pressures equalize. Sensors still read — just with no ΔT —
-                        # so the row shows "idle", not fake operating values. Setpoints
-                        # and run-hour counters persist (config / cumulative).
-                        if "COP" in values:
-                            values["COP"] = 0.0
-                        for _a, _b in (("CHW_Supply_Temp", "CHW_Return_Temp"),
-                                       ("Cond_Supply_Temp", "Cond_Return_Temp"),
-                                       ("Supply_Air_Temp", "Return_Air_Temp"),
-                                       ("TCS_Supply_Temp", "TCS_Return_Temp"),
-                                       ("Cond_Water_In", "Cond_Water_Out"),
-                                       ("Evap_Pressure", "Cond_Pressure")):
-                            if _a in values and _b in values:
-                                _m = round((values[_a] + values[_b]) / 2.0, 2)
-                                values[_a] = values[_b] = _m
-                        # A stopped pump develops no head: differential → 0 and the
-                        # discharge falls back to the suction (standby header) pressure.
-                        if "Diff_Pressure" in values:
-                            values["Diff_Pressure"] = 0.0
-                        if "Discharge_Pressure" in values and "Suction_Pressure" in values:
-                            values["Discharge_Pressure"] = values["Suction_Pressure"]
-                        # A stopped motor cools toward mechanical-room ambient.
-                        if "Motor_Temp" in values:
-                            values["Motor_Temp"] = 25.0
+                        # The return-air target comes from the OVERRIDE map, not
+                        # from `values`: the store publishes the room-derived
+                        # return there and it is applied further down, whereas
+                        # `values` still holds the engine's own walk, which knows
+                        # nothing about the hall this unit stands in.
+                        _ret = ovr.get("Return_Air_Temp")
+                        _sup = apply_stopped(
+                            values, dt=dt,
+                            return_air_c=float(_ret) if _ret is not None else None,
+                            supply_air_c=self._stopped_air_c.get(_nm))
+                        if _sup is None:
+                            self._stopped_air_c.pop(_nm, None)
+                        else:
+                            self._stopped_air_c[_nm] = _sup
+                    else:
+                        # Running again: the coil pulls the discharge back down to
+                        # setpoint, and the store resumes publishing it.
+                        self._stopped_air_c.pop(_nm, None)
                 else:
                     # EV2 energy meter: drive the panel from the live downstream
                     # load (server→PDU→panel) when available, else its own curve.

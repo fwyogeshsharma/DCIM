@@ -5320,9 +5320,26 @@ class DeviceStateStore:
                 if not ip:
                     continue
                 pts = auto.setdefault(ip, {})
-                pts["Supply_Air_Temp"] = round(_sa, 1)
+                # The RETURN sensor is published either way. It sits in the room's
+                # air at the unit's inlet, and with the fan off it still reads that
+                # air by convection - air which is getting hotter precisely because
+                # this unit stopped.
                 if ret_air is not None:
                     pts["Return_Air_Temp"] = round(ret_air, 1)
+                # A DISCHARGE is something only a running unit has. No fan means no
+                # air over the coil, and the stop interlock shuts the CHW valve, so
+                # publishing setpoint discharge here described a machine that was
+                # not running: a tripped CRAH read 22.0 C supply against a 27.6 C
+                # return, 80 % airflow and a healthy 5.6 K delta while its hall
+                # heated. Leaving the point alone hands it to the engine, which
+                # soaks it up toward the return (bacnet_plant_generator.apply_stopped).
+                #
+                # Air alarms are skipped with it, as a real controller inhibits them
+                # on a unit that is off: a stopped machine annunciates STOPPED, and
+                # a high-return alarm underneath that is noise on top of the finding.
+                if self._unit_stopped(name):
+                    continue
+                pts["Supply_Air_Temp"] = round(_sa, 1)
                 # CHILLED-WATER VALVE. A CRAH holds discharge setpoint by modulating
                 # this valve, so its position is the output of a temperature control
                 # loop — not, as it used to be, a restatement of the plant's demand
@@ -5352,7 +5369,13 @@ class DeviceStateStore:
         # of that very loop DID take the penalty. The CDU and the servers it feeds were
         # telling different stories on the same wire.
         for dc, _all_cdus in (ctx.get("cdu_by_dc") or {}).items():
-            _cdus = [c for c in _all_cdus if c not in self._plant_unpowered_names]
+            # A stopped CDU is dropped for the same reason a stopped CRAH is: its
+            # secondary pump is not turning, so it is not holding a technology-loop
+            # supply temperature and publishing one would describe a heat exchanger
+            # that is moving no heat. The engine equalizes its loop instead.
+            _cdus = [c for c in _all_cdus
+                     if c not in self._plant_unpowered_names
+                     and not self._unit_stopped(c)]
             if not _cdus:
                 continue
             # Drift of the facility loop above its design temperature, attenuated by
@@ -5400,6 +5423,18 @@ class DeviceStateStore:
                 if val is not None:
                     readings[name] = (role, round(float(val), 2))
         self._probe_reading = readings
+
+    @staticmethod
+    def _unit_stopped(name: str) -> bool:
+        """True when this plant unit's own running point reads stopped.
+
+        Read from the last published state rather than from the override map, so
+        a unit stopped by an operator, by a rule, by the staging logic or by a
+        dead MCC all look identical here. They are identical on the floor too:
+        the fan is not turning.
+        """
+        pv = _plant_state_cache.get(name) or {}
+        return any(float(v) < 0.5 for k, v in pv.items() if k in _RUNNING_POINTS)
 
     def _room_supply_temp(self, device: "Device") -> float:
         """Cold-aisle supply temperature for a device's room.

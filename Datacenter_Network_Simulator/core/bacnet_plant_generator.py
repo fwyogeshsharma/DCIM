@@ -176,6 +176,89 @@ PLANT_SPEC: Dict[str, dict] = {
     },
 }
 
+# ── What a STOPPED machine publishes ────────────────────────────────
+# A unit can be stopped three ways and the floor cannot tell them apart: the BMS
+# staged it off, its MCC lost power, or an operator (or a rule) commanded it off.
+# All three publish the same thing, which is why this lives in one function
+# rather than once per caller.
+_RUNNING_BINARIES = ("Chiller_Running", "Run_Status", "Fan_Status", "Unit_Running")
+
+#: Nothing turning, nothing flowing, no valve open, no draw. Substring match, so
+#: Fan_Power / Pump_Speed / CHW_Flow / Cooling_Capacity / Facility_CHW_Valve are
+#: each covered by their family word.
+_STOPPED_ZERO_TOKENS = ("Power", "Speed", "Flow", "Frequency", "Load",
+                        "Capacity", "Position", "Valve", "Vibration")
+
+#: WATER pairs. A dead loop equalizes: no flow, no heat exchange, so the two
+#: thermowells drift onto the same number. Air is deliberately NOT in this list;
+#: see the discharge block in apply_stopped.
+_STOPPED_EQUALIZE = (("CHW_Supply_Temp", "CHW_Return_Temp"),
+                     ("Cond_Supply_Temp", "Cond_Return_Temp"),
+                     ("TCS_Supply_Temp", "TCS_Return_Temp"),
+                     ("Cond_Water_In", "Cond_Water_Out"),
+                     ("Evap_Pressure", "Cond_Pressure"))
+
+#: How long dead air in a supply plenum takes to soak up to the air around it.
+#: Minutes, not seconds: the sheet metal and a coil still full of water have
+#: mass. Four is a middling figure for a floor-standing CRAH, and the exact
+#: number matters far less than the shape - climbs, rather than holds setpoint.
+STOPPED_AIR_SOAK_S = 240.0
+
+
+def apply_stopped(values: Dict[str, float], dt: float = 1.0,
+                  return_air_c: float | None = None,
+                  supply_air_c: float | None = None) -> float | None:
+    """Rewrite *values* in place into what a stopped unit publishes.
+
+    Returns the discharge-air temperature to carry into the next tick, or None
+    for a machine that moves no air.
+
+    The controller still reads: a tripped CRAH's sensors sit on control power
+    and keep reporting. What dies is everything that needs the fan turning.
+
+    AIR is not treated like water. Averaging discharge against return would drag
+    the RETURN down, and the return grille is reading the room - a room getting
+    hotter BECAUSE this unit stopped. So the discharge climbs to meet the return
+    and the air-side delta collapses, which is the shape a BMS shows for a unit
+    that has tripped.
+    """
+    for pt in list(values):
+        if pt in _RUNNING_BINARIES:
+            values[pt] = 0.0
+        # Case-insensitive, and that is not cosmetic: the point is spelled
+        # "Airflow", the token is "Flow", and a case-sensitive match left a
+        # stopped CRAH publishing 80 % airflow - the single most obvious tell
+        # that a unit is running, on a unit that was not.
+        elif any(tok.lower() in pt.lower() for tok in _STOPPED_ZERO_TOKENS):
+            values[pt] = 0.0
+    # Efficiency is undefined for a machine doing no work. Zero, not the walk's
+    # healthy 5.5, which would put a plausible number on a dead chiller.
+    if "COP" in values:
+        values["COP"] = 0.0
+    for a, b in _STOPPED_EQUALIZE:
+        if a in values and b in values:
+            mid = round((values[a] + values[b]) / 2.0, 2)
+            values[a] = values[b] = mid
+    # A stopped pump develops no head: differential dies and the discharge falls
+    # back to the suction (standby header) pressure.
+    if "Diff_Pressure" in values:
+        values["Diff_Pressure"] = 0.0
+    if "Discharge_Pressure" in values and "Suction_Pressure" in values:
+        values["Discharge_Pressure"] = values["Suction_Pressure"]
+    # A stopped motor cools toward mechanical-room ambient.
+    if "Motor_Temp" in values:
+        values["Motor_Temp"] = 25.0
+
+    if "Supply_Air_Temp" not in values:
+        return None
+    target = return_air_c if return_air_c is not None else values.get("Return_Air_Temp")
+    cur = float(supply_air_c if supply_air_c is not None else values["Supply_Air_Temp"])
+    if target is not None:
+        cur += (float(target) - cur) * min(1.0, max(0.0, dt) / STOPPED_AIR_SOAK_S)
+    values["Supply_Air_Temp"] = round(cur, 1)
+    return cur
+
+
 # Points whose magnitude tracks plant load (scaled by the diurnal multiplier).
 _LOAD_TOKENS = ("Power", "Load", "Flow", "Speed")
 def _is_load(name: str) -> bool:
