@@ -96,11 +96,50 @@ def test_a_strip_with_probes_republishes_their_readings(strip_with_probe):
     assert "230" not in {v for _, v in up.values()}
 
 
-def test_a_strip_without_probes_keeps_its_own_probe_at_slot_one():
+def test_a_strip_with_empty_sensor_ports_publishes_no_environment():
+    """A rack strip has no environmental sensor of its own.
+
+    It has sensor PORTS, and it reports a temperature only because somebody
+    plugged a probe into one. With the ports empty the sensor table is empty:
+    a walk returns nothing, and a DCIM records no reading rather than a
+    number the hardware never took. The simulator used to publish the
+    strip's own modelled air whether or not anything was fitted, which is
+    why every one of eighty strips reported an ambient temperature while the
+    twenty probes that exist reported none.
+    """
+    from core import vendor_oids
+
     pdu = Device(name="PDUB-DC1-HA-R2-01", device_type=DeviceType.PDU,
                  vendor=Vendor.RARITAN, ip_address="", mgmt_ip="10.52.11.31",
                  model_name="Raritan PX2-5170CR")
-    up = SNMPRecGenerator._pdu_probe_updates(pdu, 356, 450)
-    R = vendor_oids.RARITAN
-    assert up[f"{R['externalValue']}.1.1"] == ("66", "356")
-    assert up[f"{R['externalValue']}.1.2"] == ("66", "450")
+    assert SNMPRecGenerator._pdu_probe_updates(pdu, 356, 450) == {}
+    assert SNMPRecGenerator._attached_probes(pdu) == []
+
+    apc = Device(name="PDUB-DC1-HA-R2-02", device_type=DeviceType.PDU,
+                 vendor=Vendor.APC, ip_address="", mgmt_ip="10.52.11.32",
+                 model_name="APC AP8886")
+    served = {o for o, _t, _v in SNMPRecGenerator()._pdu_entries(apc)}
+    A = vendor_oids.APC
+    assert not [o for o in served if o.startswith(A["rpdu2SensorTempC"])]
+    assert not [o for o in served if o.startswith(A["rpdu2SensorHumid"])]
+
+
+def test_a_fitted_probe_is_what_the_strip_reports():
+    """One row per probe on the port, carrying that probe's reading."""
+    from core import vendor_oids
+
+    apc = Device(name="PDUA-DC1-HA-R2-01", device_type=DeviceType.PDU,
+                 vendor=Vendor.APC, ip_address="", mgmt_ip="10.52.11.30",
+                 model_name="APC AP8886")
+    apc.sensor_children = ["SEN1-DC1-HA-R2-01", "SEN2-DC1-HA-R2-01"]
+    _publish("SEN1-DC1-HA-R2-01", "APC AP9335TH", 1, inlet=26.4)
+    _publish("SEN2-DC1-HA-R2-01", "APC AP9335T", 3, inlet=31.8)
+    A = vendor_oids.APC
+    served = {o: v for o, _t, v in SNMPRecGenerator()._pdu_entries(apc)}
+    assert served[f"{A['rpdu2SensorTempC']}.1"] == "264"
+    assert served[f"{A['rpdu2SensorTempC']}.2"] == "318"
+    # The temperature-only probe publishes no humidity column.
+    assert f"{A['rpdu2SensorHumid']}.1" in served
+    assert f"{A['rpdu2SensorHumid']}.2" not in served
+    for n in apc.sensor_children:
+        dss._ext_state_cache.pop(n, None)

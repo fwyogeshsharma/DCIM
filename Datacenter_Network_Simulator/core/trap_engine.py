@@ -122,14 +122,14 @@ def _external_slot(device: Device, trap_type: Optional[TrapType]) -> int:
     readings of one unit - they are three temperatures from one strip and
     nothing else about them differs.
     """
-    from core.device_manager import dpx2_slot
+    from core.device_manager import probe_slot
 
     channel = _TRAP_CHANNEL.get(trap_type)
     if channel is None:
         return 0
     base = int(getattr(device, "sensor_slot", 0) or 0)
     if base:
-        return dpx2_slot(getattr(device, "model_name", ""), channel, base)
+        return probe_slot(getattr(device, "model_name", ""), channel, base)
     # The strip's own built-in probe, which occupies no chain slot.
     return _OWN_PROBE_SLOT.get(channel, 0)
 

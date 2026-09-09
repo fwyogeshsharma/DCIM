@@ -1081,8 +1081,17 @@ class SNMPRecGenerator:
                     updates[f"{_PDU_ENT}.12.0"] = ("2", str(pdu_appar_va))
                     updates[f"{_PDU_ENT}.13.0"] = ("2", str(pdu_energy_x10))
                     updates[f"{_PDU_ENT}.14.0"] = ("2", str(pdu_freq_x10))
-                    updates[f"{_PDU_ENT}.15.0"] = ("2", str(pdu_temp_x10))
-                    updates[f"{_PDU_ENT}.16.0"] = ("2", str(pdu_hum_x10))
+                    # Same rule on the placeholder tree: a reading only
+                    # exists because a probe is fitted.
+                    _probes = self._attached_probes(device)
+                    if _probes:
+                        _v = _probes[0]["values"]
+                        if "inlet" in _probes[0]["channels"]:
+                            updates[f"{_PDU_ENT}.15.0"] = (
+                                "2", str(int(round(_v["inlet"] * 10))))
+                        if "humidity" in _probes[0]["channels"]:
+                            updates[f"{_PDU_ENT}.16.0"] = (
+                                "2", str(int(round(_v["humidity"] * 10))))
                     updates[f"{_PDU_ENT}.17.0"] = ("2", str(pdu_outlet_w))
 
                 # The same live numbers, published where the vendor's own MIB
@@ -1111,8 +1120,18 @@ class SNMPRecGenerator:
                     updates[f"{A['rpdu2BankState']}.1"]    = ("2", "4" if pdu_brk != 1 else str(_load_state))
                     updates[f"{A['rpdu2BankCurrent']}.1"]  = ("2", str(int(round(_pdu_amps * 10))))
                     updates[f"{A['rpdu2OutletState']}.1"]  = ("2", "1" if pdu_out == 1 else "2")
-                    updates[f"{A['rpdu2SensorTempC']}.1"]  = ("2", str(pdu_temp_x10))
-                    updates[f"{A['rpdu2SensorHumid']}.1"]  = ("2", str(int(round(pdu_hum_x10 / 10))))
+                    # One row per probe fitted to a sensor port, and no rows
+                    # at all when the ports are empty: an AP8000 has no
+                    # onboard environmental sensor, so a bare strip reports
+                    # no temperature and no humidity.
+                    for _i, _pr in enumerate(self._attached_probes(device), 1):
+                        _v = _pr["values"]
+                        if "inlet" in _pr["channels"]:
+                            updates[f"{A['rpdu2SensorTempC']}.{_i}"] = (
+                                "2", str(int(round(_v["inlet"] * 10))))
+                        if "humidity" in _pr["channels"]:
+                            updates[f"{A['rpdu2SensorHumid']}.{_i}"] = (
+                                "2", str(int(round(_v["humidity"]))))
                 elif _pdu_vendor == "raritan":
                     R  = _vendor_oids.RARITAN
                     ST = _vendor_oids.RARITAN_SENSOR_TYPE
@@ -1775,9 +1794,15 @@ class SNMPRecGenerator:
         entries: List[OidEntry] = []
         _PDU_ENT = "1.3.6.1.4.1.99999.5"
         vkey = _vendor_oids.vendor_key(device.vendor)
+        # A rack strip has no environmental sensor of its own: it has sensor
+        # PORTS. Every temperature and humidity row below exists because a
+        # probe is fitted, and a strip with empty ports publishes none - a
+        # walk of its sensor table returns nothing, which is what the real
+        # hardware does and what a DCIM has to be able to tell.
+        probes = SNMPRecGenerator._attached_probes(device)
         if vkey == "apc":
             A = _vendor_oids.APC
-            return [
+            rows = [
                 _oid_entry(f"{A['rpdu2Power']}.1",        "2", "209"),  # 2.09 kW ×100
                 _oid_entry(f"{A['rpdu2ApparentPwr']}.1",  "2", "220"),  # 2.20 kVA ×100
                 _oid_entry(f"{A['rpdu2PowerFactor']}.1",  "2", "95"),   # 0.95 ×100
@@ -1789,11 +1814,21 @@ class SNMPRecGenerator:
                 _oid_entry(f"{A['rpdu2BankState']}.1",    "2", "2"),
                 _oid_entry(f"{A['rpdu2BankCurrent']}.1",  "2", "100"),
                 _oid_entry(f"{A['rpdu2OutletState']}.1",  "2", "1"),    # on
-                _oid_entry(f"{A['rpdu2SensorTempC']}.1",  "2", "230"),  # 23.0 °C ×10
-                _oid_entry(f"{A['rpdu2SensorHumid']}.1",  "2", "45"),   # %
                 _oid_entry(f"{A['identName']}.0",         "4", device.name),
                 _oid_entry(f"{A['identSerial']}.0",       "4", f"SN-{device.name}"),
             ]
+            # rPDU2SensorTempHumidityStatusTable: one row per fitted probe.
+            # An AP9335T carries a thermistor only, so it publishes no
+            # humidity column.
+            for i, pr in enumerate(probes, 1):
+                v = pr["values"]
+                if "inlet" in pr["channels"]:
+                    rows.append(_oid_entry(f"{A['rpdu2SensorTempC']}.{i}", "2",
+                                           str(int(round(v["inlet"] * 10)))))
+                if "humidity" in pr["channels"]:
+                    rows.append(_oid_entry(f"{A['rpdu2SensorHumid']}.{i}", "2",
+                                           str(int(round(v["humidity"])))))
+            return rows
         if vkey == "raritan":
             R  = _vendor_oids.RARITAN
             ST = _vendor_oids.RARITAN_SENSOR_TYPE
@@ -1815,14 +1850,6 @@ class SNMPRecGenerator:
                 _oid_entry(f"{R['outletValue']}.1.1.{ST['current']}", "66", "10000"),
                 _oid_entry(f"{R['outletState']}.1.1.{ST['onOff']}",   "2",  str(SS["on"])),
                 _oid_entry(f"{R['ocpState']}.1.1.{ST['trip']}",       "2",  str(SS["closed"])),
-                _oid_entry(f"{R['externalValue']}.1.1",    "66", "230"),
-                _oid_entry(f"{R['externalState']}.1.1",    "2",  str(SS["normal"])),
-                _oid_entry(f"{R['externalDecimals']}.1.1", "66", "1"),
-                _oid_entry(f"{R['externalType']}.1.1",     "2",  str(ST["temperature"])),
-                _oid_entry(f"{R['externalValue']}.1.2",    "66", "450"),
-                _oid_entry(f"{R['externalState']}.1.2",    "2",  str(SS["normal"])),
-                _oid_entry(f"{R['externalDecimals']}.1.2", "66", "1"),
-                _oid_entry(f"{R['externalType']}.1.2",     "2",  str(ST["humidity"])),
                 _oid_entry(f"{R['pduName']}.1",   "4", device.name),
                 _oid_entry(f"{R['pduModel']}.1",  "4", getattr(device, "model_name", "") or "PX3"),
                 _oid_entry(f"{R['pduSerial']}.1", "4", f"SN-{device.name}"),
@@ -1843,10 +1870,16 @@ class SNMPRecGenerator:
             _oid_entry(f"{_PDU_ENT}.12.0", "2",  "2200"), # pduApparentPower VA (220V × 10A)
             _oid_entry(f"{_PDU_ENT}.13.0", "2",  "0"),    # pduEnergyKWh x10
             _oid_entry(f"{_PDU_ENT}.14.0", "2",  "500"),  # pduFrequency x10 Hz (50.0)
-            _oid_entry(f"{_PDU_ENT}.15.0", "2",  "230"),  # pduTemperature x10 °C (23.0)
-            _oid_entry(f"{_PDU_ENT}.16.0", "2",  "450"),  # pduHumidity x10 % (45.0)
             _oid_entry(f"{_PDU_ENT}.17.0", "2",  "2090"), # pduOutletPower W (per-outlet)
         ]
+        if probes:
+            v = probes[0]["values"]
+            if "inlet" in probes[0]["channels"]:
+                entries.append(_oid_entry(f"{_PDU_ENT}.15.0", "2",
+                                          str(int(round(v["inlet"] * 10)))))
+            if "humidity" in probes[0]["channels"]:
+                entries.append(_oid_entry(f"{_PDU_ENT}.16.0", "2",
+                                          str(int(round(v["humidity"] * 10)))))
         return entries
 
     # ------------------------------------------------------------------ #
@@ -2567,11 +2600,52 @@ class SNMPRecGenerator:
         return entries
 
     @staticmethod
-    def _dpx2_slots(model_name: str) -> int:
-        """How many external-sensor slots a DPX2 unit occupies on the chain."""
-        from core.device_manager import dpx2_channels
+    def _attached_probes(device: Device) -> List[dict]:
+        """Every probe fitted to this strip's sensor port, in port order.
 
-        return len(dpx2_channels(model_name))
+        A rack strip has no environmental sensor of its own. It has a SENSOR
+        PORT, and it reports temperature or humidity only because somebody
+        plugged a probe into it - an AP9335 on an APC, a DPX2 on a Raritan.
+        With nothing fitted the sensor table is empty and a walk returns
+        nothing, which is what a real strip does and what this returns.
+
+        Each entry carries the probe's slot, its channels in slot order, and
+        the reading for each, so a caller can render whichever table its
+        vendor uses without knowing what kind of probe it is.
+        """
+        from core.device_manager import probe_channels
+        from core.device_state_store import _get_ext_state
+
+        out: List[dict] = []
+        for child in (getattr(device, "sensor_children", []) or []):
+            st = _get_ext_state(child)
+            if not st:
+                continue
+            slot = int(st.get("probe_slot", 0) or 0)
+            if not slot:
+                continue
+            model = str(st.get("probe_model", ""))
+            out.append({
+                "name": child,
+                "slot": slot,
+                "model": model,
+                "channels": probe_channels(model),
+                "values": {
+                    "inlet": float(st.get("probe_inlet_c", 0.0)),
+                    "mid": float(st.get("probe_mid_c", 0.0)),
+                    "outlet": float(st.get("probe_outlet_c", 0.0)),
+                    "humidity": float(st.get("probe_humidity_pct", 0.0)),
+                    "water": 1.0 if st.get("water_detection", "dry") == "wet" else 0.0,
+                },
+            })
+        return sorted(out, key=lambda x: x["slot"])
+
+    @staticmethod
+    def _probe_slots(model_name: str) -> int:
+        """How many external-sensor slots a DPX2 unit occupies on the chain."""
+        from core.device_manager import probe_channels
+
+        return len(probe_channels(model_name))
 
     @classmethod
     def _pdu_probe_updates(cls, device: Device, pdu_temp_x10: int,
@@ -2589,22 +2663,7 @@ class SNMPRecGenerator:
         A strip with no named probes keeps the implicit single probe at slot 1
         (temperature) and slot 2 (humidity), from the strip's own reading.
         """
-        chain = cls._pdu_sensor_entries(device)
-        if chain:
-            return {oid: (typ, val) for oid, typ, val in chain}
-        R = _vendor_oids.RARITAN
-        ST = _vendor_oids.RARITAN_SENSOR_TYPE
-        SS = _vendor_oids.RARITAN_SENSOR_STATE
-        return {
-            f"{R['externalValue']}.1.1":    ("66", str(pdu_temp_x10)),
-            f"{R['externalState']}.1.1":    ("2",  str(SS["normal"])),
-            f"{R['externalDecimals']}.1.1": ("66", "1"),
-            f"{R['externalType']}.1.1":     ("2",  str(ST["temperature"])),
-            f"{R['externalValue']}.1.2":    ("66", str(pdu_hum_x10)),
-            f"{R['externalState']}.1.2":    ("2",  str(SS["normal"])),
-            f"{R['externalDecimals']}.1.2": ("66", "1"),
-            f"{R['externalType']}.1.2":     ("2",  str(ST["humidity"])),
-        }
+        return {oid: (typ, val) for oid, typ, val in cls._pdu_sensor_entries(device)}
 
     @staticmethod
     def _pdu_sensor_entries(device: Device) -> List[OidEntry]:
@@ -2619,7 +2678,7 @@ class SNMPRecGenerator:
         Slots are assigned per child from sensor_slot and run consecutively for
         the width of that model, which is how a daisy chain enumerates.
         """
-        from core.device_manager import dpx2_channels
+        from core.device_manager import probe_channels
         from core.device_state_store import _get_ext_state
 
         children = list(getattr(device, "sensor_children", []) or [])
@@ -2647,7 +2706,7 @@ class SNMPRecGenerator:
             reading = {"inlet": ("10", inlet), "mid": ("10", mid),
                        "outlet": ("10", outlet), "humidity": ("11", humid),
                        "water": ("28", wet)}
-            rows = [reading[c] for c in dpx2_channels(model)]
+            rows = [reading[c] for c in probe_channels(model)]
 
             for off, (stype, val) in enumerate(rows):
                 slot = base + off

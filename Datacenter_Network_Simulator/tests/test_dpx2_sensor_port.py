@@ -436,3 +436,61 @@ def test_a_condition_with_no_channel_sends_no_slot():
     # The strip's own probe has no chain slot; it is the one the PDU publishes
     # at slot 1 when nothing is plugged into its sensor port.
     assert int(_slot_in_trap(pdu, TrapType.PDU_TEMP_HIGH)) == 1
+
+
+def test_a_probe_fits_the_strip_it_is_plugged_into(shipped):
+    """There is no cable that puts a Raritan DPX2 on an APC strip.
+
+    An AP8000 takes an AP9335T or AP9335TH on its RJ-45 sensor ports; a
+    Raritan PX daisy-chains DPX2 units on its own. The part and the strip
+    come from the same vendor because the port only accepts that vendor's
+    lead, and the tree the reading is served on follows from it.
+    """
+    by_ip = {d.mgmt_ip: d for d in shipped if d.mgmt_ip}
+    fitted = [d for d in shipped if d.host_pdu_ip]
+    assert fitted
+    for probe in fitted:
+        strip = by_ip[probe.host_pdu_ip]
+        assert probe.vendor == strip.vendor, (
+            f"{probe.name} ({probe.model_name}) is fitted to "
+            f"{strip.name} ({strip.model_name})")
+
+
+def test_the_row_ends_are_instrumented(shipped):
+    """Sampling covers each row's ends, not just the head of it.
+
+    Every probe used to sit in racks one to three of one row, which left the
+    far end of every row - where containment leaks and the CRAH throw is
+    weakest - with no measurement at all.
+    """
+    racked = [d for d in shipped if d.host_pdu_ip]
+    by_row = {}
+    for d in racked:
+        by_row.setdefault((d.datacenter, d.room, d.rack_row), set()).add(d.rack_num)
+    assert by_row, "no probes are fitted"
+    server_racks = {}
+    for d in shipped:
+        if d.device_type == DeviceType.SERVER and d.rack_num:
+            server_racks.setdefault((d.datacenter, d.room, d.rack_row), set()).add(d.rack_num)
+    for row, probed in by_row.items():
+        racks = server_racks.get(row)
+        if not racks:
+            continue
+        assert min(racks) in probed, f"{row}: the first rack has no probe"
+        assert max(racks) in probed, f"{row}: the last rack has no probe"
+
+
+def test_a_pair_on_one_rack_reads_two_heights(shipped):
+    """A single sensor per rack cannot show stratification, which is the
+    failure this instrumentation exists to see. Where two are fitted they sit
+    at the bottom and the top of the front door, not side by side."""
+    by_rack = {}
+    for d in shipped:
+        if d.host_pdu_ip:
+            by_rack.setdefault((d.datacenter, d.room, d.rack_row, d.rack_num), []).append(d)
+    pairs = [v for v in by_rack.values() if len(v) > 1]
+    assert pairs, "no rack carries a pair"
+    for probes in pairs:
+        units = sorted(p.rack_unit for p in probes)
+        assert units[0] < units[-1], [p.name for p in probes]
+        assert units[-1] - units[0] >= 20, "a pair should span the rack"

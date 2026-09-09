@@ -529,33 +529,43 @@ SERVER_OS_INFO = {
 }
 
 
-#: What each DPX2 model puts on its host's sensor chain, in slot order.
+#: What each probe model puts on its host strip's sensor port, in slot order.
 #:
-#: A unit occupies one slot per channel, consecutively from its base
-#: `sensor_slot`, which is how an RJ-12 daisy chain enumerates. Defined once
-#: because two things index off it: the external-sensor TABLE the PDU serves to
-#: a poller, and the SLOT a sensor notification names. When those two disagree,
-#: a trap points at a reading the table does not hold.
-DPX2_CHANNELS = {
+#: A probe occupies one slot per channel, consecutively from its base
+#: `sensor_slot`. Defined once because two things index off it: the sensor
+#: TABLE the strip serves to a poller, and the SLOT a notification names. When
+#: those two disagree, a trap points at a reading the table does not hold.
+#:
+#: Vendor-specific by construction. A Raritan DPX2 daisy-chains off a PX and a
+#: three-point unit fills four slots; an APC AP9335 plugs into one of an
+#: AP8000's two sensor ports and fills one or two. A probe only ever appears
+#: on the strip whose port it fits - there is no cable that puts a DPX2 on an
+#: APC strip - so the model tells you both the layout and the tree it is
+#: served on.
+PROBE_CHANNELS = {
     "Raritan DPX2-T3H1": ("inlet", "mid", "outlet", "humidity"),
+    "Raritan DPX2-T1H1": ("inlet", "humidity"),
     "Raritan DPX2-CC2": ("water", "inlet"),
+    "APC AP9335TH": ("inlet", "humidity"),
+    "APC AP9335T": ("inlet",),
 }
-#: A T1H1 or T2H1: one temperature and one humidity.
-DPX2_DEFAULT_CHANNELS = ("inlet", "humidity")
+#: One temperature and one humidity, which is what most single probes carry.
+PROBE_DEFAULT_CHANNELS = ("inlet", "humidity")
 
 
-def dpx2_channels(model_name: str) -> tuple:
-    """The channels this DPX2 model reports, in the order it occupies slots."""
-    return DPX2_CHANNELS.get(str(model_name or ""), DPX2_DEFAULT_CHANNELS)
+def probe_channels(model_name: str) -> tuple:
+    """The channels this probe model reports, in the order it takes slots."""
+    return PROBE_CHANNELS.get(str(model_name or ""), PROBE_DEFAULT_CHANNELS)
 
 
-def dpx2_slot(model_name: str, channel: str, base: int) -> int:
-    """The chain slot a model's channel sits at, or 0 if it has no such channel.
+def probe_slot(model_name: str, channel: str, base: int) -> int:
+    """The slot a model's channel sits at, or 0 if it has no such channel.
 
-    A T3H1 at base 3 reads its intake at 3, mid-rack at 4 and exhaust at 5; a
-    CC2 at base 1 has its water rope at 1 and its temperature at 2.
+    A DPX2-T3H1 at base 3 reads its intake at 3, mid-rack at 4 and exhaust at
+    5; a CC2 at base 1 has its water rope at 1 and its temperature at 2; an
+    AP9335TH at base 1 is temperature at 1 and humidity at 2.
     """
-    channels = dpx2_channels(model_name)
+    channels = probe_channels(model_name)
     if not base or channel not in channels:
         return 0
     return int(base) + channels.index(channel)

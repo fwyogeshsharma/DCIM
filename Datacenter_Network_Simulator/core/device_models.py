@@ -772,6 +772,18 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
 
     # ── APC — Environmental Sensors ──────────────────────────────────────────
     (DeviceType.SENSOR, Vendor.APC): [
+        # The two probes an AP8000-series strip actually takes. They plug into
+        # the strip's RJ-45 sensor ports and are read through its agent, so
+        # they hold no address of their own - the same arrangement as a
+        # Raritan DPX2 on a PX, and the reason a strip reports no ambient at
+        # all until one is fitted. A TH carries a humidity element as well as
+        # the thermistor; the plain T does not.
+        DeviceModel("APC AP9335TH", Vendor.APC, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Temperature + humidity probe for a rack PDU sensor port"),
+        DeviceModel("APC AP9335T", Vendor.APC, DeviceType.SENSOR,
+                    [_g(_GE, 1)],
+                    "Temperature probe for a rack PDU sensor port"),
         DeviceModel("APC NetBotz 250", Vendor.APC, DeviceType.SENSOR,
                     [_g(_GE, 1)],
                     "Room monitor: temp/humidity/airflow/door, 1 × GE"),
