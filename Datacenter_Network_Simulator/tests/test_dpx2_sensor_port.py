@@ -29,7 +29,8 @@ def shipped():
 
 def test_no_probe_holds_an_address(shipped):
     probes = [d for d in shipped if d.host_pdu_ip]
-    assert len(probes) == 20
+    # 20 on compute racks, 12 on the network racks that used to carry none.
+    assert len(probes) == 32
     for d in probes:
         assert not d.ip_address and not d.mgmt_ip, d.name
         assert d.interface_count == 0 and not d.interfaces, d.name
@@ -134,11 +135,29 @@ def test_pdu_publishes_the_whole_chain(host_pdu):
         assert f"{_RARITAN_SENSOR}.4.1.{slot}" in v, f"slot {slot} missing"
 
 
-def test_slot_types_match_the_model(host_pdu):
+def test_the_measurement_row_publishes_state_where_state_belongs(host_pdu):
+    """PDU2-MIB's measurement row is isAvailable, timeStamp, STATE, value.
+
+    Column 3 used to carry the sensor TYPE, with the state parked in a column
+    5 this table does not have. Column 3 is exactly where a poller - and this
+    simulator's own trap plane - reads externalState, so both saw a type code
+    where they expected a state enum, and never saw a state at all. Latent
+    until a Raritan strip carried a probe, which the network racks now do.
+    """
     v = _by_oid(SNMPRecGenerator._pdu_sensor_entries(host_pdu))
-    assert v[f"{_RARITAN_SENSOR}.3.1.1"] == "28"     # CC2 water rope
-    assert v[f"{_RARITAN_SENSOR}.3.1.2"] == "10"     # CC2 temperature
-    assert v[f"{_RARITAN_SENSOR}.3.1.6"] == "11"     # T3H1 humidity
+    for slot in range(1, 7):
+        assert v[f"{_RARITAN_SENSOR}.3.1.{slot}"] == "4"     # normal
+        assert v[f"{_RARITAN_SENSOR}.1.1.{slot}"] == "1"     # available
+    assert f"{_RARITAN_SENSOR}.5.1.1" not in v
+
+
+def test_the_slot_index_still_identifies_the_sensor(host_pdu):
+    """Type is configuration and does not belong in a measurement row; the
+    slot is what says which sensor a reading came from, and the chain is
+    enumerated in model order so a slot means one thing."""
+    v = _by_oid(SNMPRecGenerator._pdu_sensor_entries(host_pdu))
+    assert v[f"{_RARITAN_SENSOR}.2.1.1"] == "1"
+    assert v[f"{_RARITAN_SENSOR}.2.1.6"] == "6"
 
 
 def test_t3h1_publishes_three_distinct_temperatures(host_pdu):

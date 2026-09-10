@@ -2705,11 +2705,6 @@ class SNMPRecGenerator:
         """
         b = _RARITAN_SENSOR
         entries: List[OidEntry] = []
-        # One source for what is fitted and what it reads, shared with the
-        # APC table and with the slot a notification names. Keeping a second
-        # copy here is how the trap and the table drifted apart before.
-        sensor_type = {"inlet": "10", "mid": "10", "outlet": "10",
-                       "humidity": "11", "water": "28"}
         for probe in SNMPRecGenerator._attached_probes(device, topology):
             for off, channel in enumerate(probe["channels"]):
                 slot = probe["slot"] + off
@@ -2718,11 +2713,28 @@ class SNMPRecGenerator:
                 # this table publishes as one; water detection is a state,
                 # not a measurement, so it is not scaled.
                 raw = int(value) if channel == "water" else int(round(value * 10))
+                # measurementsExternalSensorTable columns, in the order
+                # PDU2-MIB defines them: 1 isAvailable, 2 timeStamp, 3 state,
+                # 4 value.
+                #
+                # This used to publish the sensor TYPE in column 3 and put the
+                # state in a column 5 that does not exist in this table. Column
+                # 3 is where a poller and this simulator's own trap plane both
+                # read externalState from, so anything reading it saw "10" -
+                # a type code - where it expected a state enum, and never saw
+                # the state at all. It was invisible only because no Raritan
+                # strip carried a probe until the network racks got one.
+                #
+                # The TYPE is deliberately not here. It is configuration, it
+                # lives in the sensor configuration table, and a measurement
+                # row restating it is what let the two drift apart. The slot
+                # already says which sensor this is, and the trap plane carries
+                # typeOfSensor in its own varbind.
                 entries += [
+                    _oid_entry(f"{b}.1.1.{slot}", "2", "1"),     # isAvailable
                     _oid_entry(f"{b}.2.1.{slot}", "2", str(slot)),
-                    _oid_entry(f"{b}.3.1.{slot}", "2", sensor_type[channel]),
+                    _oid_entry(f"{b}.3.1.{slot}", "2", "4"),     # state=normal
                     _oid_entry(f"{b}.4.1.{slot}", "2", str(raw)),
-                    _oid_entry(f"{b}.5.1.{slot}", "2", "4"),     # state=normal
                 ]
         return entries
 
