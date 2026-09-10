@@ -55,6 +55,24 @@ _SUPPLY_SETPOINT_C = 22.0
 # by the binary off/no-airflow path.
 _CRAH_FILTER_DERATE = 0.20
 
+# Room warming per unit lost whose load the SURVIVORS covered, and the ceiling
+# on it. A hall does not read identically with a unit down and with it running
+# even at full N+1: the tiles in front of a dead unit stop delivering, so the
+# racks near it breathe air that has travelled further and mixed more on the
+# way. A few tenths of a degree on the ROOM AVERAGE, which is what this model
+# resolves - the local rise in front of the dead unit is larger and is a spatial
+# effect the model has no geometry for. Capped, because past a couple of units
+# the shortfall term below is the honest description and this one would be
+# double counting. Contained aisles would justify a smaller figure.
+_CRAH_LOST_UNIT_K = 0.4
+_CRAH_LOST_UNIT_CAP_K = 2.0
+
+# Room warming at a TOTAL loss of delivered cooling. The old model charged this
+# per unit down regardless of headroom, so a hall with a spare unit warmed as
+# though nothing had covered for it, which is the opposite of what the spare is
+# there to do. It is now scaled by the demand the running units cannot meet.
+_CRAH_UNMET_K = 12.0
+
 # Fraction of a direct-to-chip (CDU cold-plate) server's heat that still leaves
 # via AIR. Cold plates capture ~70 % of the load (CPU/GPU) into the liquid loop;
 # the residual (VRMs, DIMMs, drives, PSUs) is air-cooled, so the air-side exhaust
@@ -536,6 +554,11 @@ class DeviceStateStore:
         self._chw_flow_lps: Dict[str, float] = {}   # DC → total loop flow (l/s)
         self._chw_dt_c: Dict[str, float] = {}       # DC → measured loop ΔT (K)
         self._it_live_by_dc: Dict[str, float] = {}  # DC → live IT heat (W)
+        # (dc, room) → live IT heat (W), and plant device name → SKU model. Both
+        # are refreshed by the power-flow pass and read by the air model, which
+        # sizes CRAH duty and room temperature from the same two numbers.
+        self._room_it_w: Dict[tuple, float] = {}
+        self._plant_model_by_name: Dict[str, str] = {}
         self._plant_duty: Dict[str, float] = {}     # DC → running-plant duty fraction
         self._cool_loss_frac: Dict[str, float] = {} # DC → cooling-loss fraction 0..1
         self._room_inlet_c: Dict[tuple, float] = {} # (dc, room) → mean server inlet (°C)
@@ -3211,6 +3234,12 @@ class DeviceStateStore:
             # Per-room mean server inlet — the air a CRAH's return sensor sees.
             # Kept for _compute_chw_loop so the return-air point tracks the hall
             # instead of walking on a clock.
+            # Both sides of the air model read these: the fan loop below sizes
+            # duty from them, and _room_supply_temp turns what the running units
+            # cannot carry into a temperature. One source, so a unit cannot be
+            # counted as delivering in one place and not the other.
+            self._room_it_w = dict(it_live_room)
+            self._plant_model_by_name = dict(plant_model)
             self._room_inlet_c = {rk: inlet_sum_room[rk] / n
                                   for rk, n in inlet_n_room.items() if n}
             self._room_outlet_c = {rk: outlet_sum_room[rk] / n
@@ -3556,13 +3585,25 @@ class DeviceStateStore:
                             # Falls back to lf where the CRAH SKU carries no catalog
                             # capacity, so a topology without rated air-side gear keeps
                             # its old behaviour rather than dividing by zero.
-                            _room_cap_kw = sum(
-                                cooling_capacity_w(plant_model.get(_c, "")) or 0.0
-                                for _c, _k in crah_room.items() if _k == _rk) / 1000.0
+                            # Sized on what is RUNNING, not on what is installed.
+                            # A modern hall runs its CRAHs as a group - iCOM
+                            # Teamwork, Stulz C7000 group control - so the demand
+                            # is shared out across the units that can carry it and
+                            # a unit dropping out raises everybody else's duty at
+                            # once. Against INSTALLED capacity nothing moved when a
+                            # unit tripped: the survivors held their speed and only
+                            # began to ramp minutes later, once the hall itself had
+                            # warmed. Real units do not wait for that. Underfloor
+                            # pressure falls the moment a fan stops and the rest are
+                            # ramping within seconds, which is what makes a genuine
+                            # N+1 loss nearly invisible on the floor.
+                            _room_cap_kw = self._room_cooling_kw(_rk)[0]
                             if _room_cap_kw > 1e-6:
                                 duty = (it_live_room.get(_rk, 0.0) / 1000.0
                                         / _room_cap_kw)
                             else:
+                                # Every unit in the hall is down. Nothing to ramp,
+                                # and the room model books the whole shortfall.
                                 duty = lf
                             duty *= crah_fan_speed_ratio(_rinl)
                         elif _t == "cdu":
@@ -5424,6 +5465,50 @@ class DeviceStateStore:
                     readings[name] = (role, round(float(val), 2))
         self._probe_reading = readings
 
+    def _crah_delivered_frac(self, name: str) -> float:
+        """How much of this unit's rated cooling is reaching the room, 0..1.
+
+        Read from the published plane rather than from any one fault flag, so a
+        unit stopped by an operator, by a rule, by the staging logic or by a dead
+        MCC counts the same. They are the same on the floor: no air is moving.
+
+        The dirty filter is a PARTIAL loss and has to stay partial - the unit
+        still blows cold air, just less of it - which is why this is a fraction
+        and not a flag. Gated on the alarm rather than read back from the Airflow
+        point, because that point carries tick noise and a healthy unit dipping
+        to 68 % would otherwise score as a permanent capacity loss.
+        """
+        if (name in self._plant_unpowered_names
+                or name in self._plant_standby_names):
+            return 0.0
+        pv = _plant_state_cache.get(name) or {}
+        if (float(pv.get("Unit_Running", 1.0)) < 0.5
+                or float(pv.get("Alarm_AirflowLoss", 0.0)) >= 0.5):
+            return 0.0
+        if float(pv.get("Filter_Dirty", 0.0)) >= 0.5:
+            return 1.0 - _CRAH_FILTER_DERATE
+        return 1.0
+
+    def _room_cooling_kw(self, room_key: tuple) -> tuple:
+        """(delivered, installed) rated cooling for one room, in kW.
+
+        Installed is every CRAH mapped to the room; delivered weights each by
+        what it is actually putting into the hall. The gap between them is the
+        room's lost cooling, and both halves of the air model are derived from
+        it - the fan duty of the survivors, and the temperature the hall settles
+        at when those survivors run out of fan.
+        """
+        names = (self._cooling_context()["crah_by_room"] or {}).get(room_key) or ()
+        installed = delivered = 0.0
+        for n in names:
+            cap = float(cooling_capacity_w(
+                (self._plant_model_by_name or {}).get(n, "")) or 0.0) / 1000.0
+            if cap <= 0.0:
+                continue
+            installed += cap
+            delivered += cap * self._crah_delivered_frac(n)
+        return delivered, installed
+
     @staticmethod
     def _unit_stopped(name: str) -> bool:
         """True when this plant unit's own running point reads stopped.
@@ -5457,23 +5542,17 @@ class DeviceStateStore:
         faking a Supply_Air_Temp rise (a real CRAH holds discharge setpoint on
         its CHW valve; what collapses is delivered kW, not supply temp)."""
         ctx = self._cooling_context()
-        crahs = ctx["crah_by_room"].get((device.datacenter, device.room))
+        rk = (device.datacenter, device.room)
+        crahs = ctx["crah_by_room"].get(rk)
         if not crahs:
             return self._rack_supply_temp(device) + self._chw_pen.get(device.datacenter, 0.0)
-        supplies, deficit = [], 0.0
+        supplies, lost_units = [], 0.0
         for n in crahs:
-            pv = _plant_state_cache.get(n) or {}
-            off = float(pv.get("Unit_Running", 1.0)) < 0.5
-            noair = float(pv.get("Alarm_AirflowLoss", 0.0)) >= 0.5
-            if off or noair:               # not delivering cold air
-                deficit += 1.0
+            frac = self._crah_delivered_frac(n)
+            lost_units += 1.0 - frac
+            if frac <= 0.0:                # not delivering cold air at all
                 continue
-            # Partial derate. Gated on the alarm flag rather than read back from
-            # the Airflow point: that point is a % of design carrying ±12 of
-            # tick noise, so a healthy unit dipping to 68% would otherwise be
-            # scored as a permanent 15% capacity loss.
-            if float(pv.get("Filter_Dirty", 0.0)) >= 0.5:
-                deficit += _CRAH_FILTER_DERATE
+            pv = _plant_state_cache.get(n) or {}
             sa = pv.get("Supply_Air_Temp")
             if sa is not None:
                 supplies.append(float(sa))
@@ -5486,7 +5565,37 @@ class DeviceStateStore:
             base = self._supply_air_c.get(
                 device.datacenter,
                 _SUPPLY_SETPOINT_C + self._chw_pen.get(device.datacenter, 0.0))
-        base += (deficit / len(crahs)) * 12.0    # lost capacity → room heats (all down → +12)
+        # LOST CAPACITY, as a shortfall rather than a headcount.
+        #
+        # A CRAH trip used to add a fixed share of 12 K whether or not the rest of
+        # the hall could cover it, so seven units carrying a load four could hold
+        # still warmed 1.7 K on one trip. That is the opposite of what redundancy
+        # does: the survivors ramp - they are sized on running capacity now, in
+        # the fan loop - and the hall barely moves. The temperature is what is
+        # LEFT once they have ramped and run out of fan, which is why this is the
+        # unmet fraction of demand and not a count of dead machines.
+        delivered_kw, _installed_kw = self._room_cooling_kw(rk)
+        need_kw = (self._room_it_w or {}).get(rk, 0.0) / 1000.0
+        if need_kw > 1e-6:
+            unmet = max(0.0, need_kw - delivered_kw) / need_kw
+        else:
+            # No measured heat in this room yet: fall back to the headcount, so a
+            # cold-start hall still shows a total plant loss rather than reading
+            # perfectly cool with every unit down.
+            unmet = min(1.0, lost_units / len(crahs))
+        base += unmet * _CRAH_UNMET_K
+        # And a hall does not read identically with a unit down and with it
+        # running even when the load is covered: the tiles in front of a dead
+        # unit stop delivering, so nearby racks breathe air that has travelled
+        # further and mixed more on the way.
+        #
+        # Faded out by the shortfall above rather than added on top of it. Once
+        # the running units genuinely cannot carry the load, THAT is what the
+        # hall is telling you, and charging a distribution penalty on top would
+        # be counting the same dead machine twice - at a total loss it would put
+        # the room above the figure that is supposed to mean "no cooling at all".
+        base += (min(_CRAH_LOST_UNIT_CAP_K, lost_units * _CRAH_LOST_UNIT_K)
+                 * (1.0 - unmet))
         # The CHW penalty is NOT added here. It is already inside the discharge air
         # above — published by _compute_chw_loop and read back — and adding it again
         # would charge the room twice for one shortfall. See the discharge-air block
