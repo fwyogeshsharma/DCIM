@@ -96443,7 +96443,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HA-R1-01"
+        ]
       }
     },
     {
@@ -97053,7 +97056,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HA-R1-02"
+        ]
       }
     },
     {
@@ -97663,7 +97669,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HA-R1-03"
+        ]
       }
     },
     {
@@ -108723,7 +108732,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HA-R1-01"
+        ]
       }
     },
     {
@@ -109333,7 +109345,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HA-R1-02"
+        ]
       }
     },
     {
@@ -135041,7 +135056,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HB-R1-01"
+        ]
       }
     },
     {
@@ -135651,7 +135669,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HB-R1-02"
+        ]
       }
     },
     {
@@ -136261,7 +136282,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC1-HB-R1-03"
+        ]
       }
     },
     {
@@ -136871,7 +136895,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HB-R1-01"
+        ]
       }
     },
     {
@@ -137481,7 +137508,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HB-R1-02"
+        ]
       }
     },
     {
@@ -151941,7 +151971,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HA-R1-03"
+        ]
       }
     },
     {
@@ -153665,7 +153698,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "sensor_children": [
+          "SEN1-DC2-HB-R1-03"
+        ]
       }
     },
     {

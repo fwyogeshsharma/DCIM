@@ -160,14 +160,50 @@ def main(path: str, dry_run: bool = False) -> int:
         doc["edges"].append({"src": host_node, "dst": new_id,
                              "src_iface": None, "dst_iface": None,
                              "layer": "fieldbus"})
+        # And the strip's own record of what is plugged into its sensor port.
+        # This is what the dataset generator walks to decide whether to publish
+        # an external-sensor table at all: a strip with no children publishes
+        # nothing, which is what a real strip with an empty port does. Fitting
+        # a probe and not recording it here produced a probe that existed in
+        # inventory, imported cleanly, polled its strip successfully - and read
+        # empty forever, because the strip was never asked about it.
+        host.setdefault("sensor_children", []).append(name)
         added += 1
         print(f"  + {name:<22} on {host['name']} slot 1  ({PROBE_MODEL})")
 
-    print(f"\n{added} probe(s) fitted")
+    # REPAIR. Any probe that names a host strip must appear in that strip's
+    # chain, however it got there. Cheap to check, and the failure it catches
+    # is silent: a probe that reads empty forever looks exactly like a probe
+    # nobody has warmed up yet.
+    by_ip = {}
+    for n in nodes:
+        d = n.get("device") or {}
+        if d.get("device_type") == "pdu":
+            for ip in (d.get("mgmt_ip"), d.get("ip_address")):
+                if ip:
+                    by_ip[ip] = d
+    repaired = 0
+    for n in nodes:
+        d = n.get("device") or {}
+        host_ip = d.get("host_pdu_ip")
+        if not host_ip:
+            continue
+        strip = by_ip.get(host_ip)
+        if strip is None:
+            print("  ORPHAN " + d["name"] + ": no strip at " + str(host_ip))
+            continue
+        chain = strip.setdefault("sensor_children", [])
+        if d["name"] not in chain:
+            chain.append(d["name"])
+            repaired += 1
+            print("  ~ " + d["name"].ljust(22) + " added to "
+                  + strip["name"] + "'s sensor chain")
+
+    print(f"\n{added} probe(s) fitted, {repaired} chain entr(ies) repaired")
     if dry_run:
         print("dry run: nothing written")
         return 0
-    if added:
+    if added or repaired:
         json.dump(doc, open(path, "w", encoding="utf-8"), indent=2)
         print(f"wrote {path}")
         print("REGENERATE THE SNMP DATASETS: a probe the strip's .snmprec does "

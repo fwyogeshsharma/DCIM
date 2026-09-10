@@ -38,6 +38,39 @@ def test_no_probe_holds_an_address(shipped):
         assert d.sensor_slot >= 1
 
 
+def test_every_probe_is_in_its_strips_sensor_chain(shipped):
+    """The probe names its strip AND the strip names the probe.
+
+    Only the strip's side is load-bearing: the dataset generator walks
+    sensor_children to decide whether to publish an external-sensor table at
+    all. Twelve probes were once fitted with the strip's side missing, and
+    every downstream check passed - they were in inventory, they imported,
+    they were given endpoints, their endpoints polled the strip and came back
+    ONLINE. They just read nothing, forever, because the strip was never asked
+    about them. A probe that reads empty looks exactly like a probe nobody has
+    warmed up yet, which is why this is a test and not a comment.
+    """
+    by_ip = {d.mgmt_ip: d for d in shipped
+             if d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU) and d.mgmt_ip}
+    for d in shipped:
+        if not d.host_pdu_ip:
+            continue
+        strip = by_ip.get(d.host_pdu_ip)
+        assert strip is not None, d.name
+        chain = list(getattr(strip, "sensor_children", []) or [])
+        assert d.name in chain, f"{d.name} is not in {strip.name}'s sensor chain"
+
+
+def test_a_sensor_chain_names_only_probes_that_exist(shipped):
+    """The other direction. A chain entry for a probe nobody fitted publishes
+    a row for a sensor that is not there, which is worse than a missing
+    reading: it is an invented one."""
+    names = {d.name for d in shipped}
+    for d in shipped:
+        for child in (getattr(d, "sensor_children", []) or []):
+            assert child in names, f"{d.name} carries {child}, which does not exist"
+
+
 def test_every_probe_points_at_a_real_pdu(shipped):
     pdu_ips = {d.mgmt_ip for d in shipped
                if d.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU) and d.mgmt_ip}
