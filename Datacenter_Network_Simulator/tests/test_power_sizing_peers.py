@@ -193,3 +193,31 @@ def test_second_run_is_a_no_op():
 
     assert rightsize_nodes(nodes, edges)          # first run does the work
     assert rightsize_nodes(nodes, edges) == []    # second finds nothing
+
+
+def test_a_cooling_sku_exports_its_heat_rating():
+    """Two nameplates, two different things. A 100 kW CRAH removes 100 kW of
+    heat and draws about 6.5 kW doing it, and a consumer holding only the
+    electrical one cannot say what share of its capacity a unit is delivering.
+
+    Resolved in the export rather than by the reader, for the same reason the
+    electrical rating is: the catalog lives in this module, and a second copy
+    somewhere else would drift out of step with it.
+    """
+    from core.device_manager import Device, DeviceType, Vendor
+
+    crah = Device(name="CRAH1-DC1-HA-R9-01", device_type=DeviceType.CRAH,
+                  vendor=Vendor.VERTIV, model_name="Vertiv Liebert PCW 100kW",
+                  ip_address="")
+    assert crah.to_dict()["rated_cooling_w"] == 100_000
+
+
+def test_a_device_that_removes_no_heat_rates_zero():
+    """0 means "not a cooling SKU", not "rated at zero" - the same convention
+    the electrical nameplate uses for gear that is not a distribution node."""
+    from core.device_manager import Device, DeviceType, Vendor
+
+    srv = Device(name="SRV01-DC1-HA-R2-01", device_type=DeviceType.SERVER,
+                 vendor=Vendor.SUPERMICRO, model_name="Supermicro SYS-121H-TNR LCC",
+                 ip_address="")
+    assert srv.to_dict()["rated_cooling_w"] == 0

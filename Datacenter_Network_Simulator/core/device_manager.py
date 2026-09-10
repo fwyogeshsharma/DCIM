@@ -1896,6 +1896,14 @@ class Device:
         # step. 0 means "not a distribution SKU, or model not in the catalog" -
         # not "rated at zero watts".
         d["rated_power_w"] = rated_capacity_w(self.device_type, self.model_name)
+        # The other nameplate, for the machines that have one: heat removed, not
+        # power drawn. A CRAH's two ratings are different numbers about
+        # different things - a 100 kW unit draws about 6.5 kW to move that heat
+        # - and a consumer that only had the electrical one could not say what
+        # share of its capacity a unit was delivering. Same reasoning as above:
+        # the catalog lives here, so the lookup happens here. 0 means "not a
+        # cooling SKU, or model not in the catalog".
+        d["rated_cooling_w"] = cooling_capacity_w(self.model_name)
         d["interface_groups"] = [
             {"iface_type": (g["iface_type"].value
                             if isinstance(g["iface_type"], InterfaceType)
