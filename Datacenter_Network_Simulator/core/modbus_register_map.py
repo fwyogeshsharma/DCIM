@@ -371,6 +371,13 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 _P(0x0000, "Genset_Load_Percent", "gen_load_pct",   "u16", 10, "%"),
                 _P(0x0001, "Fuel_Level",          "gen_fuel_pct",   "u16", 10, "%"),
                 _P(0x0002, "Start_Attempts",      "gen_start_attempts", "u16", 1, ""),
+                # Engine coolant. On a STANDBY set this reads the jacket-water
+                # heater rather than the room: NFPA 110 wants a Level 1 set
+                # able to take load in ten seconds, which means the block is
+                # held near 40 °C while it sits. It climbs to 85–95 °C under
+                # load, and it is the first number to move when a radiator, a
+                # belt or a thermostat is on its way out.
+                _P(0x0003, "Coolant_Temperature",  "gen_coolant_temp_c", "u16", 10, "C"),
                 _P(0x0020, "Active_Power",        "gen_kw",         "s32",  1, "kW"),
                 # Two accumulators a real EMCP keeps in non-volatile memory:
                 # lifetime hours (persisted) and this-run minutes (not).
@@ -441,6 +448,12 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
                 _P(0x0002, "Output_Load",     "ups_output_load",     "u16", 10, "%"),
                 _P(0x0003, "Battery_Health",  "ups_battery_health",  "u16", 10, "%"),
                 _P(0x0004, "Battery_Runtime", "ups_runtime_min",     "u16",  1, "min"),
+                # The number a battery room is actually run on. VRLA capacity
+                # and service life halve for roughly every 10 K above 25 °C, so
+                # this is what decides when a string gets replaced — and it is
+                # what catches thermal runaway while it is still a temperature
+                # rather than a fire.
+                _P(0x0005, "Battery_Temperature", "ups_battery_temp_c", "u16", 10, "C"),
                 _P(0x0020, "Output_Power",    "ups_output_kw",       "s32",  1, "kW"),
                 _P(0x0030, "Energy_Delivered","ups_energy_kwh",      "u32", 10, "kWh"),
             ],

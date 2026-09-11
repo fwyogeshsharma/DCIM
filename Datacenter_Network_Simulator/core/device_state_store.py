@@ -73,6 +73,35 @@ _CRAH_LOST_UNIT_CAP_K = 2.0
 # there to do. It is now scaled by the demand the running units cannot meet.
 _CRAH_UNMET_K = 12.0
 
+# Battery room, held by its own cooling. VRLA strings are specified at 25 C and
+# every UPS vendor's warranty is written against it: capacity and service life
+# halve for roughly each 10 K above, which is why a battery room is cooled
+# tighter than a data hall and why this number is the one a UPS is judged on.
+_BATTERY_ROOM_C = 24.0
+
+# Float charge puts a couple of degrees into the string, and the losses rise
+# with load. Small, and the point is that it is NOT zero: a battery is warmer
+# than the room around it even when nothing is happening.
+_BATTERY_FLOAT_RISE_K = 1.5
+_BATTERY_LOAD_RISE_K = 3.0
+
+# Discharge is where a battery gets hot. Internal resistance dumps heat into
+# the string at exactly the moment nobody is watching it, and a string that
+# starts a discharge warm is how thermal runaway begins.
+_BATTERY_DISCHARGE_RISE_K = 9.0
+
+# A standby set's jacket-water heater. NFPA 110 wants a Level 1 emergency set
+# carrying load ten seconds after a utility failure, and a cold block cannot:
+# so the engine sits with its coolant held here, warmer than the room it is in.
+# The room is NOT readable from this number, which is the whole reason a
+# generator hall still needs a thermometer of its own.
+_GEN_JACKET_C = 40.0
+
+# Coolant under load. A healthy set runs its thermostat range; the shutdown
+# trip is typically 100-105 C, which is what Alarm_High_Temp annunciates.
+_GEN_RUNNING_C = 88.0
+_GEN_WARMUP_K_PER_S = 0.35
+
 # Fraction of a direct-to-chip (CDU cold-plate) server's heat that still leaves
 # via AIR. Cold plates capture ~70 % of the load (CPU/GPU) into the liquid loop;
 # the residual (VRMs, DIMMs, drives, PSUs) is air-cooled, so the air-side exhaust
@@ -2874,6 +2903,24 @@ class DeviceStateStore:
             st["gen_load_pct"] = 0.0
             st["gen_kw"] = 0.0
             st["gen_runtime_min"] = 0.0
+
+        # Engine coolant. A standby set reads its jacket heater, a running one
+        # reads its thermostat, and the climb between them takes a couple of
+        # minutes rather than a tick - a genset that reported 88 C the instant
+        # it cranked would hide the one window where an overheat is survivable.
+        _run = st.get("gen_status") in ("running", "cranking", "cooldown")
+        _tgt = _GEN_RUNNING_C if _run else _GEN_JACKET_C
+        if "over_temp" in self._gen_conditions.get(device.id, set()):
+            _tgt = 104.0                      # at the engine-protection trip
+        _cur = float(st.get("gen_coolant_temp_c", _GEN_JACKET_C))
+        _step = _GEN_WARMUP_K_PER_S * self._dt
+        if _cur < _tgt:
+            _cur = min(_tgt, _cur + _step)
+        else:
+            # Cooling down is slower than warming up: a hot block sheds heat
+            # through a radiator that is no longer being driven hard.
+            _cur = max(_tgt, _cur - _step * 0.4)
+        st["gen_coolant_temp_c"] = round(_cur, 1)
 
         # Injected alarm conditions → discrete controller alarm points (annunciation).
         _gc = self._gen_conditions.get(device.id, set())
@@ -7002,6 +7049,26 @@ class DeviceStateStore:
                         if random.random() < 0.005:
                             load = random.uniform(91.0, 99.0)
                 st["ups_output_load"] = round(self._num_limit("ups_output_load", load), 1)
+
+            # Battery temperature. The room holds 24 C; the string sits above it
+            # because float charging puts heat into it, more so under load, and
+            # a great deal more while it is discharging - internal resistance
+            # dumps heat into the cells at exactly the moment nobody is
+            # watching, which is where thermal runaway starts.
+            #
+            # NOT a room thermometer, however tempting. A battery is warmer than
+            # the room it stands in by design, so reading one as the other would
+            # report a 24 C switchroom as 26 C on a quiet day and as 33 C during
+            # an outage in which the room never moved.
+            _on_batt = st.get("ups_status") in ("on_battery", "low_battery")
+            _t = (_BATTERY_ROOM_C + _BATTERY_FLOAT_RISE_K
+                  + _BATTERY_LOAD_RISE_K * st.get("ups_output_load", 0.0) / 100.0
+                  + (_BATTERY_DISCHARGE_RISE_K if _on_batt else 0.0))
+            _cur = float(st.get("ups_battery_temp_c", _BATTERY_ROOM_C))
+            # Cells have mass: they take minutes to move, not ticks.
+            st["ups_battery_temp_c"] = round(
+                _cur + (_t - _cur) * min(1.0, self._dt / 180.0)
+                + random.uniform(-0.05, 0.05), 1)
 
             if mf["ups_battery_status"]:
                 bst = st.get("ups_battery_status", "normal")
