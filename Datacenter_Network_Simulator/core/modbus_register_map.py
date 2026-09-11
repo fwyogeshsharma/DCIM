@@ -29,11 +29,15 @@ the distinction survives contact with a user who did not read this docstring.
 NO FABRICATED READINGS
 ----------------------
 A point exists here only if the store actually models it.  The CAT EMCP map is
-consequently missing engine RPM, oil pressure and coolant temperature: a real
-EMCP serves them, this simulator does not model them, and publishing a plausible
-number for an unmodelled quantity is the exact failure mode that
+consequently missing engine RPM and oil pressure: a real EMCP serves them, this
+simulator does not model them, and publishing a plausible number for an
+unmodelled quantity is the exact failure mode that
 `snmprec_generator._probe_oids` was rewritten to prevent (a thermowell in a water
 header answering with a dew point).  Absent beats invented.
+
+Coolant temperature was on that list until the store grew a jacket-water model,
+which is the order the rule requires: the physics first, the register second.
+Adding the point would otherwise have meant inventing an engine.
 
 DATA VALIDITY
 -------------
@@ -519,10 +523,35 @@ _FLOW_TX = ModbusMap(
     },
 )
 
+#: Room air, on the same RS-485 trunk as the header instruments.
+#:
+#: This is what a real electrical room has. A switchroom or a generator hall
+#: holds no racks and therefore no rack PDU, so there is no sensor port for a
+#: probe to hang off - and those rooms still have to be monitored, because a
+#: battery room that drifts warm eats battery life and a generator hall that
+#: does is where a set fails to start. The instrument a site fits is a
+#: two-channel temperature/humidity transmitter wired back to the BMS, which
+#: is exactly the trunk the chilled-water thermowells are already on.
+_ROOM_TX = ModbusMap(
+    map_id="SIM-ROOMTH-TX-v1", vendor="Generic",
+    product="Room Temperature / Humidity Transmitter",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Room_Temperature", "room_air_temp_c", "s16", 10, "degC"),
+            _P(0x0001, "Room_Humidity",    "room_air_rh_pct", "u16", 10, "%"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Reading_Valid", presence_of="room_air_temp_c"),
+        ],
+    },
+)
+
 PROBE_MAPS: Dict[str, ModbusMap] = {
     "chw_supply": _TEMP_TX, "chw_return": _TEMP_TX,
     "cw_supply":  _TEMP_TX, "cw_return":  _TEMP_TX,
     "ct_basin":   _TEMP_TX, "chw_flow":   _FLOW_TX,
+    "room_air":   _ROOM_TX,
 }
 
 

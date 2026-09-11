@@ -185,6 +185,11 @@ _CHW_OWNED_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir"})
 # LIVE loop (see _compute_chw_loop / _compute_cond_loop) rather than the cold-aisle
 # air a rack probe reads — a CHW supply thermowell has no opinion about room air.
 _PROBE_ROLES = {
+    # Room air in a room that holds no racks - a switchroom, a generator hall.
+    # On the same BMS trunk as the thermowells below, and for the same reason:
+    # there is no rack PDU in those rooms to hang a probe off, and they still
+    # have to be monitored.
+    "THR":  "room_air",       # room temperature / humidity  (°C, %)
     "CHWS": "chw_supply",     # chilled-water supply header  (°C)
     "CHWR": "chw_return",     # chilled-water return header  (°C)
     "CWS":  "cw_supply",      # condenser-water supply       (°C)
@@ -197,6 +202,22 @@ _PROBE_ROLES = {
 # return water is a perfectly healthy reading and must not raise a room-temperature
 # alarm, and a thermowell has no humidity to be "low".
 _PROBE_MODEL_PREFIX = "Plant "
+
+#: The roles that measure WATER. They are the ones the cold-aisle air rules
+#: must not touch: 35 °C condenser return is a healthy reading and a thermowell
+#: has no humidity to be low.
+#:
+#: A room-air transmitter is on the same trunk and carries the same model
+#: prefix, but it measures exactly what those rules are about, so it is
+#: deliberately absent from this set.
+_WATER_ROLES = frozenset({"chw_supply", "chw_return", "cw_supply", "cw_return",
+                          "ct_basin", "chw_flow"})
+
+#: What an electrical room is held at. A switchroom or battery room is cooled
+#: tighter than a data hall - VRLA life is written against 25 °C - and it is a
+#: different setpoint from the cold aisle, on different plant.
+_ELECTRICAL_ROOM_C = 24.0
+_ELECTRICAL_ROOM_RH = 45.0
 
 
 def _probe_role(device) -> "str | None":
@@ -5551,12 +5572,37 @@ class DeviceStateStore:
                 # Basin_Temp and Cond_Water_Out as one value on the cells.
                 "ct_basin":   cond,
                 "chw_flow":   self._chw_flow_lps.get(dc),
+                # An electrical room is on its own small cooling plant, not the
+                # hall's, so it does not follow the chilled-water penalty the
+                # thermowells above are reporting. It drifts with the weather
+                # instead, the way a room whose cooling is sized with little
+                # margin does.
+                "room_air": _ELECTRICAL_ROOM_C + self._electrical_room_drift(dc),
             }
             for name, role in probes:
                 val = src.get(role)
                 if val is not None:
                     readings[name] = (role, round(float(val), 2))
         self._probe_reading = readings
+
+    def _electrical_room_drift(self, dc: str) -> float:
+        """How far an electrical room sits above its setpoint, in K.
+
+        A switchroom's cooling is sized with far less margin than a data hall's
+        - often a single DX split with no redundancy - so the room follows the
+        weather in a way a hall does not. A tenth of a degree per degree of
+        outdoor air above 20 C is a small effect deliberately: the point is that
+        it is not ZERO, because a room pinned to its setpoint whatever the
+        weather is a room nobody is measuring.
+        """
+        oa = None
+        for _name, _pair in (self._plant_oa_by_name or {}).items():
+            if _name.split("-")[1:2] == [dc] and _pair:
+                oa = _pair[0]
+                break
+        if oa is None:
+            return 0.0
+        return round(max(0.0, (float(oa) - 20.0)) * 0.10, 2)
 
     def _crah_delivered_frac(self, name: str) -> float:
         """How much of this unit's rated cooling is reaching the room, 0..1.
@@ -6360,10 +6406,23 @@ class DeviceStateStore:
             if _role == "chw_flow":
                 device.airflow = round(max(0.0, _val * (1.0 + random.uniform(-0.005, 0.005))), 2)
                 device.inlet_temp = 0.0
+            elif _role == "room_air":
+                # Per-instrument offset from the site figure: two rooms on one
+                # small plant are close, not identical, and a pair of probes
+                # reading the same number to the decimal is a tell that neither
+                # is measuring anything.
+                _off = ((hash(device.name) % 13) - 6) / 10.0
+                device.inlet_temp = round(_val + _off
+                                          + random.uniform(-0.1, 0.1), 1)
+                device.humidity = round(
+                    _ELECTRICAL_ROOM_RH + ((hash(device.name) % 7) - 3)
+                    + random.uniform(-0.3, 0.3), 1)
+                device.airflow = 0.0
             else:
                 device.inlet_temp = round(_val + random.uniform(-0.1, 0.1), 1)
                 device.airflow = 0.0
-            device.humidity = 0.0
+            if _role != "room_air":
+                device.humidity = 0.0
             device.dewpoint = 0.0
             device.mid_temp = 0.0
             device.outlet_temp = 0.0
@@ -6808,7 +6867,7 @@ class DeviceStateStore:
         # the room supply air (mid and exhaust follow it), so capping it at 31.9
         # would hide the one reading a real floor sees first on a CRAH failure.
         # Humidity, dew point and airflow are still walks and keep their caps.
-        if dt == DeviceType.SENSOR and _probe_role(device) is None:
+        if dt == DeviceType.SENSOR and _probe_role(device) not in _WATER_ROLES:
             device.humidity    = min(max(device.humidity, 30.1), 69.9)  # <30 / >70
             device.dewpoint    = min(device.dewpoint, 20.9)          # > 21
             device.airflow     = min(max(device.airflow, 0.31), 3.49)   # <0.3 / >3.5
@@ -7400,6 +7459,14 @@ class DeviceStateStore:
             if _role == "chw_flow":
                 st["water_flow_lps"] = float(device.airflow)
                 st.pop("water_temp", None)
+            elif _role == "room_air":
+                # Two channels, and it is AIR. Published under its own ext keys
+                # so nothing downstream can read a switchroom's air as loop
+                # water - they are different quantities on the same trunk.
+                st["room_air_temp_c"] = float(device.inlet_temp)
+                st["room_air_rh_pct"] = float(device.humidity)
+                st.pop("water_temp", None)
+                st.pop("water_flow_lps", None)
             else:
                 st["water_temp"] = float(device.inlet_temp)
                 st.pop("water_flow_lps", None)
