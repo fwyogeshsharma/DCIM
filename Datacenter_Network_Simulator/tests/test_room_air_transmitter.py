@@ -12,7 +12,8 @@ humidity, and a room transmitter has no loop water.
 """
 
 from core.device_state_store import (
-    _ELECTRICAL_ROOM_C, _PROBE_ROLES, _WATER_ROLES, _probe_role_by_name,
+    _PROBE_ROLES, _ROOM_AIR_SETPOINT_C, _ROOM_AIR_WEATHER_K, _WATER_ROLES,
+    _probe_role_by_name,
 )
 from core.modbus_register_map import PROBE_MAPS, get_probe_map
 
@@ -53,11 +54,41 @@ def test_every_role_can_be_decoded():
     assert set(PROBE_MAPS) == set(_PROBE_ROLES.values())
 
 
-def test_an_electrical_room_is_held_tighter_than_a_hall():
-    """VRLA life is written against 25 C, so a battery room is cooled to it.
+def test_each_kind_of_room_runs_at_its_own_temperature():
+    """These rooms are not one room, and one number for all of them says so.
 
-    Deliberately a different setpoint from the cold aisle, on different plant:
-    a switchroom does not follow the hall's chilled-water penalty, because it
-    is not on the hall's chilled water.
+    A battery hall is cooled tightest - VRLA life is written against 25 C and
+    halves per ~10 K above it, so a site spends money holding it down. A
+    chiller plant is the warmest: pumps, compressors, and a room whose entire
+    job is to reject heat, usually on ventilation alone.
     """
-    assert 20.0 <= _ELECTRICAL_ROOM_C <= 25.0
+    assert _ROOM_AIR_SETPOINT_C["UR"] < _ROOM_AIR_SETPOINT_C["MR"]
+    assert _ROOM_AIR_SETPOINT_C["MR"] <= _ROOM_AIR_SETPOINT_C["CP"]
+    assert 20.0 <= _ROOM_AIR_SETPOINT_C["UR"] <= 25.0
+    assert _ROOM_AIR_SETPOINT_C["CP"] <= 30.0
+
+
+def test_a_ventilated_room_follows_the_weather_and_a_cooled_one_barely_does():
+    """Outdoor air is what cools a plant hall, so it has to move with it.
+
+    None of them is zero. A room pinned to its setpoint whatever the weather
+    is a room nobody is measuring.
+    """
+    assert _ROOM_AIR_WEATHER_K["UR"] < _ROOM_AIR_WEATHER_K["CP"]
+    assert min(_ROOM_AIR_WEATHER_K.values()) > 0.0
+
+
+def test_the_roof_gets_no_room_transmitter():
+    """It is outdoors. The towers on it already carry the site's outdoor
+    sensor, because a tower is controlled to approach wet bulb - a second
+    instrument there would be a second name for the same measurement."""
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location(
+        "_add_room_air_probes",
+        pathlib.Path(__file__).resolve().parent.parent
+        / "tools" / "add_room_air_probes.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert "Roof" not in mod.ROOMS
+    assert set(mod.ROOMS.values()) == {"UR", "GR", "CP", "MR"}

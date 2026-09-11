@@ -213,11 +213,27 @@ _PROBE_MODEL_PREFIX = "Plant "
 _WATER_ROLES = frozenset({"chw_supply", "chw_return", "cw_supply", "cw_return",
                           "ct_basin", "chw_flow"})
 
-#: What an electrical room is held at. A switchroom or battery room is cooled
-#: tighter than a data hall - VRLA life is written against 25 °C - and it is a
-#: different setpoint from the cold aisle, on different plant.
-_ELECTRICAL_ROOM_C = 24.0
+#: What each kind of room without racks actually runs at, keyed by the suffix
+#: its transmitter carries (CODE-DC-ROOM). These are NOT one number, and the
+#: differences are the point:
+#:
+#:   UR  battery room, cooled tightest of the four. VRLA life is written
+#:       against 25 °C and halves per ~10 K above it, so a site spends money
+#:       holding this one down.
+#:   GR  generator hall. Ventilated rather than cooled on most sites - there is
+#:       nothing in it to protect while the sets are cold - so it sits warmer
+#:       and moves with the weather.
+#:   CP  chiller plant. Warmest of the four: pumps, compressors and a room
+#:       whose job is to reject heat, usually on ventilation alone.
+#:   MR  mechanical room, between the two.
+_ROOM_AIR_SETPOINT_C = {"UR": 24.0, "GR": 26.0, "CP": 27.0, "MR": 26.0}
+_ROOM_AIR_DEFAULT_C = 25.0
 _ELECTRICAL_ROOM_RH = 45.0
+
+#: How hard each kind of room follows the weather, K per K of outdoor air above
+#: 20 °C. A cooled room barely does; a ventilated one largely does, because
+#: outdoor air is what is cooling it.
+_ROOM_AIR_WEATHER_K = {"UR": 0.10, "MR": 0.20, "GR": 0.30, "CP": 0.25}
 
 
 def _probe_role(device) -> "str | None":
@@ -5577,23 +5593,34 @@ class DeviceStateStore:
                 # thermowells above are reporting. It drifts with the weather
                 # instead, the way a room whose cooling is sized with little
                 # margin does.
-                "room_air": _ELECTRICAL_ROOM_C + self._electrical_room_drift(dc),
+                # Resolved per room below: these rooms are not one room, and a
+                # battery hall held at 24 °C and a chiller plant running at 28
+                # do not share a number.
+                "room_air": None,
             }
             for name, role in probes:
-                val = src.get(role)
+                if role == "room_air":
+                    _suffix = str(name).split("-")[-1].upper()
+                    val = (_ROOM_AIR_SETPOINT_C.get(_suffix, _ROOM_AIR_DEFAULT_C)
+                           + self._electrical_room_drift(dc, _suffix))
+                else:
+                    val = src.get(role)
                 if val is not None:
                     readings[name] = (role, round(float(val), 2))
         self._probe_reading = readings
 
-    def _electrical_room_drift(self, dc: str) -> float:
-        """How far an electrical room sits above its setpoint, in K.
+    def _electrical_room_drift(self, dc: str, suffix: str = "") -> float:
+        """How far a room with no racks sits above its setpoint, in K.
 
-        A switchroom's cooling is sized with far less margin than a data hall's
-        - often a single DX split with no redundancy - so the room follows the
-        weather in a way a hall does not. A tenth of a degree per degree of
-        outdoor air above 20 C is a small effect deliberately: the point is that
-        it is not ZERO, because a room pinned to its setpoint whatever the
-        weather is a room nobody is measuring.
+        These rooms are cooled with far less margin than a data hall - often a
+        single DX split with no redundancy, and in a generator or plant hall
+        often nothing but ventilation - so they follow the weather in a way a
+        hall does not. The coefficient is per room KIND: a battery room barely
+        moves, a ventilated plant room largely does, because outdoor air is
+        what is cooling it.
+
+        Deliberately not zero for any of them. A room pinned to its setpoint
+        whatever the weather is a room nobody is measuring.
         """
         oa = None
         for _name, _pair in (self._plant_oa_by_name or {}).items():
@@ -5602,7 +5629,8 @@ class DeviceStateStore:
                 break
         if oa is None:
             return 0.0
-        return round(max(0.0, (float(oa) - 20.0)) * 0.10, 2)
+        k = _ROOM_AIR_WEATHER_K.get(suffix.upper(), 0.10)
+        return round(max(0.0, (float(oa) - 20.0)) * k, 2)
 
     def _crah_delivered_frac(self, name: str) -> float:
         """How much of this unit's rated cooling is reaching the room, 0..1.

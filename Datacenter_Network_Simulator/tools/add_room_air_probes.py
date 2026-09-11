@@ -16,8 +16,8 @@ night it is asked to. Both rooms are monitored on every real site.
 
 WHAT THIS DOES
 --------------
-For each site, one two-channel transmitter in the UPS room and one in the
-generator room:
+For each site, one two-channel transmitter in every room that holds no racks -
+the UPS room, the generator hall, the central plant and the mechanical room:
 
   * on the BMS's RS-485 trunk, behind the same Modbus gateway the chilled-water
     thermowells already sit on. It owns no IP, exactly like them: a room sensor
@@ -26,11 +26,26 @@ generator room:
     and because a transmitter that reported only one would be a different part;
   * its unit id continues the trunk's numbering.
 
-Idempotent: a room that already has one is left alone.
+The plant rooms are included even though something in them already reports a
+temperature, because what they report is a SWITCH CHASSIS: a box that heats
+itself, sitting a few degrees above the air around it. That is a floor under
+the room temperature rather than a measurement of it.
 
-No SNMP dataset regeneration is needed - a Modbus point is rendered live from
-the store's state, not from a .snmprec. The DCIM does need its inventory
-re-imported, because these are new devices.
+The ROOF is deliberately excluded. It is outdoors, and the cooling towers on it
+already carry the site's outdoor sensor - a tower is controlled to approach wet
+bulb, so it has to. A "room air" transmitter there would be a second name for a
+measurement the site already has.
+
+Idempotent, and it REPAIRS: a transmitter that is in the file without a trunk
+link or a place in its gateway's child list gets both. That failure is silent -
+the instrument imports cleanly, polls nothing, and looks exactly like a probe
+nobody has warmed up yet.
+
+The Modbus points themselves render live state and need no .snmprec. But the
+SNMP dataset fingerprint covers the whole topology, so adding devices does mean
+regenerating the datasets before the SNMP plane will start - and the DCIM needs
+an inventory re-import with `--protocols snmp,redfish,bacnet,modbus,gnmi`,
+because its default of snmp,redfish creates no endpoint for a Modbus device.
 
 Usage:
     python tools/add_room_air_probes.py topologies/dual_dc_enterprise.json
@@ -50,10 +65,25 @@ PROBE_VENDOR = "Vertiv (Liebert)"
 NAME_PREFIX = "THR"
 
 #: Rooms that get one, and the suffix each carries in the estate's naming
-#: scheme (CODE-DC-ROOM). Plant rooms are excluded deliberately: they already
-#: read a switch chassis, and a room with an instrument in it does not need a
-#: second one to say the same thing worse.
-ROOMS = {"UPS Room": "UR", "Generator Room": "GR"}
+#: scheme (CODE-DC-ROOM).
+#:
+#: The plant rooms are here even though something in them already reports a
+#: temperature, because what they report is a SWITCH CHASSIS - a box that
+#: heats itself, sitting a few degrees above the air around it. It is a floor
+#: under the room temperature, not a measurement of it, and a chiller hall
+#: drifting warm is exactly the thing that shows up first as a couple of
+#: degrees on the air.
+#:
+#: The ROOF is deliberately absent. It is outdoors, and the cooling towers
+#: standing on it already carry the site's outdoor sensor because a tower is
+#: controlled to approach wet bulb. Fitting a "room air" transmitter there
+#: would be a second name for a measurement the site already has.
+ROOMS = {
+    "UPS Room": "UR",
+    "Generator Room": "GR",
+    "Central Plant": "CP",
+    "Mechanical Room": "MR",
+}
 
 
 def main(path: str, dry_run: bool = False) -> int:
@@ -80,8 +110,12 @@ def main(path: str, dry_run: bool = False) -> int:
         suffix = ROOMS.get(str(room))
         if suffix is None:
             continue
-        if any(d.get("device_type") == "sensor" for d in members):
-            continue                       # already instrumented
+        # Already has a ROOM AIR transmitter - not merely "has a sensor". A
+        # plant room is full of thermowells, and a thermowell in a chilled-water
+        # header has no opinion about the air in the room around it.
+        if any(str(d.get("name", "")).startswith(NAME_PREFIX + "-")
+               for d in members):
+            continue
         gw = gateways.get(dc)
         if gw is None:
             print(f"  SKIP {dc} {room}: no Modbus gateway to hang a transmitter off")
@@ -118,9 +152,10 @@ def main(path: str, dry_run: bool = False) -> int:
             "interfaces": [],
             "mgmt_ip": "",
             "mgmt_vlan": anchor.get("mgmt_vlan", 10),
-            # Loop-powered off the controller, like every other transmitter on
-            # the trunk. No cord, no outlet, no draw worth metering.
-            "power_draw_w": 2,
+            # Loop-powered off the controller's own supply, like every other
+            # transmitter on an RS-485 trunk: no cord, no outlet, and its draw
+            # sits on the controller's budget rather than on its own record.
+            "power_draw_w": 0,
             "ups_backup": "",
             "country": anchor.get("country"),
             "datacenter_city": anchor.get("datacenter_city"),
@@ -163,19 +198,70 @@ def main(path: str, dry_run: bool = False) -> int:
         # The trunk's own record of what answers on it. A gateway republishes
         # its children BY NAME, so a transmitter missing from this list is a
         # device the master can address and the gateway will not answer for.
+        #
+        # APPENDED, never inserted. The first six children are the
+        # ENTITY-SENSOR index order a poller template binds to, so putting a
+        # transmitter among them would not add a reading — it would renumber
+        # the chilled-water header and have CHWS answer as CHWR.
         gw.setdefault("modbus_children", []).append(name)
+        # And the trunk itself. A portless device is reached THROUGH its
+        # carrier, so without this edge the transmitter is an orphan: nothing
+        # says which gateway answers for it, and a failure of that gateway is
+        # not attributable to the instruments behind it.
+        gw_node = next(n["id"] for n in nodes
+                       if (n.get("device") or {}).get("name") == gw["name"])
+        doc["edges"].append({"src": gw_node, "dst": new_id,
+                             "src_iface": None, "dst_iface": None,
+                             "layer": "fieldbus"})
         added += 1
         print(f"  + {name:<16} {room:<16} unit {unit_id} on {gw['name']} ({gw_ip})")
 
-    print(f"\n{added} transmitter(s) fitted")
+    # REPAIR. Every transmitter must sit on a trunk and be reachable through
+    # its gateway, however it got into the file. Cheap to check, and what it
+    # catches is silent: an instrument with no carrier edge imports cleanly,
+    # polls nothing, and looks exactly like a probe nobody has warmed up yet.
+    gws_by_ip = {(d.get("mgmt_ip") or d.get("ip_address")): (n["id"], d)
+                 for n in nodes
+                 for d in [n.get("device") or {}]
+                 if d.get("device_type") == "modbus_gateway"}
+    linked = {(e.get("src"), e.get("dst")) for e in doc["edges"]
+              if e.get("layer") == "fieldbus"}
+    repaired = 0
+    for n in nodes:
+        d = n.get("device") or {}
+        if not str(d.get("name", "")).startswith(NAME_PREFIX + "-"):
+            continue
+        found = gws_by_ip.get(d.get("modbus_gateway_ip"))
+        if found is None:
+            print(f"  ORPHAN {d['name']}: no gateway at {d.get('modbus_gateway_ip')}")
+            continue
+        gw_node, gw_dev = found
+        if (gw_node, n["id"]) not in linked and (n["id"], gw_node) not in linked:
+            doc["edges"].append({"src": gw_node, "dst": n["id"],
+                                 "src_iface": None, "dst_iface": None,
+                                 "layer": "fieldbus"})
+            repaired += 1
+            print(f"  ~ {d['name']:<16} linked to its trunk")
+        chain = gw_dev.setdefault("modbus_children", [])
+        if d["name"] not in chain:
+            chain.append(d["name"])
+            repaired += 1
+            print(f"  ~ {d['name']:<16} added to the trunk's child list")
+        if d.get("power_draw_w"):
+            d["power_draw_w"] = 0        # loop-powered: it has no cord
+            repaired += 1
+
+    print(f"\n{added} transmitter(s) fitted, {repaired} repair(s)")
     if dry_run:
         print("dry run: nothing written")
         return 0
-    if added:
+    if added or repaired:
         json.dump(doc, open(path, "w", encoding="utf-8"), indent=2)
         print(f"wrote {path}")
-        print("No SNMP regeneration needed (Modbus renders live state), but the "
-              "DCIM must RE-IMPORT INVENTORY: these are new devices.")
+        print("NEXT: regenerate the SNMP datasets (the fingerprint covers the "
+              "whole topology, so the SNMP plane will refuse to start until you "
+              "do), then re-import the DCIM's inventory with "
+              "--protocols snmp,redfish,bacnet,modbus,gnmi.")
     return 0
 
 

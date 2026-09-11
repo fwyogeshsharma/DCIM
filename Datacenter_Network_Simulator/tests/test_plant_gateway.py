@@ -47,24 +47,43 @@ def shipped():
     return [Device.from_dict(n["device"]) for n in data["nodes"]]
 
 
-def test_no_plant_instrument_holds_an_address(shipped):
+def test_no_field_instrument_holds_an_address(shipped):
+    """Six water instruments per site, plus a room transmitter per room with
+    no racks in it. None of them is a network node."""
     rtu = [d for d in shipped if d.modbus_role == "rtu_slave"]
-    assert len(rtu) == 12
+    water = [d for d in rtu if d.name.split("-")[0] in PROBE_ORDER]
+    rooms = [d for d in rtu if d.name.startswith("THR-")]
+    assert len(water) == 12                      # six per site
+    assert len(rooms) == 8                       # four rooms per site
+    assert len(rtu) == len(water) + len(rooms)
     for d in rtu:
         assert not d.ip_address and not d.mgmt_ip, (
             f"{d.name} still holds an address — a thermowell is not a network node")
         assert d.modbus_gateway_ip
-        assert 1 <= d.modbus_unit_id <= 6
+        assert d.modbus_unit_id >= 1
+
+    # A unit id is only unique per TRUNK, and that is what the master addresses.
+    by_trunk: dict[str, list[int]] = {}
+    for d in rtu:
+        by_trunk.setdefault(d.modbus_gateway_ip, []).append(d.modbus_unit_id)
+    for ip, units in by_trunk.items():
+        assert len(units) == len(set(units)), f"duplicate unit id on {ip}"
 
 
-def test_each_datacenter_has_one_gateway_fronting_six_instruments(shipped):
+def test_the_water_instruments_keep_the_head_of_the_trunk(shipped):
+    """Order is load-bearing and must survive anything added later.
+
+    The first six children are the ENTITY-SENSOR index order a poller template
+    binds to, so a room transmitter inserted among them would not add a reading
+    - it would silently renumber the chilled-water header, and CHWS would start
+    answering as CHWR. New instruments go on the END.
+    """
     gws = [d for d in shipped if d.device_type == DeviceType.MODBUS_GATEWAY]
     assert len(gws) == 2
     for gw in gws:
         assert gw.mgmt_ip
-        assert len(gw.modbus_children) == 6
-        # Index order is the ENTITY-SENSOR index order a poller template binds to.
-        assert [c.split("-")[0] for c in gw.modbus_children] == PROBE_ORDER
+        assert [c.split("-")[0] for c in gw.modbus_children[:6]] == PROBE_ORDER
+        assert all(c.startswith("THR-") for c in gw.modbus_children[6:])
 
 
 def test_instruments_point_at_a_gateway_that_exists(shipped):
@@ -118,7 +137,13 @@ def test_identity_survives_the_loss_of_the_ip(shipped):
     from core.device_state_store import _probe_role
     roles = {_probe_role(d) for d in shipped if d.modbus_role == "rtu_slave"}
     assert roles == {"chw_supply", "chw_return", "chw_flow",
-                     "cw_supply", "cw_return", "ct_basin"}
+                     "cw_supply", "cw_return", "ct_basin",
+                     # The room transmitters ride the same trunk and are read
+                     # the same way. They are air rather than water, which is
+                     # why the role is separate and why it must NOT be in
+                     # device_state_store._WATER_ROLES - the air rules are
+                     # exactly the ones that should reach a switchroom.
+                     "room_air"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
