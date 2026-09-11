@@ -120,7 +120,7 @@ def bacnet_start(cfg: BACnetConfig):
     if s.bacnet.is_running():
         raise HTTPException(status_code=409, detail="BACnet already running")
 
-    from core.device_manager import DeviceType
+    from core.device_manager import DeviceType, cooling_capacity_w
     ev2_devices = [
         d for d in s.device_manager.get_all_devices()
         if d.device_type == DeviceType.ENERGY_MONITOR
@@ -281,6 +281,12 @@ def bacnet_start(cfg: BACnetConfig):
                 "name": d.name,
                 "device_type": d.device_type.value,
                 "rated_kw": (d.power_draw_w or 0) / 1000.0,
+                # What it REMOVES at full load, from the SKU catalog. Without
+                # it a 4U in-rack CDU sized its loop points off the spec's
+                # floor-standing defaults and published 450 kW of heat on an
+                # 80 kW machine.
+                "rated_cooling_kw": cooling_capacity_w(
+                    getattr(d, "model_name", "") or "") / 1000.0,
             })
 
     _plant_unbound = _plant_total - len(plant_devices)

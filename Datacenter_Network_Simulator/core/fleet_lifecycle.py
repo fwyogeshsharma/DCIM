@@ -2562,9 +2562,17 @@ class FleetLifecycleEngine:
         if (device.device_type in self._BACNET_PLANT_TYPES and b is not None
                 and getattr(b, "_running", False)):
             try:
+                from core.device_manager import cooling_capacity_w as _cap_w
                 b.add_plant_device(device.ip_address or mgmt, device.device_type.value,
                                    name=device.name,
-                                   rated_kw=(getattr(device, "power_draw_w", 0) or 0) / 1000.0)
+                                   rated_kw=(getattr(device, "power_draw_w", 0) or 0) / 1000.0,
+                                   # What it removes, not what it draws: a CDU
+                                   # commissioned without this sizes its loop
+                                   # points off the spec's floor-standing
+                                   # defaults and publishes a load no in-rack
+                                   # unit could carry.
+                                   rated_cooling_kw=_cap_w(
+                                       getattr(device, "model_name", "") or "") / 1000.0)
             except Exception as e:
                 self._log(f"[Fleet] BACnet commission {device.name}: {e}")
         # An EV2 energy meter (a fleet-provisioned RPP's panel meter) joins the

@@ -468,6 +468,10 @@ class DeviceStateStore:
         self._plant_cop_by_name: Dict[str, float] = {}    # {chiller_name: live COP}
         self._plant_loadfrac_by_name: Dict[str, float] = {}  # {plant_name: DC duty frac}
         self._plant_speed_by_name: Dict[str, float] = {}  # {plant_name: VFD speed frac}
+        # {crah_name: delivered cooling / its own rating}. What the unit
+        # publishes as Cooling_Capacity, which is a THERMAL quantity - distinct
+        # from the fan speed beside it and from the plant-wide load fraction.
+        self._plant_duty_by_name: Dict[str, float] = {}
         # {tower_name: (outdoor dry bulb C, outdoor wet bulb C)} — the site's
         # weather, published on the tower controllers that actually carry it.
         self._plant_oa_by_name: Dict[str, tuple] = {}
@@ -3121,6 +3125,7 @@ class DeviceStateStore:
             it_w_by_name: Dict[str, float] = {}
             it_nom_by_name: Dict[str, float] = {}
             cdu_loops = self._cdu_loop_servers()        # {cdu name: {server names}}
+            _liquid_names = self._liquid_cooled_servers()
             for d in devices:
                 dtv = d.device_type.value
                 _dc = getattr(d, "datacenter", None) or "?"
@@ -3139,7 +3144,20 @@ class DeviceStateStore:
                     # Room key normalised the SAME way crah_room does it below — a
                     # server keyed on None and a CRAH keyed on "" are the same hall,
                     # and keying them apart would silently give every room zero heat.
-                    it_live_room[(_dc, getattr(d, "room", "") or "")] += w
+                    # A cold-plate server's heat leaves TWICE if this books all
+                    # of it: once here, into the CRAHs' demand, and again into
+                    # its CDU's loop below. Only the air share belongs to the
+                    # room - the cold plate carries the rest out through the
+                    # coolant, which is the entire point of fitting one.
+                    #
+                    # Same constant the rack air budget is sized on, imported
+                    # rather than redefined: if the thermal model and the
+                    # capacity model disagreed about how much heat a liquid
+                    # server puts in the room, a rack could be filled to a limit
+                    # its own exhaust math contradicts.
+                    _air_w = (w * _DTC_AIR_FRACTION
+                              if d.name in _liquid_names else w)
+                    it_live_room[(_dc, getattr(d, "room", "") or "")] += _air_w
                     _inl = getattr(d, "inlet_temp", None)
                     if _inl is not None:
                         inlet_sum_dc[_dc] += float(_inl)
@@ -3218,6 +3236,10 @@ class DeviceStateStore:
             plant_power: Dict[str, float] = {}
             plant_cop: Dict[str, float] = {}
             plant_loadfrac: Dict[str, float] = {}   # {unit_name: its DC's plant duty}
+            # {crah name: delivered cooling as a share of its own rating}. Not
+            # the same as loadfrac (a plant-wide electrical ratio) and not the
+            # same as speed (what the drive is doing about it).
+            plant_duty: Dict[str, float] = {}
             # {unit_name: its OWN VFD speed fraction}. Distinct from loadfrac: duty is
             # what the loop asks for, speed is what the drive actually runs at after
             # the turndown floor. Published speed used to be back-derived from the
@@ -3605,6 +3627,20 @@ class DeviceStateStore:
                                 # Every unit in the hall is down. Nothing to ramp,
                                 # and the room model books the whole shortfall.
                                 duty = lf
+                            # THERMAL duty, before the fan ramp below multiplies
+                            # it. This is what the unit publishes as delivered
+                            # cooling - the share of its rating that is actually
+                            # going into the room - and it is a different
+                            # quantity from how fast the fan is turning: a unit
+                            # at 30 % speed on a lightly loaded hall is
+                            # delivering 7 % of its rating, not 30 %.
+                            #
+                            # It had no live driver at all and sat on a random
+                            # walk around 65 %, so seven units covering a 50 kW
+                            # hall each claimed 65 kW - 455 kW of cooling for
+                            # 50 kW of servers, and nine times what the chillers
+                            # on the same page were moving.
+                            plant_duty[_n] = max(0.0, min(1.0, duty))
                             duty *= crah_fan_speed_ratio(_rinl)
                         elif _t == "cdu":
                             # Per-loop control: a CDU's pump ramps on the LIVE heat of
@@ -3612,9 +3648,18 @@ class DeviceStateStore:
                             # duty — flow tracks heat (fixed ΔT). Duty = live loop heat
                             # / the loop's full-load (nameplate) heat, so an idle GPU
                             # loop coasts and a busy one drives the pump toward full.
+                            # The cold plate's share, not the whole server: the
+                            # residual (VRMs, DIMMs, drives, PSU losses) goes out
+                            # through the air and is already booked against the
+                            # room's CRAHs. Booking all of it in both places
+                            # reported the estate removing more heat than its
+                            # servers make.
+                            _cap = 1.0 - _DTC_AIR_FRACTION
                             _members = cdu_loops.get(_n, ())
-                            _live_hw = sum(it_w_by_name.get(s, 0.0) for s in _members)
-                            _nom_hw = sum(it_nom_by_name.get(s, 0.0) for s in _members)
+                            _live_hw = _cap * sum(it_w_by_name.get(s, 0.0)
+                                                  for s in _members)
+                            _nom_hw = _cap * sum(it_nom_by_name.get(s, 0.0)
+                                                 for s in _members)
                             duty = (_live_hw / _nom_hw) if _nom_hw > 0 else lf
                             self._cdu_loop_heat_kw[_n] = _live_hw / 1000.0
                             plant_loadfrac[_n] = duty     # per-loop, not DC-wide lf
@@ -3857,6 +3902,7 @@ class DeviceStateStore:
             self._plant_cop_by_name = plant_cop
             self._plant_loadfrac_by_name = plant_loadfrac
             self._plant_speed_by_name = plant_speed
+            self._plant_duty_by_name = plant_duty
             # Outdoor air per cooling tower. One climate per site, so every tower
             # at a site reads the same numbers - which is the point: they share a
             # sky. Built from plant_dc rather than a fresh device sweep so it
@@ -5689,6 +5735,7 @@ class DeviceStateStore:
                                        plant_speed_by_name=self._plant_speed_by_name,
                                        plant_oa_by_name=self._plant_oa_by_name,
                                        plant_heat_by_name=self._cdu_loop_heat_kw,
+                                       plant_duty_by_name=self._plant_duty_by_name,
                                        plant_standby_names=self._plant_standby_names,
                                        plant_unpowered_names=self._plant_unpowered_names)
                 self._publish_plant_state()

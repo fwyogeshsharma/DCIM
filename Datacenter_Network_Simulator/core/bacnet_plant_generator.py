@@ -261,6 +261,12 @@ def apply_stopped(values: Dict[str, float], dt: float = 1.0,
 
 # Points whose magnitude tracks plant load (scaled by the diurnal multiplier).
 _LOAD_TOKENS = ("Power", "Load", "Flow", "Speed")
+#: Specific heat of water, kJ/(kg.K). At loop temperatures density is ~1 kg/L,
+#: so litres per second and kilograms per second are interchangeable here and
+#: Q(kW) = flow(L/s) x deltaT(K) x cp.
+_WATER_CP = 4.187
+
+
 def _is_load(name: str) -> bool:
     return any(t in name for t in _LOAD_TOKENS)
 
@@ -301,7 +307,13 @@ class PlantTelemetryEngine:
     (power/flow/speed/load) are scaled by a diurnal multiplier. Binary points
     hold their nominal state (running=1, alarms=0)."""
 
-    def __init__(self, device_type: str, rated_kw: float = 0.0, seed: int = 0):
+    def __init__(self, device_type: str, rated_kw: float = 0.0, seed: int = 0,
+                 rated_cooling_kw: float = 0.0):
+        # `rated_kw` is the ELECTRICAL nameplate (it sizes the kW draw points);
+        # `rated_cooling_kw` is the heat the machine is rated to REMOVE. They are
+        # different numbers by two orders of magnitude on a CDU - a CHx80 draws
+        # about 1.8 kW to move 80 kW - and using one for the other is how an
+        # 80 kW unit came to report 275 kW of load.
         self._type = device_type
         spec = PLANT_SPEC[device_type]
         self._points: List[tuple] = []   # (name, base, amp, is_load, is_hours)
@@ -320,6 +332,7 @@ class PlantTelemetryEngine:
         self._power_point = next(
             (n for (n, *_r) in self._points if n in _PWR), None)
         self._nameplate_kw = float(rated_kw)
+        self._rated_cooling_kw = float(rated_cooling_kw or 0.0)
         # Which points this device HAS, independent of whether a given tick wrote one.
         self._point_names = {n for (n, *_r) in self._points}
         # VFD speed point coupled to the affinity power (P ∝ speed³) for centrifugal
@@ -338,6 +351,19 @@ class PlantTelemetryEngine:
         # Design base per point — anchors the live-heat coupling (CDU Heat_Load /
         # TCS_Flow scale off the loop heat relative to these nameplate bases).
         self._base = {n: b for (n, b, _a, _il, _ih) in self._points}
+        # Re-base the CDU's loop points on the SKU the topology actually fitted.
+        # The spec's defaults describe a large floor-standing unit; a 4U in-rack
+        # CHx80 walking around 450 kW is not a noisy reading, it is a machine
+        # that does not exist. Only reached when nothing live is driving the
+        # loop - a coupled CDU takes its heat from the servers on it.
+        #
+        # After _base is built, because the design delta-T is read from it.
+        if device_type == "cdu" and self._rated_cooling_kw > 0:
+            _dt = max(1.0, self._base_delta_t())
+            _h = 0.75 * self._rated_cooling_kw     # a typical part-load duty
+            self._rebase("Heat_Load", _h, 0.15 * _h)
+            self._rebase("TCS_Flow", _h / (_dt * _WATER_CP),
+                         0.15 * _h / (_dt * _WATER_CP))
 
         self._binaries: Dict[str, float] = {}
         for name in spec["bi"]:
@@ -353,6 +379,23 @@ class PlantTelemetryEngine:
         # Per-alarm severity ramp timers (seconds a forced alarm has been held),
         # used to ramp its coupled metric effects in _apply_alarm_couplings.
         self._alarm_t: Dict[str, float] = {}
+
+    def _base_delta_t(self) -> float:
+        """Design loop delta-T, from the spec's own supply and return bases."""
+        sup = self._base.get("TCS_Supply_Temp")
+        ret = self._base.get("TCS_Return_Temp")
+        if sup is None or ret is None:
+            return 13.0
+        return max(1.0, float(ret) - float(sup))
+
+    def _rebase(self, name: str, base: float, amp: float) -> None:
+        """Move one point's walk onto a different base, value and all."""
+        for i, (n, _b, _a, is_load, is_hours) in enumerate(self._points):
+            if n == name:
+                self._points[i] = (n, base, amp, is_load, is_hours)
+                self._base[n] = base
+                self._values[n] = base
+                return
 
     def _diurnal(self) -> float:
         t = time.localtime()
@@ -370,6 +413,7 @@ class PlantTelemetryEngine:
              plant_load_frac: float | None = None,
              live_speed: float | None = None,
              live_heat: float | None = None,
+             live_duty: float | None = None,
              live_oa: tuple | None = None,
              running: bool = True) -> Dict[str, float]:
         # `forced` is the set of binary alarm point-names the operator has locked
@@ -449,6 +493,23 @@ class PlantTelemetryEngine:
             # back to the walk would put a healthy 5.5 on a dead chiller.
             if live_cop is not None and name == "COP":
                 continue
+            # Heat_Load and TCS_Flow need the same exemption, for the same
+            # reason, and did not have it. A CDU carrying 4.8 kW of cold-plate
+            # servers published 275 kW: the walk clamps the stored value into
+            # [base*mul - amp, base*mul + amp] every tick and the live block
+            # then EMAs 30 % of the way toward the truth, so the pair settles
+            # at a fixed point near the clamp floor. Stable, plausible, wrong,
+            # and contradicted by the loop beside it - 13.8 L/s across 13 K is
+            # 750 kW, not the 275 the same machine was reporting.
+            if live_heat is not None and name in ("Heat_Load", "TCS_Flow"):
+                continue
+            # A CRAH's Cooling_Capacity is the share of its rating it is
+            # actually delivering. It was never driven at all: seven units
+            # covering a 50 kW hall each published ~65 % of 100 kW, which is
+            # 455 kW of cooling for 50 kW of servers and nine times what the
+            # chillers on the same page were moving.
+            if live_duty is not None and name == "Cooling_Capacity":
+                continue
             if amp == 0.0:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
                 continue
@@ -512,16 +573,38 @@ class PlantTelemetryEngine:
         # CDU heat rejection — Heat_Load is the LIVE heat of the cold-plate servers on
         # this CDU's loop (Σ their live watts), not a diurnal walk. TCS_Flow tracks it
         # (flow ∝ heat at a fixed loop ΔT), scaled off the design bases.
-        if live_heat is not None and "Heat_Load" in out:
+        if live_heat is not None and "Heat_Load" in self._point_names:
             self._values["Heat_Load"] = self._ema(
                 max(0.0, live_heat), self._values["Heat_Load"], 0.3)
             out["Heat_Load"] = round(max(0.0, self._values["Heat_Load"]), 2)
-            _hbase = self._base.get("Heat_Load", 0.0)
-            _fbase = self._base.get("TCS_Flow", 0.0)
-            if _hbase > 0 and _fbase > 0 and "TCS_Flow" in out:
-                flow = _fbase * (out["Heat_Load"] / _hbase)
+            # Flow follows from the heat and the loop's OWN delta-T, not from
+            # the ratio of two design bases that were never consistent with
+            # each other. Q = flow x dT x cp, so a loop moving 4.8 kW across
+            # 13 K carries 0.09 L/s - and the published flow, supply and return
+            # can then be multiplied together by anyone reading the page and
+            # give back the published heat.
+            if "TCS_Flow" in self._point_names:
+                _dt = None
+                _sup, _ret = out.get("TCS_Supply_Temp"), out.get("TCS_Return_Temp")
+                if _sup is not None and _ret is not None:
+                    _dt = float(_ret) - float(_sup)
+                if not _dt or _dt <= 0.5:
+                    _dt = self._base_delta_t()
+                flow = out["Heat_Load"] / (_dt * _WATER_CP)
                 self._values["TCS_Flow"] = self._ema(flow, self._values["TCS_Flow"], 0.3)
                 out["TCS_Flow"] = round(max(0.0, self._values["TCS_Flow"]), 2)
+
+        # Delivered cooling, as the share of this unit's rating actually
+        # reaching the room. The store works it out from the hall's own live
+        # heat against the cooling its RUNNING units are rated for - group
+        # control, so a unit dropping out raises everybody else's share - and
+        # it is the one number on a CRAH that says how much headroom is left.
+        if live_duty is not None and "Cooling_Capacity" in self._point_names:
+            tgt = max(0.0, min(100.0, float(live_duty) * 100.0))
+            self._values["Cooling_Capacity"] = self._ema(
+                tgt, self._values["Cooling_Capacity"], 0.3)
+            out["Cooling_Capacity"] = round(
+                max(0.0, min(100.0, self._values["Cooling_Capacity"])), 2)
 
         # Modulating control valve — position tracks cooling DEMAND (plant load
         # fraction), not its own actuator power: the valve strokes toward 100 % open

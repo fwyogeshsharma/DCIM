@@ -272,6 +272,9 @@ class BACnetController:
             dtype = spec["device_type"]
             name  = spec.get("name") or f"{dtype}_{next_instance}"
             rkw   = float(spec.get("rated_kw", 0.0) or 0.0)
+            # Heat removed at full load, which is a different number from the
+            # electrical draw above by two orders of magnitude on a CDU.
+            rckw  = float(spec.get("rated_cooling_kw", 0.0) or 0.0)
             try:
                 tree, n2k = build_plant_object_tree(dtype, rkw)
             except KeyError:
@@ -291,6 +294,7 @@ class BACnetController:
             self._devices_by_ip[ip]      = dev
             self._telemetry[next_instance] = PlantTelemetryEngine(
                 dtype, rated_kw=rkw, seed=(hash(name) & 0xFFFFFFFF),
+                rated_cooling_kw=rckw,
             )
             next_instance += 1
 
@@ -396,7 +400,8 @@ class BACnetController:
 
     def add_plant_device(self, ip: str, device_type: str,
                          name: Optional[str] = None,
-                         rated_kw: float = 0.0) -> bool:
+                         rated_kw: float = 0.0,
+                         rated_cooling_kw: float = 0.0) -> bool:
         """Hot-add a chiller-plant BACnet device (chiller/pump/cooling_tower/valve/
         crah/cdu) into a RUNNING controller — used when Fleet Lifecycle commissions
         new cooling gear. Mirrors the plant block in start(): builds the type's
@@ -428,7 +433,9 @@ class BACnetController:
             self._devices[inst]      = dev
             self._devices_by_ip[ip]  = dev
             self._telemetry[inst]    = PlantTelemetryEngine(
-                device_type, rated_kw=float(rated_kw or 0.0), seed=(hash(name) & 0xFFFFFFFF))
+                device_type, rated_kw=float(rated_kw or 0.0),
+                seed=(hash(name) & 0xFFFFFFFF),
+                rated_cooling_kw=float(rated_cooling_kw or 0.0))
             self._sockets_dirty = True
         self._log(f"[BACnet] hot-added {device_type} {name} @ {ip} (instance {inst})",
                   "success")
@@ -639,6 +646,7 @@ class BACnetController:
              plant_loadfrac_by_name: dict | None = None,
              plant_speed_by_name: dict | None = None,
              plant_heat_by_name: dict | None = None,
+             plant_duty_by_name: dict | None = None,
              plant_standby_names: set | None = None,
              plant_oa_by_name: dict | None = None,
              plant_unpowered_names: set | None = None) -> None:
@@ -694,6 +702,11 @@ class BACnetController:
                     _lf = (plant_loadfrac_by_name or {}).get(_nm)
                     _spd = (plant_speed_by_name or {}).get(_nm)
                     _hl = (plant_heat_by_name or {}).get(_nm)
+                    # Delivered cooling as a share of rating. Only an air
+                    # handler publishes it, and only the room model knows it:
+                    # it is this hall's live heat against the cooling its
+                    # RUNNING units are rated for.
+                    _dty = (plant_duty_by_name or {}).get(_nm)
                     # Outdoor air for this site. Only the tower controllers carry
                     # the points, so every other plant type gets None and the
                     # engine leaves its (absent) OA points alone.
@@ -714,7 +727,8 @@ class BACnetController:
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
                                          live_speed=_spd,
-                                         live_heat=_hl, live_oa=_oa,
+                                         live_heat=_hl, live_duty=_dty,
+                                         live_oa=_oa,
                                          running=not _off)
                     # Staged-OFF (standby) chiller / pump: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and
