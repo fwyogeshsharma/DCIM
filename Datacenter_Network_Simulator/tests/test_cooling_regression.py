@@ -68,6 +68,26 @@ def _hold(p, ticks=HOLD_TICKS):
         p.tick()
 
 
+def _loop_range(p, name):
+    """Published secondary range on a CDU: return minus supply."""
+    pts = p.auto_points(name)
+    return pts["TCS_Return_Temp"] - pts["TCS_Supply_Temp"]
+
+
+def _loop_adds_up(p, name, cp=4.186):
+    """Q = flow x range x cp, against the heat the store says is on the plates.
+
+    A machine publishing three numbers that multiply out to a fourth one it also
+    publishes is the only way a reader can trust any of them.
+    """
+    pts = p.auto_points(name)
+    heat = p.store._cdu_loop_heat_kw.get(name, 0.0)
+    if heat <= 0.0 or "TCS_Flow" not in pts:
+        return False
+    published = pts["TCS_Flow"] * _loop_range(p, name) * cp
+    return abs(published - heat) < max(0.15, 0.08 * heat)
+
+
 def _alarm(cache, name, running_point, alarm):
     """Fault a unit the way the plant override channel does: the unit is still
     commanded on and reporting run status, with a health alarm set."""
@@ -693,6 +713,106 @@ def test_cdu_coolant_follows_the_facility_loop(tmp_path, plant_cache):
     tcs = p.auto_points(f"CDU1-{DC}-HA-R1-01").get("TCS_Supply_Temp")
     assert tcs is not None, "the store must publish the CDU loop, not leave it walking"
     assert tcs > 34.0, f"coolant should follow the facility loop up, got {tcs}"
+    # And it has to stop somewhere a cold plate could survive reporting. The
+    # facility-drift term and the lost-valve-authority term compound, and
+    # unbounded they put 67 C in the loop - past the point where the reading
+    # would be taken for a broken sensor rather than a broken plant. A CDU
+    # rejecting nothing is a pipe, so its supply approaches its return and
+    # stops there.
+    ret = p.auto_points(f"CDU1-{DC}-HA-R1-01").get("TCS_Return_Temp")
+    assert tcs <= ret + 0.5, f"supply cannot pass its own return; {tcs} vs {ret}"
+    assert tcs < 46.0, f"coolant at {tcs} C is not a loop, it is an artefact"
+
+
+def test_the_cdu_loop_narrows_instead_of_losing_its_flow(tmp_path, plant_cache):
+    """A lightly loaded cold-plate loop runs a NARROW range, not a design one.
+
+    The secondary range used to be asserted: supply plus a hard 13.0 K, on every
+    CDU, at every load, forever. Three hours of published history had standard
+    deviation 0.0000 on supply, return and the facility valve alike, so the
+    points a liquid loop is diagnosed on could not move.
+
+    A CDU's secondary pump is a VFD with a turndown floor, and it has one
+    because the plates have to stay wetted - drop below it and the channels go
+    laminar and the die gets hot spots. So flow floors and the RANGE collapses,
+    which is the same thing the primary loop does on its minimum-flow bypass.
+    The loop must also add up: flow x range x cp is the heat, and a machine
+    publishing three numbers that multiply out to something else is
+    contradicting itself in public.
+    """
+    p = _plant(tmp_path, plant_cache, cdus=2)
+    _hold(p)
+    name = f"CDU1-{DC}-HA-R1-01"
+
+    # Loaded, the loop holds its design range: above the pump's turndown the
+    # secondary is a constant-range, variable-flow machine, and that IS the
+    # control scheme. The bug was never the 13 K - it was that 13 K was all the
+    # loop could ever say.
+    assert _loop_adds_up(p, name), "a loaded loop must publish a coherent Q"
+    assert abs(_loop_range(p, name) - 13.0) < 0.5
+
+    # Now take the cold plates away and leave the pump where it floors.
+    members = sorted(p.store._cdu_loop_servers().get(name, ()))
+    assert len(members) > 4
+    by_name = {d.name: d for d in p.dm.get_all_devices()}
+    for srv in members[1:]:
+        by_name[srv].power_state = "Off"
+    _hold(p, ticks=30)
+
+    rng, flow = _loop_range(p, name), p.auto_points(name).get("TCS_Flow")
+    assert flow > 0.0, "the pump floors, it does not stop"
+    assert 0.0 < rng < 12.0, (
+        f"a loop below its pump's turndown cannot hold design range; "
+        f"got {rng:.1f} K")
+    assert _loop_adds_up(p, name), "and it still has to add up down there"
+
+
+def test_the_cdu_facility_valve_answers_its_own_load(tmp_path, plant_cache):
+    """The valve holds the secondary setpoint, so it opens with the heat.
+
+    It used to be 40 % plus a facility-temperature term and nothing else, which
+    meant an idle CDU and a CDU carrying its full cold-plate loop published the
+    same position. A valve that cannot tell those apart cannot be read.
+    """
+    p = _plant(tmp_path, plant_cache, cdus=2)
+    _hold(p)
+    name = f"CDU1-{DC}-HA-R1-01"
+    loaded = p.auto_points(name).get("Facility_CHW_Valve")
+    assert loaded is not None
+
+    members = sorted(p.store._cdu_loop_servers().get(name, ()))
+    by_name = {d.name: d for d in p.dm.get_all_devices()}
+    for srv in members[1:]:
+        by_name[srv].power_state = "Off"
+    _hold(p, ticks=30)
+
+    idle = p.auto_points(name).get("Facility_CHW_Valve")
+    assert loaded > idle + 5.0, (
+        f"the valve must answer the heat on the plates; loaded {loaded} vs "
+        f"idle {idle}")
+
+
+def test_the_cdu_supply_is_controlled_not_constant(tmp_path, plant_cache):
+    """Holding setpoint is not the same as being a constant.
+
+    A PID hunts and an RTD quantises, so a healthy loop reads around setpoint
+    rather than exactly on it - and nothing downstream can tell a pinned point
+    from a well-controlled one if it never moves at all. The band is small on
+    purpose: it has to stay far under the drift a real fault produces, which the
+    facility-loop test beside this one measures.
+    """
+    p = _plant(tmp_path, plant_cache, cdus=2)
+    name = f"CDU1-{DC}-HA-R1-01"
+    seen = set()
+    for _ in range(40):
+        p.tick()
+        v = p.auto_points(name).get("TCS_Supply_Temp")
+        if v is not None:
+            seen.add(v)
+    assert len(seen) > 1, "a controlled loop is not one number repeated"
+    assert max(seen) - min(seen) < 1.0, (
+        f"control dither must stay under a real fault's drift; got "
+        f"{max(seen) - min(seen):.2f} K")
 
 
 def test_starved_crah_drives_its_valve_open(tmp_path, plant_cache):

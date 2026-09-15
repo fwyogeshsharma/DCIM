@@ -542,6 +542,10 @@ class DeviceStateStore:
         # weather, published on the tower controllers that actually carry it.
         self._plant_oa_by_name: Dict[str, tuple] = {}
         self._cdu_loop_heat_kw: Dict[str, float] = {}     # {cdu_name: live loop heat kW}
+        # The same loop at FULL load. The secondary pump is sized on it, so it is
+        # what the published flow and loop range are scaled against - without it
+        # the only way to state a range is to assert one.
+        self._cdu_loop_nom_kw: Dict[str, float] = {}      # {cdu_name: design loop heat kW}
         # Frozen per-DC design cooling nameplate (first-seen), so IT_design stays a
         # fixed capacity ceiling even when the fleet adds CRAHs to new halls — those
         # are air distribution, not extra chiller/plant capacity.
@@ -3746,6 +3750,7 @@ class DeviceStateStore:
                                                  for s in _members)
                             duty = (_live_hw / _nom_hw) if _nom_hw > 0 else lf
                             self._cdu_loop_heat_kw[_n] = _live_hw / 1000.0
+                            self._cdu_loop_nom_kw[_n] = _nom_hw / 1000.0
                             plant_loadfrac[_n] = duty     # per-loop, not DC-wide lf
                         elif _t == "cooling_tower":
                             # Bank control: the airflow the load needs (duty × the
@@ -5096,7 +5101,49 @@ class DeviceStateStore:
     # ~32 °C, well above the CRAH coils, which is what lets the chillers run at a
     # higher COP. Matches the generator's design values for the CDU class.
     _CDU_TCS_SETPOINT_C = 32.0
+    # DESIGN range, at full loop load. Not what gets published: the range is a
+    # RESULT of the heat the cold plates put in and the water the secondary
+    # pump is moving, and it narrows at low load exactly as the primary loop's
+    # does when its pumps hit the bypass floor.
     _CDU_TCS_RANGE_C = 13.0
+    # Secondary pump turndown. A CDU's cold-plate loop cannot be allowed to go
+    # quiet with the plates still wetted - low flow means laminar plate channels
+    # and hot spots on the die - so the pump floors at its VFD minimum and the
+    # loop range collapses instead of the flow going to nothing. Same floor the
+    # primary loop's minimum-flow bypass uses, and the same reason for it.
+    _CDU_MIN_FLOW_FRAC = 0.35
+    # Facility-side control valve. It modulates to hold the secondary supply
+    # setpoint, so it opens with the heat the loop is carrying FIRST and with
+    # facility water temperature second - a valve that only ever answered the
+    # facility loop could not tell a busy CDU from an idle one.
+    #
+    # The facility term is the DRIVING TEMPERATURE DIFFERENCE, not a gain per
+    # kelvin. A CRAH coil holds 22 C discharge on 7 C water and has about three
+    # kelvin of margin, so warm water costs it authority immediately - hence
+    # _CRAH_VALVE_GAIN. A CDU holds 32 C coolant on the same 7 C water and has
+    # twenty-five. Borrowing the CRAH's sensitivity said a CDU loses control at
+    # the same rate a coil does, and published 54.6 C coolant on a plant whose
+    # facility water was still at 19 C - water a CDU cools perfectly well with.
+    # What actually costs it authority is that difference closing.
+    _CDU_VALVE_MIN_PCT = 15.0
+    _CDU_VALVE_LOAD_GAIN = 70.0
+    # What it costs when that valve runs out of travel. Past 100 % open the CDU
+    # has no authority left and its secondary supply climbs off setpoint - which
+    # is the fault an operator is looking for and the only way a heat exchanger
+    # short of facility water can announce itself.
+    #
+    # Bounded by the loop's own range, because that is where the physics ends: a
+    # CDU rejecting NOTHING is a pipe, and a pipe's supply is its return. Left
+    # unbounded it compounded with the facility-drift term and published 67 C
+    # coolant on a plant with its chillers out - a number no cold plate would
+    # survive long enough to report, and one that would have made the fault look
+    # like an instrument failure instead.
+    _CDU_LOST_AUTHORITY_K = 12.0
+    # Control/sensor dither on a loop that IS holding setpoint. A PID hunts and an
+    # RTD quantises; a temperature that reads 32.00 every tick for three hours is
+    # not a well-controlled loop, it is a constant, and nothing downstream can
+    # tell the two apart.
+    _CDU_TCS_BAND_K = 0.15
     # Pump design points, matching the PLANT_SPEC bases in bacnet_plant_generator.
     _PUMP_SUCTION_KPA   = 130.0
     _PUMP_DIFF_KPA      = 300.0
@@ -5552,21 +5599,68 @@ class DeviceStateStore:
             # Drift of the facility loop above its design temperature, attenuated by
             # the exchanger's approach (see _CDU_FOLLOW_FRAC).
             _drift = max(0.0, self._chw_supply_c.get(dc, CHW_SETPOINT_C) - CHW_SETPOINT_C)
-            _tcs = self._CDU_TCS_SETPOINT_C + _drift * self._CDU_FOLLOW_FRAC
             for name in _cdus:
                 ip = name
                 if not ip:
                     continue
                 pts = auto.setdefault(ip, {})
+                # ── THE SECONDARY LOOP IS DRIVEN BY ITS OWN HEAT ──────────────
+                # It used to be driven by nothing but the facility loop: supply
+                # was setpoint plus facility drift, and return was supply plus a
+                # hard 13.0 K. With a healthy plant that is three constants, and
+                # three hours of history showed exactly that - supply 32.00,
+                # return 45.00, valve 40.00, standard deviation 0.0000 on all
+                # three, on every CDU in both datacenters. The points a liquid
+                # loop is read on could not move, so no cold-plate fault could
+                # ever show in them, and the flow published beside them was
+                # derived from a range the machine never actually published.
+                _q = self._cdu_loop_heat_kw.get(name, 0.0)      # kW on the plates
+                _nom = self._cdu_loop_nom_kw.get(name, 0.0)     # kW at full load
+                _duty = (_q / _nom) if _nom > 0 else 0.0
+                _duty = max(0.0, min(1.0, _duty))
+                # PUMP SETS FLOW; HEAT SETS RANGE. The same causal order the
+                # primary loop above was corrected to, for the same reason: a
+                # range asserted as design cannot narrow, and narrowing is what
+                # a lightly loaded loop DOES.
+                _flow_design = (_nom / (self._CDU_TCS_RANGE_C * CP_WATER_KJ_KGK)
+                                if _nom > 0 else 0.0)
+                _flow = max(self._CDU_MIN_FLOW_FRAC, _duty) * _flow_design
+                _range = (_q / (_flow * CP_WATER_KJ_KGK)) if _flow > 0 else 0.0
+                # The facility valve modulates to hold the secondary setpoint,
+                # and holds it until it runs out of travel.
+                # Driving difference between the two loops, against its design.
+                # It takes proportionally more open valve to move the same heat
+                # as the facility water warms toward the coolant setpoint, and
+                # the valve runs out of travel when it closes far enough.
+                _avail = max(1.0, self._CDU_TCS_SETPOINT_C
+                             - self._chw_supply_c.get(dc, CHW_SETPOINT_C))
+                _avail_design = max(1.0, self._CDU_TCS_SETPOINT_C - CHW_SETPOINT_C)
+                _demand = (self._CDU_VALVE_MIN_PCT
+                           + self._CDU_VALVE_LOAD_GAIN * _duty
+                           * (_avail_design / _avail))
+                _unmet = max(0.0, _demand - 100.0) / 100.0
+                _lost = min(_range, _unmet * self._CDU_LOST_AUTHORITY_K)
+                _tcs = (self._CDU_TCS_SETPOINT_C
+                        + _drift * self._CDU_FOLLOW_FRAC
+                        + _lost
+                        + random.uniform(-self._CDU_TCS_BAND_K, self._CDU_TCS_BAND_K))
                 pts["TCS_Supply_Temp"] = round(_tcs, 1)
-                # Return sits a design range above supply; the secondary pumps are
-                # VFD and track loop heat, so the range holds near design.
-                pts["TCS_Return_Temp"] = round(_tcs + self._CDU_TCS_RANGE_C, 1)
+                pts["TCS_Return_Temp"] = round(_tcs + _range, 1)
                 pts["TCS_Setpoint"] = round(self._CDU_TCS_SETPOINT_C, 1)
-                # Facility-side valve opens as the CDU loses approach, same control
-                # story as the CRAH coil valve above.
-                pts["Facility_CHW_Valve"] = round(
-                    min(100.0, 40.0 + _drift * self._CRAH_VALVE_GAIN), 1)
+                pts["Facility_CHW_Valve"] = round(min(100.0, _demand), 1)
+                # Published with them, so flow x range x cp gives back the heat
+                # on the same row. The generator derives a flow of its own for a
+                # CDU with no cold-plate loop under it; this one supersedes it
+                # wherever there are servers to be cooled, because that
+                # derivation reads the generator's own walked supply and return
+                # rather than the pair actually published here.
+                if _flow > 0:
+                    # Three places, not two. A cold-plate loop on a part-loaded
+                    # CDU carries hundredths of a litre per second, so two places
+                    # is one significant figure and quantises the published flow
+                    # into 10 % steps - enough on its own to stop flow x range x
+                    # cp giving back the heat printed beside them.
+                    pts["TCS_Flow"] = round(_flow, 3)
 
         # ── Plant header instruments ─────────────────────────────────────────
         # Every one of these points is already computed above or by the condenser
