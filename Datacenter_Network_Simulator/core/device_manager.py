@@ -835,8 +835,15 @@ _MODEL_NAMEPLATE_W = {
     "poweredge r750":  750,  # 2U 2S, newer
     "poweredge r940": 1200,  # 3U 4S
     "poweredge r7525":1000,  # 2U dual-Epyc, GPU-capable
-    "poweredge r760": 900,   # 2U 2S DLC — cold plates carry a higher-TDP CPU pair
-    "poweredge r660": 700,   # 1U 2S DLC
+    # DLC/LCC parts are the reason liquid is there, so they are rated like it.
+    # These sat at 700-900 W, which is the AIR tier plus a little - an r760 DLC
+    # at 900 W is 150 W above the air-cooled r750 beside it. Nobody plumbs a
+    # rack manifold, a CDU and a set of UQDs for 150 W. A node gets cold plates
+    # when its socket TDP has outrun what a 1U/2U air path can carry, which in
+    # this generation means roughly 350 W+ per socket, and the whole node lands
+    # near or above a kilowatt. Below that you air-cool it and keep the hoses.
+    "poweredge r760": 1400,  # 2U 2S DLC — high-TDP pair, the air r750 is 750 W
+    "poweredge r660": 1100,  # 1U 2S DLC — same pair, 1U has less to give
     # Lenovo ThinkSystem
     "sr630":  500,   # 1U 2S
     "sr650":  700,   # 2U 2S
@@ -844,8 +851,8 @@ _MODEL_NAMEPLATE_W = {
     # Supermicro
     "sys-120u": 550,  # 1U 2S
     "sys-220u": 700,  # 2U 2S
-    "sys-121h": 800,  # 1U 2S liquid-cooled chassis, high-TDP pair
-    "sys-221h": 900,  # 2U 2S liquid-cooled chassis
+    "sys-121h": 1150, # 1U 2S liquid-cooled chassis, high-TDP pair
+    "sys-221h": 1400, # 2U 2S liquid-cooled chassis
     "as-4124gs":6000, # 4U dual-Epyc + up to 8 GPU — dense accelerated
     # IBM
     "power system s922": 1000,  # 2U 2S POWER9
@@ -905,8 +912,13 @@ _IN_RACK_CDU_KEYS = ("chx80", "chx40", "chx150")
 # can join a coolant loop, and the direct analogue of a PDU's outlet count. Thermal
 # capacity is almost never what binds: a CHx80 is rated 80 kW but its rack manifold
 # terminates a fixed number of dripless quick-disconnect pairs, so the loop runs out
-# of PORTS long before it runs out of kW (18 × ~900 W DLC servers is ~16 kW, a fifth
-# of the unit's rating).
+# of PORTS long before it runs out of kW (18 × ~1.3 kW DLC servers is ~23 kW, under
+# a third of the unit's rating).
+#
+# That gap is not a modelling error, it is what these units are rated for: 80 kW is
+# reachable only with accelerator nodes, where 18 ports carry 4-5 kW each. An estate
+# doing liquid for high-TDP CPUs runs a CHx80 at a third and buys it anyway, because
+# the manifold and the ports are what it needed.
 #
 # Counts are representative of a common configuration, not a fixed vendor spec —
 # manifolds are ordered per deployment in several port counts, and a rack can carry

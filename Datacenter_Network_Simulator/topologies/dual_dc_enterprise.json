@@ -17867,7 +17867,7 @@
         ],
         "mgmt_ip": "10.51.11.25",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -17994,7 +17994,7 @@
         ],
         "mgmt_ip": "10.51.11.30",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18121,7 +18121,7 @@
         ],
         "mgmt_ip": "10.51.11.35",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18276,7 +18276,7 @@
         ],
         "mgmt_ip": "10.51.11.40",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1100,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18431,7 +18431,7 @@
         ],
         "mgmt_ip": "10.51.11.45",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18558,7 +18558,7 @@
         ],
         "mgmt_ip": "10.51.11.50",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18685,7 +18685,7 @@
         ],
         "mgmt_ip": "10.51.11.55",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18840,7 +18840,7 @@
         ],
         "mgmt_ip": "10.51.11.60",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -18967,7 +18967,7 @@
         ],
         "mgmt_ip": "10.51.11.65",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -19122,7 +19122,7 @@
         ],
         "mgmt_ip": "10.51.11.70",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -19321,7 +19321,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "4f9f599b",
         "interfaces": [
@@ -19376,7 +19376,7 @@
         ],
         "mgmt_ip": "10.51.11.80",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -19853,7 +19853,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "1fb4e84d",
         "interfaces": [
@@ -19940,7 +19940,7 @@
         ],
         "mgmt_ip": "10.51.11.100",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -20167,7 +20167,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "79a39be6",
         "interfaces": [
@@ -20222,7 +20222,7 @@
         ],
         "mgmt_ip": "10.51.11.26",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -20294,7 +20294,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "ccba8e11",
         "interfaces": [
@@ -20349,7 +20349,7 @@
         ],
         "mgmt_ip": "10.51.11.31",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -20421,7 +20421,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "b5679ae6",
         "interfaces": [
@@ -20476,7 +20476,7 @@
         ],
         "mgmt_ip": "10.51.11.36",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -20544,7 +20544,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "0f090bab",
         "interfaces": [
@@ -20631,7 +20631,7 @@
         ],
         "mgmt_ip": "10.51.11.41",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -20699,7 +20699,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "bebeb53d",
         "interfaces": [
@@ -20786,7 +20786,7 @@
         ],
         "mgmt_ip": "10.51.11.46",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -20858,7 +20858,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "4ab14f00",
         "interfaces": [
@@ -20913,7 +20913,7 @@
         ],
         "mgmt_ip": "10.51.11.51",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -21140,7 +21140,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "12107ca6",
         "interfaces": [
@@ -21195,7 +21195,7 @@
         ],
         "mgmt_ip": "10.51.11.61",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -21672,7 +21672,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "a8c45b06",
         "interfaces": [
@@ -21759,7 +21759,7 @@
         ],
         "mgmt_ip": "10.51.11.81",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -21831,7 +21831,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "2dd3309b",
         "interfaces": [
@@ -21886,7 +21886,7 @@
         ],
         "mgmt_ip": "10.51.11.86",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -21958,7 +21958,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "441e05e9",
         "interfaces": [
@@ -22013,7 +22013,7 @@
         ],
         "mgmt_ip": "10.51.11.91",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -22085,7 +22085,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "1dcfc8b0",
         "interfaces": [
@@ -22140,7 +22140,7 @@
         ],
         "mgmt_ip": "10.51.11.96",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -22363,7 +22363,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "e65885b5",
         "interfaces": [
@@ -22450,7 +22450,7 @@
         ],
         "mgmt_ip": "10.51.11.106",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -22522,7 +22522,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "40848218",
         "interfaces": [
@@ -22577,7 +22577,7 @@
         ],
         "mgmt_ip": "10.51.11.27",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -22645,7 +22645,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "38138e5d",
         "interfaces": [
@@ -22732,7 +22732,7 @@
         ],
         "mgmt_ip": "10.51.11.32",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -22800,7 +22800,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "d59950d1",
         "interfaces": [
@@ -22887,7 +22887,7 @@
         ],
         "mgmt_ip": "10.51.11.37",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -23086,7 +23086,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "fd072447",
         "interfaces": [
@@ -23141,7 +23141,7 @@
         ],
         "mgmt_ip": "10.51.11.47",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -23213,7 +23213,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "cae4df40",
         "interfaces": [
@@ -23268,7 +23268,7 @@
         ],
         "mgmt_ip": "10.51.11.52",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -23340,7 +23340,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "4681e890",
         "interfaces": [
@@ -23395,7 +23395,7 @@
         ],
         "mgmt_ip": "10.51.11.57",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -23467,7 +23467,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "b7b28660",
         "interfaces": [
@@ -23522,7 +23522,7 @@
         ],
         "mgmt_ip": "10.51.11.62",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -23594,7 +23594,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "bf2e0175",
         "interfaces": [
@@ -23649,7 +23649,7 @@
         ],
         "mgmt_ip": "10.51.11.67",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -23872,7 +23872,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "6bb37319",
         "interfaces": [
@@ -23959,7 +23959,7 @@
         ],
         "mgmt_ip": "10.51.11.77",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -24027,7 +24027,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "a75e5eef",
         "interfaces": [
@@ -24114,7 +24114,7 @@
         ],
         "mgmt_ip": "10.51.11.82",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -24186,7 +24186,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "7d8f4aca",
         "interfaces": [
@@ -24241,7 +24241,7 @@
         ],
         "mgmt_ip": "10.51.11.87",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -24309,7 +24309,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "398cbd80",
         "interfaces": [
@@ -24396,7 +24396,7 @@
         ],
         "mgmt_ip": "10.51.11.92",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -29670,7 +29670,7 @@
         ],
         "mgmt_ip": "10.51.12.25",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -29797,7 +29797,7 @@
         ],
         "mgmt_ip": "10.51.12.30",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -29952,7 +29952,7 @@
         ],
         "mgmt_ip": "10.51.12.35",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30079,7 +30079,7 @@
         ],
         "mgmt_ip": "10.51.12.40",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30206,7 +30206,7 @@
         ],
         "mgmt_ip": "10.51.12.45",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30333,7 +30333,7 @@
         ],
         "mgmt_ip": "10.51.12.50",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30460,7 +30460,7 @@
         ],
         "mgmt_ip": "10.51.12.55",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30615,7 +30615,7 @@
         ],
         "mgmt_ip": "10.51.12.60",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30770,7 +30770,7 @@
         ],
         "mgmt_ip": "10.51.12.65",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -30897,7 +30897,7 @@
         ],
         "mgmt_ip": "10.51.12.70",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -31052,7 +31052,7 @@
         ],
         "mgmt_ip": "10.51.12.75",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -31207,7 +31207,7 @@
         ],
         "mgmt_ip": "10.51.12.80",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -31997,7 +31997,7 @@
         ],
         "mgmt_ip": "10.51.12.26",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32152,7 +32152,7 @@
         ],
         "mgmt_ip": "10.51.12.31",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1100,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32279,7 +32279,7 @@
         ],
         "mgmt_ip": "10.51.12.36",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32434,7 +32434,7 @@
         ],
         "mgmt_ip": "10.51.12.41",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32561,7 +32561,7 @@
         ],
         "mgmt_ip": "10.51.12.46",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32716,7 +32716,7 @@
         ],
         "mgmt_ip": "10.51.12.51",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32871,7 +32871,7 @@
         ],
         "mgmt_ip": "10.51.12.56",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -32998,7 +32998,7 @@
         ],
         "mgmt_ip": "10.51.12.61",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33125,7 +33125,7 @@
         ],
         "mgmt_ip": "10.51.12.66",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33252,7 +33252,7 @@
         ],
         "mgmt_ip": "10.51.12.71",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33407,7 +33407,7 @@
         ],
         "mgmt_ip": "10.51.12.76",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -33534,7 +33534,7 @@
         ],
         "mgmt_ip": "10.51.12.81",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34380,7 +34380,7 @@
         ],
         "mgmt_ip": "10.51.12.27",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34507,7 +34507,7 @@
         ],
         "mgmt_ip": "10.51.12.32",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34634,7 +34634,7 @@
         ],
         "mgmt_ip": "10.51.12.37",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34761,7 +34761,7 @@
         ],
         "mgmt_ip": "10.51.12.42",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -34916,7 +34916,7 @@
         ],
         "mgmt_ip": "10.51.12.47",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1100,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35071,7 +35071,7 @@
         ],
         "mgmt_ip": "10.51.12.52",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35198,7 +35198,7 @@
         ],
         "mgmt_ip": "10.51.12.57",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35325,7 +35325,7 @@
         ],
         "mgmt_ip": "10.51.12.62",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35480,7 +35480,7 @@
         ],
         "mgmt_ip": "10.51.12.67",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35635,7 +35635,7 @@
         ],
         "mgmt_ip": "10.51.12.72",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35790,7 +35790,7 @@
         ],
         "mgmt_ip": "10.51.12.77",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -35917,7 +35917,7 @@
         ],
         "mgmt_ip": "10.51.12.82",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41445,7 +41445,7 @@
         ],
         "mgmt_ip": "10.51.11.110",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41600,7 +41600,7 @@
         ],
         "mgmt_ip": "10.51.11.111",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -41755,7 +41755,7 @@
         ],
         "mgmt_ip": "10.51.11.112",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -42192,7 +42192,7 @@
         ],
         "mgmt_ip": "10.51.12.110",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1100,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -42319,7 +42319,7 @@
         ],
         "mgmt_ip": "10.51.12.111",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -42474,7 +42474,7 @@
         ],
         "mgmt_ip": "10.51.12.112",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "Chicago",
@@ -57665,7 +57665,7 @@
         ],
         "mgmt_ip": "10.51.21.23",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -57792,7 +57792,7 @@
         ],
         "mgmt_ip": "10.51.21.27",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -57919,7 +57919,7 @@
         ],
         "mgmt_ip": "10.51.21.31",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58074,7 +58074,7 @@
         ],
         "mgmt_ip": "10.51.21.35",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58201,7 +58201,7 @@
         ],
         "mgmt_ip": "10.51.21.39",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58328,7 +58328,7 @@
         ],
         "mgmt_ip": "10.51.21.43",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58455,7 +58455,7 @@
         ],
         "mgmt_ip": "10.51.21.47",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58582,7 +58582,7 @@
         ],
         "mgmt_ip": "10.51.21.51",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58737,7 +58737,7 @@
         ],
         "mgmt_ip": "10.51.21.55",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58892,7 +58892,7 @@
         ],
         "mgmt_ip": "10.51.21.59",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -58964,7 +58964,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "120bb470",
         "interfaces": [
@@ -59019,7 +59019,7 @@
         ],
         "mgmt_ip": "10.51.21.63",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -59087,7 +59087,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "e323c743",
         "interfaces": [
@@ -59174,7 +59174,7 @@
         ],
         "mgmt_ip": "10.51.21.67",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -59655,7 +59655,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "285e682b",
         "interfaces": [
@@ -59710,7 +59710,7 @@
         ],
         "mgmt_ip": "10.51.21.24",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -59778,7 +59778,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "6075b380",
         "interfaces": [
@@ -59865,7 +59865,7 @@
         ],
         "mgmt_ip": "10.51.21.28",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -59937,7 +59937,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "432bd47c",
         "interfaces": [
@@ -59992,7 +59992,7 @@
         ],
         "mgmt_ip": "10.51.21.32",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -60064,7 +60064,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "c3a50a9e",
         "interfaces": [
@@ -60119,7 +60119,7 @@
         ],
         "mgmt_ip": "10.51.21.36",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -60346,7 +60346,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "8607de17",
         "interfaces": [
@@ -60401,7 +60401,7 @@
         ],
         "mgmt_ip": "10.51.21.44",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -60469,7 +60469,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "1a40bd5c",
         "interfaces": [
@@ -60556,7 +60556,7 @@
         ],
         "mgmt_ip": "10.51.21.48",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -60628,7 +60628,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "cdf0cd29",
         "interfaces": [
@@ -60683,7 +60683,7 @@
         ],
         "mgmt_ip": "10.51.21.52",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -60751,7 +60751,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "abf756a4",
         "interfaces": [
@@ -60838,7 +60838,7 @@
         ],
         "mgmt_ip": "10.51.21.56",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -60906,7 +60906,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "3e46719a",
         "interfaces": [
@@ -60993,7 +60993,7 @@
         ],
         "mgmt_ip": "10.51.21.60",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -61192,7 +61192,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "b45c08fb",
         "interfaces": [
@@ -61247,7 +61247,7 @@
         ],
         "mgmt_ip": "10.51.21.68",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -61319,7 +61319,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R750",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "cd87c3e2",
         "interfaces": [
@@ -61374,7 +61374,7 @@
         ],
         "mgmt_ip": "10.51.21.72",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -61601,7 +61601,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "b23f84a6",
         "interfaces": [
@@ -61656,7 +61656,7 @@
         ],
         "mgmt_ip": "10.51.21.80",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -61728,7 +61728,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "39bce271",
         "interfaces": [
@@ -61783,7 +61783,7 @@
         ],
         "mgmt_ip": "10.51.21.25",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -61851,7 +61851,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "f38e8e91",
         "interfaces": [
@@ -61938,7 +61938,7 @@
         ],
         "mgmt_ip": "10.51.21.29",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -62006,7 +62006,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen10",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "05169b42",
         "interfaces": [
@@ -62093,7 +62093,7 @@
         ],
         "mgmt_ip": "10.51.21.33",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -62161,7 +62161,7 @@
             "count": 5
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "ffec80e1",
         "interfaces": [
@@ -62248,7 +62248,7 @@
         ],
         "mgmt_ip": "10.51.21.37",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -62320,7 +62320,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "9a092c67",
         "interfaces": [
@@ -62375,7 +62375,7 @@
         ],
         "mgmt_ip": "10.51.21.41",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -62447,7 +62447,7 @@
             "count": 1
           }
         ],
-        "model_name": "Dell PowerEdge R7525",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "e7255df8",
         "interfaces": [
@@ -62502,7 +62502,7 @@
         ],
         "mgmt_ip": "10.51.21.45",
         "mgmt_vlan": 10,
-        "power_draw_w": 1000,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -62574,7 +62574,7 @@
             "count": 1
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "11c49b22",
         "interfaces": [
@@ -62629,7 +62629,7 @@
         ],
         "mgmt_ip": "10.51.21.49",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -62828,7 +62828,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-120U-TNR",
+        "model_name": "Supermicro SYS-121H-TNR LCC",
         "metrics_enabled": true,
         "id": "50e6e66d",
         "interfaces": [
@@ -62883,7 +62883,7 @@
         ],
         "mgmt_ip": "10.51.21.57",
         "mgmt_vlan": 10,
-        "power_draw_w": 550,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -63106,7 +63106,7 @@
             "count": 5
           }
         ],
-        "model_name": "HPE ProLiant DL380 Gen11",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "952ad7c1",
         "interfaces": [
@@ -63193,7 +63193,7 @@
         ],
         "mgmt_ip": "10.51.21.65",
         "mgmt_vlan": 10,
-        "power_draw_w": 750,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -63265,7 +63265,7 @@
             "count": 1
           }
         ],
-        "model_name": "Lenovo ThinkSystem SR650 V2",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "e91967cc",
         "interfaces": [
@@ -63320,7 +63320,7 @@
         ],
         "mgmt_ip": "10.51.21.69",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -63392,7 +63392,7 @@
             "count": 1
           }
         ],
-        "model_name": "Supermicro SYS-220U-TNR",
+        "model_name": "Supermicro SYS-221H-TNR LCC",
         "metrics_enabled": true,
         "id": "f281af1e",
         "interfaces": [
@@ -63447,7 +63447,7 @@
         ],
         "mgmt_ip": "10.51.21.73",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -63515,7 +63515,7 @@
             "count": 5
           }
         ],
-        "model_name": "Dell PowerEdge R740",
+        "model_name": "Dell PowerEdge R760 DLC",
         "metrics_enabled": true,
         "id": "49a9f5c8",
         "interfaces": [
@@ -63602,7 +63602,7 @@
         ],
         "mgmt_ip": "10.51.21.77",
         "mgmt_vlan": 10,
-        "power_draw_w": 650,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -65985,7 +65985,7 @@
         ],
         "mgmt_ip": "10.51.22.23",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66112,7 +66112,7 @@
         ],
         "mgmt_ip": "10.51.22.27",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66239,7 +66239,7 @@
         ],
         "mgmt_ip": "10.51.22.31",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66394,7 +66394,7 @@
         ],
         "mgmt_ip": "10.51.22.35",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66549,7 +66549,7 @@
         ],
         "mgmt_ip": "10.51.22.39",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66676,7 +66676,7 @@
         ],
         "mgmt_ip": "10.51.22.43",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66803,7 +66803,7 @@
         ],
         "mgmt_ip": "10.51.22.47",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -66930,7 +66930,7 @@
         ],
         "mgmt_ip": "10.51.22.51",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67057,7 +67057,7 @@
         ],
         "mgmt_ip": "10.51.22.55",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67212,7 +67212,7 @@
         ],
         "mgmt_ip": "10.51.22.59",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67339,7 +67339,7 @@
         ],
         "mgmt_ip": "10.51.22.63",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -67494,7 +67494,7 @@
         ],
         "mgmt_ip": "10.51.22.67",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68030,7 +68030,7 @@
         ],
         "mgmt_ip": "10.51.22.24",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68185,7 +68185,7 @@
         ],
         "mgmt_ip": "10.51.22.28",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68312,7 +68312,7 @@
         ],
         "mgmt_ip": "10.51.22.32",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68439,7 +68439,7 @@
         ],
         "mgmt_ip": "10.51.22.36",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68594,7 +68594,7 @@
         ],
         "mgmt_ip": "10.51.22.40",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1100,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68749,7 +68749,7 @@
         ],
         "mgmt_ip": "10.51.22.44",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -68904,7 +68904,7 @@
         ],
         "mgmt_ip": "10.51.22.48",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69031,7 +69031,7 @@
         ],
         "mgmt_ip": "10.51.22.52",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69186,7 +69186,7 @@
         ],
         "mgmt_ip": "10.51.22.56",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69313,7 +69313,7 @@
         ],
         "mgmt_ip": "10.51.22.60",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69440,7 +69440,7 @@
         ],
         "mgmt_ip": "10.51.22.64",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -69567,7 +69567,7 @@
         ],
         "mgmt_ip": "10.51.22.68",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70103,7 +70103,7 @@
         ],
         "mgmt_ip": "10.51.22.25",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70258,7 +70258,7 @@
         ],
         "mgmt_ip": "10.51.22.29",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70413,7 +70413,7 @@
         ],
         "mgmt_ip": "10.51.22.33",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70568,7 +70568,7 @@
         ],
         "mgmt_ip": "10.51.22.37",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70695,7 +70695,7 @@
         ],
         "mgmt_ip": "10.51.22.41",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70822,7 +70822,7 @@
         ],
         "mgmt_ip": "10.51.22.45",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -70977,7 +70977,7 @@
         ],
         "mgmt_ip": "10.51.22.49",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71104,7 +71104,7 @@
         ],
         "mgmt_ip": "10.51.22.53",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71231,7 +71231,7 @@
         ],
         "mgmt_ip": "10.51.22.57",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71386,7 +71386,7 @@
         ],
         "mgmt_ip": "10.51.22.61",
         "mgmt_vlan": 10,
-        "power_draw_w": 700,
+        "power_draw_w": 1100,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71513,7 +71513,7 @@
         ],
         "mgmt_ip": "10.51.22.65",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -71640,7 +71640,7 @@
         ],
         "mgmt_ip": "10.51.22.69",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74305,7 +74305,7 @@
         ],
         "mgmt_ip": "10.51.21.83",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74432,7 +74432,7 @@
         ],
         "mgmt_ip": "10.51.21.84",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74587,7 +74587,7 @@
         ],
         "mgmt_ip": "10.51.21.85",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -74897,7 +74897,7 @@
         ],
         "mgmt_ip": "10.51.22.83",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -75024,7 +75024,7 @@
         ],
         "mgmt_ip": "10.51.22.84",
         "mgmt_vlan": 10,
-        "power_draw_w": 900,
+        "power_draw_w": 1400,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -75151,7 +75151,7 @@
         ],
         "mgmt_ip": "10.51.22.85",
         "mgmt_vlan": 10,
-        "power_draw_w": 800,
+        "power_draw_w": 1150,
         "ups_backup": "",
         "country": "USA",
         "datacenter_city": "New York",
@@ -179901,6 +179901,734 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "fieldbus"
+    },
+    {
+      "src": "fe5b3521",
+      "dst": "1fb4e84d",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "1fb4e84d",
+      "dst": "fe5b3521",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "fe5b3521",
+      "dst": "4f9f599b",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "4f9f599b",
+      "dst": "fe5b3521",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "b5679ae6",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "b5679ae6",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "12107ca6",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "12107ca6",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "a8c45b06",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "a8c45b06",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "1dcfc8b0",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "1dcfc8b0",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "79a39be6",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "79a39be6",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "ccba8e11",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "ccba8e11",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "bebeb53d",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bebeb53d",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "4ab14f00",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "4ab14f00",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "2dd3309b",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "2dd3309b",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "441e05e9",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "441e05e9",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "e65885b5",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "e65885b5",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "93799524",
+      "dst": "0f090bab",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "0f090bab",
+      "dst": "93799524",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "38138e5d",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "38138e5d",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "cae4df40",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "cae4df40",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "4681e890",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "4681e890",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "6bb37319",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "6bb37319",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "40848218",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "40848218",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "b7b28660",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "b7b28660",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "bf2e0175",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bf2e0175",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "a75e5eef",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "a75e5eef",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "7d8f4aca",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "7d8f4aca",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "d59950d1",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "d59950d1",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "398cbd80",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "398cbd80",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "14de2793",
+      "dst": "fd072447",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "fd072447",
+      "dst": "14de2793",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "94ccacef",
+      "dst": "e323c743",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "e323c743",
+      "dst": "94ccacef",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "94ccacef",
+      "dst": "120bb470",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "120bb470",
+      "dst": "94ccacef",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "285e682b",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "285e682b",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "8607de17",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "8607de17",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "3e46719a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "3e46719a",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "cd87c3e2",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "cd87c3e2",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "432bd47c",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "432bd47c",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "c3a50a9e",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c3a50a9e",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "1a40bd5c",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "1a40bd5c",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "cdf0cd29",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "cdf0cd29",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "b23f84a6",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "b23f84a6",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "6075b380",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "6075b380",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "abf756a4",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "abf756a4",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "c0b19b3a",
+      "dst": "b45c08fb",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "b45c08fb",
+      "dst": "c0b19b3a",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "f38e8e91",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "f38e8e91",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "e7255df8",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "e7255df8",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "11c49b22",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "11c49b22",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "952ad7c1",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "952ad7c1",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "39bce271",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "39bce271",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "ffec80e1",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "ffec80e1",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "9a092c67",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "9a092c67",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "e91967cc",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "e91967cc",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "f281af1e",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "f281af1e",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "05169b42",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "05169b42",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "49a9f5c8",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "49a9f5c8",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "bb9206e3",
+      "dst": "50e6e66d",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
+    },
+    {
+      "src": "50e6e66d",
+      "dst": "bb9206e3",
+      "src_iface": null,
+      "dst_iface": null,
+      "layer": "cooling"
     }
   ],
   "floorplan": {
