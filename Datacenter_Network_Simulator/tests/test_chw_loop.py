@@ -300,6 +300,56 @@ def test_crah_return_air_is_the_hot_aisle(tmp_path, plant_cache):
     assert 24.0 < ret < 40.0
 
 
+def test_a_switch_with_no_exhaust_sensor_is_not_a_machine_blowing_0c(
+        tmp_path, plant_cache):
+    """The room's exhaust mean counts machines that REPORT an exhaust.
+
+    `outlet_temp` defaults to 0.0 and only servers (and the DPX2 rear probe)
+    ever set it, so switches, routers, firewalls and OOB switches sit at zero
+    for their whole life. Averaged in, each one is a machine discharging air
+    at 0 C into the hot aisle.
+
+    It is not a rounding error. In DC1 Server Hall A, 15 switches against 90
+    servers pulled the room's exhaust mean from 31.4 C to 26.9, and the CRAH
+    return is built from it: the units published 26.4 C return on a 22.0 C
+    discharge, a 4.3 K rise under racks doing 8.2 K. That reads as half the
+    supply air bypassing the racks - a real and expensive fault - in a hall
+    where nothing was wrong. The unit's delta, the duty its coil is judged on
+    and Alarm_HighReturnAir all hang off that number.
+    """
+    p = build_plant(tmp_path, servers=40, crahs=2)
+    _settle(p, 6)
+    _set_hall_air(p, 24.0, 40.0)
+    alone = p.auto_points("CRAH1-DC1-HA-R1-01")["Return_Air_Temp"]
+
+    # Fifteen switches in the same hall, each reading room air at its face and
+    # nothing at its back, which is what a switch has. Removed again at the end:
+    # the fixture's store is shared, and leaving 5 kW of extra IT load behind
+    # moves the chilled-water loop under every test that runs after this one.
+    from conftest import _device
+    added = []
+    try:
+        for i in range(15):
+            sw = _device(p.dm, f"LFX{i}-DC1-HA-R2-01", "switch",
+                         f"10.60.9.{i + 10}", 350)
+            sw.inlet_temp, sw.outlet_temp = 24.0, 0.0
+            added.append(sw)
+        p.store._compute_power_flow()
+        p.store._compute_chw_loop()
+        with_switches = p.auto_points("CRAH1-DC1-HA-R1-01")["Return_Air_Temp"]
+    finally:
+        for sw in added:
+            p.dm.remove_device(sw.id)
+        p.store._compute_power_flow()
+        p.store._compute_chw_loop()
+
+    assert with_switches == pytest.approx(alone, abs=0.15), (
+        f"switches with no exhaust sensor moved the return {alone} -> "
+        f"{with_switches}")
+    # And it still sits where a hot aisle sits, between the two.
+    assert 24.0 < with_switches < 40.0
+
+
 def test_crah_return_air_tracks_the_load(tmp_path, plant_cache):
     """Widen the air-side ΔT — which is what a growing fleet does — and the return
     follows. A return-air point that does not move with load is decorative."""

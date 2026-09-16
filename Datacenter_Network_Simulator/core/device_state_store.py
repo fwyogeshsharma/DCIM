@@ -3253,8 +3253,28 @@ class DeviceStateStore:
                         _rk = (_dc, getattr(d, "room", "") or "")
                         inlet_sum_room[_rk] += float(_inl)
                         inlet_n_room[_rk] += 1
+                        # A REPORTED exhaust, not a default one. `outlet_temp`
+                        # is 0.0 on every device that has no rear-facing sensor
+                        # - switches, routers, firewalls, load balancers, OOB
+                        # switches - and `is not None` let those zeros into the
+                        # room's exhaust mean as though fifteen machines were
+                        # discharging air at 0 C.
+                        #
+                        # What it cost: DC1 Server Hall A's 90 servers exhaust
+                        # 31.4 C, but 15 switches at 0.0 pulled the room mean to
+                        # 26.9, and the CRAH return published below is built
+                        # from it. The units read 26.4 C return against a 22.0 C
+                        # discharge - a 4.3 K air-side rise under racks doing
+                        # 8.2 K - which is the exact signature of half the
+                        # supply air bypassing the racks. The hall had no
+                        # bypass. It had a mean over machines with no sensor.
+                        #
+                        # Three things read that number and all three were
+                        # wrong: the CRAH's own delta, the duty its coil is
+                        # judged on, and Alarm_HighReturnAir, which cannot fire
+                        # on a return held ~4 K low.
                         _out = getattr(d, "outlet_temp", None)
-                        if _out is not None:
+                        if _out:
                             outlet_sum_room[_rk] += float(_out)
                             outlet_n_room[_rk] += 1
                 elif dtv in self._COOLING_TYPES:
