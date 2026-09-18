@@ -141,6 +141,11 @@ class RedfishDevice:
         """Build an Event and POST it to every matching subscriber (async)."""
         if not self._subs:
             return
+        # A BMC with no standby power pushes nothing - the same rule dispatch()
+        # applies to requests coming in.
+        from core.device_state_store import _is_unpowered
+        if _is_unpowered(self.device.name):
+            return
         self._event_seq += 1
         seq = self._event_seq
         for sub in list(self._subs.values()):

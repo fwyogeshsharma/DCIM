@@ -163,6 +163,21 @@ def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str
             or getattr(device, "host_pdu_ip", "") or "")
 
 
+
+def _is_dark(device) -> bool:
+    """A device with no live cord sends nothing.
+
+    Its agent, its controller and its BMC run on the power that just went. An
+    in-row CDU on two tripped strips sent "plant unit stopped" thirty seconds
+    after losing its last cord - a notification from a box with no power to
+    send it. Every trap for a dark device is dropped here, at the one point
+    they all pass; the PDU that tripped is not a load, so its own breaker trap
+    still goes out, and a restarted device's cold start goes out once it has
+    power again.
+    """
+    from core.device_state_store import _is_unpowered
+    return _is_unpowered(getattr(device, "name", ""))
+
 class TrapEvent:
     def __init__(self, device: Device, trap_type: TrapType, details: str = "",
                  rule_name: str = "", iface_index: Optional[int] = None):
@@ -487,6 +502,8 @@ class TrapEngine(QObject):
     # ── Async send internals ──────────────────────────────────────────────────
 
     async def _send_async(self, device: Device, trap_type: TrapType, **kwargs):
+        if _is_dark(device):
+            return
         defn = TRAP_DEFINITIONS[trap_type]
         try:
             from pysnmp.entity.rfc3413 import ntforg
@@ -548,6 +565,8 @@ class TrapEngine(QObject):
                                    rule_name: str = "",
                                    severity: str = "informational"):
         """Send a trap for an OID that has no TrapType mapping."""
+        if _is_dark(device):
+            return
         try:
             from pysnmp.entity.rfc3413 import ntforg
             from pysnmp.proto.api import v2c as proto_v2c
