@@ -2374,6 +2374,21 @@ class DeviceStateStore:
         # not run yet - one tick late is a second, and a loss of power upstream
         # of the strip is as dark for the load as its own relay opening.
         dark_supplies = {i for i, live in self._energized.items() if not live}
+        # Last tick's walk is stale by exactly the tick that matters. When the
+        # trips clear, the previous walk still has both strips dead, so every
+        # load behind them stayed dark for one more tick - the very tick this
+        # tick's walk sees power and cold-boots them. Their cold start, their
+        # port-down traps and their flap all went out while they still read
+        # dark, and the trap path dropped every one. So when the last walk
+        # found anything dead, walk again now; an estate with nothing dark
+        # never pays for it.
+        if dark_supplies:
+            try:
+                fresh = self._compute_energized(self._power_context() or {})
+                dark_supplies = {i for i, live in fresh.items() if not live}
+            except Exception:
+                log.exception("[Power] fresh energization walk failed; "
+                              "using last tick's")
 
         dead: set = set()
         dead_cords: set = set()

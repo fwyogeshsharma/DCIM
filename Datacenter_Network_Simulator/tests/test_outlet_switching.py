@@ -275,7 +275,12 @@ def test_a_strip_dead_upstream_darkens_its_load(rack, tmp_path):
 
     topo, pdu_a, pdu_b, srv = rack
     store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
-    store._energized = {pdu_a.id: False, pdu_b.id: False}
+    dead = {pdu_a.id: False, pdu_b.id: False}
+    # The walk itself finds both strips dead, as it would below an RPP that
+    # lost its feed - last tick's AND this tick's, since a genuine upstream
+    # loss is still there when asked again.
+    store._energized = dict(dead)
+    store._compute_energized = lambda ctx: dict(dead)
     store._compute_unpowered_loads()
 
     assert _is_unpowered(srv.name)
@@ -323,3 +328,28 @@ def test_a_cdu_with_one_strip_left_keeps_running(tmp_path):
 
     assert cdu.name not in store._plant_unpowered_names
     assert cdu.name not in store._load_unpowered_names
+
+
+def test_a_load_is_back_the_same_tick_its_strips_are(rack, tmp_path):
+    """No stale extra tick of darkness at restore.
+
+    The unpowered set used the previous tick's energization walk, so for one
+    tick after the trips cleared a server still read dark - the tick it cold
+    boots in - and every trap it sent on the way up was dropped as coming
+    from a dead box.
+    """
+    from core.device_state_store import _is_unpowered
+
+    topo, pdu_a, pdu_b, srv = rack
+    store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
+    for pdu in (pdu_a, pdu_b):
+        store.set_pdu_condition(pdu.id, "breaker_trip", True)
+    store._compute_unpowered_loads()
+    store._compute_power_flow()             # the walk now says: strips dead
+    assert _is_unpowered(srv.name)
+
+    for pdu in (pdu_a, pdu_b):
+        store.set_pdu_condition(pdu.id, "breaker_trip", False)
+    store._compute_unpowered_loads()        # BEFORE this tick's walk
+    assert not _is_unpowered(srv.name), (
+        "the strips are live now; last tick's walk must not keep it dark")
