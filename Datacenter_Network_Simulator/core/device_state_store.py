@@ -31,6 +31,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
+from core.psychrometrics import dew_point_c
 from core.device_manager import DeviceType, cooling_capacity_w, fan_rpm_range
 
 if TYPE_CHECKING:
@@ -6618,8 +6619,13 @@ class DeviceStateStore:
                     + random.uniform(-0.8, 0.8))), 1)
                 device.humidity = self._num_limit("humidity", device.humidity)
             if mf["dewpoint"]:
+                # Magnus-Tetens, not the (100-RH)/5 rule of thumb this used to
+                # carry. That fit is a kelvin out above 50 % RH and three out at
+                # 35 %, and it errs toward the DRY end - which is where ASHRAE's
+                # dew-point floor lives, so a hall genuinely below -9 C dew
+                # point would have read comfortably inside it.
                 device.dewpoint = round(
-                    device.inlet_temp - ((100.0 - device.humidity) / 5.0), 1)
+                    dew_point_c(device.inlet_temp, device.humidity), 1)
             if mf["airflow"] and "NetBotz" in device.model_name:
                 device.airflow = round(max(0.2, min(4.0,
                     device.airflow + random.uniform(-0.15, 0.15))), 2)

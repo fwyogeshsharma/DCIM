@@ -10,6 +10,8 @@ from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 from enum import Enum
 
+from core.psychrometrics import dew_point_c
+
 
 class DeviceType(str, Enum):
     ROUTER        = "router"
@@ -1569,7 +1571,7 @@ class Device:
         self.disk_used = int(self.disk_total * random.uniform(0.1, 0.75))
         if self.device_type == DeviceType.SENSOR and self.humidity == 0.0:
             self.humidity = round(random.uniform(30.0, 70.0), 1)
-            self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)
+            self.dewpoint = round(dew_point_c(self.inlet_temp, self.humidity), 1)
             self.airflow  = round(random.uniform(0.5, 2.5), 2)
         if self.model_name == "Raritan DPX2-T3H1" and self.mid_temp == 0.0:
             self.mid_temp    = round(self.inlet_temp + random.uniform(3.0, 7.0), 1)
@@ -1847,7 +1849,7 @@ class Device:
                                * max(0.0, min(1.0, (self.cpu_temp - 40.0) / 45.0)))
         if self.device_type == DeviceType.SENSOR:
             self.humidity = round(random.uniform(30.0, 70.0), 1)
-            self.dewpoint = round(self.inlet_temp - ((100.0 - self.humidity) / 5.0), 1)
+            self.dewpoint = round(dew_point_c(self.inlet_temp, self.humidity), 1)
             self.airflow  = round(random.uniform(0.5, 2.5), 2)
         for iface in self.interfaces:
             iface.in_octets  += random.randint(1000, 10_000_000)
