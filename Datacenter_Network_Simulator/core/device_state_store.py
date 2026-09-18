@@ -332,6 +332,12 @@ class DeviceStateStore:
         self._dm              = device_manager
         self._topology        = topology
         self._datasets_dir    = str(Path(datasets_dir).resolve())
+        # Takes a dark device off the wire - see core.dark_firewall. None until
+        # the first tick decides the dark set, so that tick always syncs, which
+        # also flushes any drops a previous run crashed without removing.
+        from core.dark_firewall import DarkFirewall
+        self._dark_fw         = DarkFirewall()
+        self._dark_ips_last: Optional[set] = None
         self._tick_interval   = tick_interval    # configured CADENCE (the sleep)
         self._last_tick_t     = None             # monotonic stamp of the previous tick
         self._dt              = tick_interval    # MEASURED elapsed seconds this tick
@@ -921,6 +927,9 @@ class DeviceStateStore:
         self._boot_times.clear()
         self._snmp_enabled = False
         self._tick_count   = 0
+        # A stopped simulator leaves no device dropped.
+        self._dark_fw.clear()
+        self._dark_ips_last = None
         self._log("[StateStore] Stopped.", "info")
 
     def is_running(self) -> bool:
@@ -2301,6 +2310,25 @@ class DeviceStateStore:
             self._mech_dead_s[dc] = (0.0 if dc_dark == 0
                                      else self._mech_dead_s.get(dc, 0.0) + self._dt)
         self._plant_unpowered_names = unpowered
+
+    def _sync_dark_firewall(self) -> None:
+        """Drop every address of every dark load; restore them with the power.
+
+        Both addresses: a server answers on its production IP and its BMC on
+        the management one, and both die with the cords. Only on a change - the
+        dark set is usually empty and the firewall is not touched at all.
+        """
+        dark = self._load_unpowered_names
+        ips: set = set()
+        if dark:
+            for dev in self._dm.get_all_devices():
+                if dev.name in dark:
+                    ips.update(a for a in (getattr(dev, "ip_address", ""),
+                                           getattr(dev, "mgmt_ip", "")) if a)
+        if ips == self._dark_ips_last:
+            return
+        self._dark_fw.sync(ips)
+        self._dark_ips_last = ips
 
     def _compute_unpowered_loads(self) -> None:
         """Names of IT loads left with no live cord, from the per-outlet relay state.
@@ -5928,6 +5956,7 @@ class DeviceStateStore:
         # Which loads have lost every cord, BEFORE the flow sums them: a load whose
         # outlets are all open contributes 0 W to its PDU this tick, not next one.
         self._compute_unpowered_loads()
+        self._sync_dark_firewall()        # a dark box is off the network, SNMP included
         self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
         # Evaporator side LAST: it reads this tick's staging, duty and per-unit
         # draws, and merges its points into the same auto-point map the condenser
