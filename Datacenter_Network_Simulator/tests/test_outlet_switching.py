@@ -218,3 +218,64 @@ def test_a_thermal_trip_is_not_undone_by_a_cord(rack, tmp_path):
     store._compute_unpowered_loads()
 
     assert srv.power_state == "Off"
+
+
+# --- a tripped breaker darkens its loads, the same as open relays -----------
+#
+# The energization walk knew a tripped strip was dead, but the set the protocol
+# servers read was built from relays alone. Both strips under a rack tripped
+# for four minutes and every device in it went on answering its polls.
+
+
+def test_both_strips_tripped_takes_the_server_dark(rack, tmp_path):
+    from core.device_state_store import _is_unpowered
+
+    topo, pdu_a, pdu_b, srv = rack
+    store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
+    store.set_pdu_condition(pdu_a.id, "breaker_trip", True)
+    store.set_pdu_condition(pdu_b.id, "breaker_trip", True)
+    store._compute_unpowered_loads()
+
+    assert _is_unpowered(srv.name), "no live cord: it must stop answering"
+    assert srv.power_state == "Off"
+
+
+def test_one_strip_tripped_leaves_the_server_running(rack, tmp_path):
+    from core.device_state_store import _is_unpowered
+
+    topo, pdu_a, pdu_b, srv = rack
+    store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
+    store.set_pdu_condition(pdu_a.id, "breaker_trip", True)
+    store._compute_unpowered_loads()
+
+    assert not _is_unpowered(srv.name), "it still has its B cord"
+    assert srv.power_state == "On"
+
+
+def test_resetting_both_breakers_brings_the_server_back(rack, tmp_path):
+    from core.device_state_store import _is_unpowered
+
+    topo, pdu_a, pdu_b, srv = rack
+    store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
+    for pdu in (pdu_a, pdu_b):
+        store.set_pdu_condition(pdu.id, "breaker_trip", True)
+    store._compute_unpowered_loads()
+    for pdu in (pdu_a, pdu_b):
+        store.set_pdu_condition(pdu.id, "breaker_trip", False)
+    store._compute_unpowered_loads()
+
+    assert not _is_unpowered(srv.name)
+    assert srv.power_state == "On"
+
+
+def test_a_strip_dead_upstream_darkens_its_load(rack, tmp_path):
+    """Not only a trip on the strip itself: a PDU the energization walk found
+    dead - its RPP opened, its UPS exhausted - feeds nothing either."""
+    from core.device_state_store import _is_unpowered
+
+    topo, pdu_a, pdu_b, srv = rack
+    store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
+    store._energized = {pdu_a.id: False, pdu_b.id: False}
+    store._compute_unpowered_loads()
+
+    assert _is_unpowered(srv.name)

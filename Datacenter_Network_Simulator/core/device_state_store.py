@@ -2323,8 +2323,21 @@ class DeviceStateStore:
             # has lost its own feed, not 42 relays opened one at a time.
             if st.get("pdu_outlet_status", "on") == "off":
                 off_by_pdu[dev.id] = None          # sentinel: the whole strip is dead
+            elif "breaker_trip" in self._pdu_conditions.get(dev.id, ()):
+                # A tripped breaker is a dead strip, this tick. The energization
+                # walk below knows it too, but it runs after this; reading only
+                # the relays left every load behind a tripped PDU powered - its
+                # SNMP agent, its BMC and its gNMI all answering - so a rack with
+                # both strips tripped never raised a single unreachable alarm.
+                off_by_pdu[dev.id] = None
             elif offs:
                 off_by_pdu[dev.id] = {int(o) for o in offs}
+
+        # Supplies the energization walk found dead: an RPP whose feeder opened,
+        # a PDU below an exhausted UPS. Last tick's walk, because this tick's has
+        # not run yet - one tick late is a second, and a loss of power upstream
+        # of the strip is as dark for the load as its own relay opening.
+        dark_supplies = {i for i, live in self._energized.items() if not live}
 
         dead: set = set()
         dead_cords: set = set()
@@ -2333,7 +2346,7 @@ class DeviceStateStore:
         # published set needs emptying. Returning here left a restored server
         # switched off for ever and the dataset generators still treating it as
         # dark - the outage outlived the outage.
-        for dev in (self._dm.get_all_devices() if off_by_pdu else ()):
+        for dev in (self._dm.get_all_devices() if off_by_pdu or dark_supplies else ()):
             if dev.device_type.value not in self._IT_LEAF_TYPES:
                 continue
             try:
@@ -2345,6 +2358,9 @@ class DeviceStateStore:
             live = 0
             for f in feeds.values():
                 sup, outlet = f.get("supply_id"), f.get("outlet")
+                if sup in dark_supplies:
+                    dead_cords.add(frozenset((dev.id, sup)))
+                    continue
                 if sup not in off_by_pdu:
                     live += 1
                     continue

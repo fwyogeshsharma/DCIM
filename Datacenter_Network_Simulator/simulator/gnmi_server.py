@@ -418,6 +418,38 @@ class GNMIServicer:
         with self._lock:
             return self._data.get(target)
 
+    def _is_dark(self, target: str) -> bool:
+        """No live cord into this switch: it has no power, so it has no gNMI.
+
+        SNMP drops a dark device's dataset and Redfish refuses on the BMC's
+        behalf; gNMI went on streaming for a leaf switch whose rack had lost
+        both PDUs, so the DCIM saw a healthy switch in a dark rack. Asked of
+        the state store because losing a feed is a property of the cabling,
+        not of the chassis.
+        """
+        if not target or self._store is None:
+            return False
+        try:
+            device = self._store._find_device(target)
+        except Exception:
+            return False
+        if device is None:
+            return False
+        from core.device_state_store import _is_unpowered
+        return _is_unpowered(device.name)
+
+    @staticmethod
+    def _refuse_dark(context, target: str):
+        """What a caller sees of a switch with no power: nothing answers.
+
+        UNAVAILABLE is what a gRPC client reports when the far end is gone -
+        the same verdict as a refused or timed-out connection - so the
+        collector counts it as a failed poll, not as a protocol error.
+        """
+        import grpc
+        context.abort(grpc.StatusCode.UNAVAILABLE,
+                      f"{target}: no response (device has no power)")
+
     # ------------------------------------------------------------------ #
     #  gNMI RPCs                                                          #
     # ------------------------------------------------------------------ #
@@ -443,12 +475,15 @@ class GNMIServicer:
         ts      = int(time.time() * 1e9)
         notifications = []
 
+        if target and self._is_dark(target):
+            self._refuse_dark(context, target)
+
         # If no explicit target try to serve from any loaded data
         targets_to_query = [target] if target else list(self._data.keys())
 
         for tgt in targets_to_query:
             data = self._get_data(tgt)
-            if data is None:
+            if data is None or self._is_dark(tgt):
                 continue
             updates = []
             paths = list(request.path) if request.path else [gnmi_pb2.Path()]
@@ -514,6 +549,9 @@ class GNMIServicer:
         target   = sub_list.prefix.target if sub_list.prefix.ByteSize() > 0 else ""
         mode     = sub_list.mode  # STREAM=0, ONCE=1, POLL=2
 
+        if self._is_dark(target):
+            self._refuse_dark(context, target)
+
         # ── Register client (skip if this call was forwarded by the proxy) ──
         # The proxy tracks the real client itself and sends x-gnmi-proxy=1
         # to prevent duplicate entries in the Connected Clients table.
@@ -552,6 +590,8 @@ class GNMIServicer:
                 for req in request_iterator:
                     if not context.is_active():
                         break
+                    if self._is_dark(target):
+                        self._refuse_dark(context, target)
                     if req.WhichOneof("request") == "poll":
                         yield from self._snapshot_responses(sub_list, target, gnmi_pb2)
                         yield gnmi_pb2.SubscribeResponse(sync_response=True)
@@ -569,6 +609,11 @@ class GNMIServicer:
             while context.is_active():
                 time.sleep(tick)
                 elapsed += tick
+                # Checked every tick, not every sample: a switch that loses
+                # power mid-stream drops the session then, not up to one
+                # sample interval later.
+                if self._is_dark(target):
+                    self._refuse_dark(context, target)
                 if elapsed >= interval:
                     elapsed = 0.0
                     if not context.is_active():
@@ -848,6 +893,11 @@ class GNMIProxyServicer:
                     yield response
                 return
             except Exception as exc:
+                # A dark switch refuses on its own server; pass that on rather
+                # than ending the stream cleanly, or the client reads a switch
+                # with no power as one that finished talking.
+                if self._local._is_dark(target):
+                    self._local._refuse_dark(context, target)
                 log.warning("[Proxy] Subscribe → %s failed: %s", target, exc)
                 return
             finally:
