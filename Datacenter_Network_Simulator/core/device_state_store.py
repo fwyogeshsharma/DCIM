@@ -1374,6 +1374,13 @@ class DeviceStateStore:
     # Leaf IT load types whose live wattage drives the cascade.
     _IT_LEAF_TYPES = {"server", "switch", "router", "firewall",
                       "load_balancer", "oob_switch"}
+    # Plant that is corded to a rack PDU rather than fed from an MCC. An in-row
+    # CDU is: it sits in the rack line and plugs into the same strips as the
+    # servers it cools, so losing both strips takes it down with them - its
+    # controller stops answering and its secondary-loop pumps stop. Only the
+    # MCC path used to be able to de-energise plant, so a CDU in a rack with
+    # both PDUs tripped went on reporting a healthy loop.
+    _CORD_FED_PLANT_TYPES = {"cdu"}
     # Cooling-plant types — electrical loads counted toward facility / PUE.
     _COOLING_TYPES = {"crah", "chiller", "pump", "cooling_tower", "cdu"}
     # Bulk mechanical loads fed from an MCC, i.e. everything that goes dark during
@@ -2375,8 +2382,11 @@ class DeviceStateStore:
         # published set needs emptying. Returning here left a restored server
         # switched off for ever and the dataset generators still treating it as
         # dark - the outage outlived the outage.
+        dead_plant: set = set()
         for dev in (self._dm.get_all_devices() if off_by_pdu or dark_supplies else ()):
-            if dev.device_type.value not in self._IT_LEAF_TYPES:
+            dtype = dev.device_type.value
+            if (dtype not in self._IT_LEAF_TYPES
+                    and dtype not in self._CORD_FED_PLANT_TYPES):
                 continue
             try:
                 feeds = self._topology.power_feeds(dev.id)
@@ -2400,7 +2410,15 @@ class DeviceStateStore:
                     dead_cords.add(frozenset((dev.id, sup)))
             if live == 0:
                 dead.add(dev.name)
+                if dtype in self._CORD_FED_PLANT_TYPES:
+                    dead_plant.add(dev.name)
         self._load_unpowered_names = dead
+        # A cord-dead CDU is unpowered PLANT too: that set is what the BACnet
+        # and Modbus servers go silent on and what the cooling model reads, so
+        # its controller stops answering and its loop stops carrying heat.
+        # _step_transfer rebuilt the set from the MCCs earlier this tick.
+        if dead_plant:
+            self._plant_unpowered_names = self._plant_unpowered_names | dead_plant
         self._dead_cord_pairs = dead_cords
         global _unpowered_cache
         _unpowered_cache = dead

@@ -279,3 +279,47 @@ def test_a_strip_dead_upstream_darkens_its_load(rack, tmp_path):
     store._compute_unpowered_loads()
 
     assert _is_unpowered(srv.name)
+
+
+# --- an in-row CDU on the same strips goes down with them --------------------
+
+
+def _cdu_rack():
+    topo = TopologyEngine()
+    pdu_a = Device(name="PDUA-DC1-HA-R2-02", device_type=DeviceType.PDU,
+                   vendor=Vendor.APC, model_name="APC AP8941", ip_address="10.1.1.1")
+    pdu_b = Device(name="PDUB-DC1-HA-R2-02", device_type=DeviceType.PDU,
+                   vendor=Vendor.APC, model_name="APC AP8941", ip_address="10.1.1.2")
+    cdu = Device(name="CDU1-DC1-HA-R2-02", device_type=DeviceType.CDU,
+                 vendor=Vendor.APC, ip_address="10.5.5.1")
+    for d in (pdu_a, pdu_b, cdu):
+        topo.add_device(d)
+    topo.add_link(pdu_a.id, cdu.id, layer="power",
+                  outlet=topo.next_free_outlet(pdu_a.id, "C13"), psu=1)
+    topo.add_link(pdu_b.id, cdu.id, layer="power",
+                  outlet=topo.next_free_outlet(pdu_b.id, "C13"), psu=2)
+    return topo, pdu_a, pdu_b, cdu
+
+
+def test_a_cdu_on_two_tripped_strips_is_dark_plant(tmp_path):
+    from core.device_state_store import _is_unpowered
+
+    topo, pdu_a, pdu_b, cdu = _cdu_rack()
+    store = _store(topo, (pdu_a, pdu_b, cdu), tmp_path)
+    for pdu in (pdu_a, pdu_b):
+        store.set_pdu_condition(pdu.id, "breaker_trip", True)
+    store._compute_unpowered_loads()
+
+    assert _is_unpowered(cdu.name), "its controller must stop answering"
+    assert cdu.name in store._plant_unpowered_names, (
+        "and the cooling model must see its loop stop")
+
+
+def test_a_cdu_with_one_strip_left_keeps_running(tmp_path):
+    topo, pdu_a, pdu_b, cdu = _cdu_rack()
+    store = _store(topo, (pdu_a, pdu_b, cdu), tmp_path)
+    store.set_pdu_condition(pdu_a.id, "breaker_trip", True)
+    store._compute_unpowered_loads()
+
+    assert cdu.name not in store._plant_unpowered_names
+    assert cdu.name not in store._load_unpowered_names
