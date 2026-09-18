@@ -332,10 +332,6 @@ class DeviceStateStore:
         self._dm              = device_manager
         self._topology        = topology
         self._datasets_dir    = str(Path(datasets_dir).resolve())
-        # Devices whose SNMP datasets were withdrawn because they went dark,
-        # so the tick can rebuild them when power returns - and only them, not
-        # devices that never had a dataset.
-        self._snmp_darkened: set = set()
         self._tick_interval   = tick_interval    # configured CADENCE (the sleep)
         self._last_tick_t     = None             # monotonic stamp of the previous tick
         self._dt              = tick_interval    # MEASURED elapsed seconds this tick
@@ -7850,33 +7846,9 @@ class DeviceStateStore:
                         _os.nice(10)
                     except Exception:
                         pass
-                # No live cord: nothing in the box answers, the BMC included -
-                # its standby power comes off the same cords. The full
-                # generation pass already withdraws a dark device's datasets,
-                # but it does not run when a breaker trips, and this tick kept
-                # rewriting them: a rack with both strips tripped went on
-                # answering SNMP with sysUpTime 0, which reads as a reboot, not
-                # a dead box. Removed once, on the edge.
-                darkened = self._snmp_darkened
-                if snmp_gen._is_dark(device):
-                    if device.id not in darkened:
-                        snmp_gen._remove_dataset(device)
-                        darkened.add(device.id)
-                    return
-                # Power back: rebuild what was withdrawn. patch_metrics only
-                # patches a file that exists, so without this a restored box
-                # stayed silent until the next full generation pass.
-                if device.id in darkened:
-                    if self._topology is not None:
-                        snmp_gen.generate_device(device, self._topology)
-                    if device.device_type == DeviceType.SERVER:
-                        snmp_gen.generate_server_bmc(device)
-                    darkened.discard(device.id)
-                    return
                 snmp_gen.patch_metrics(device)
                 # Server BMC SNMP agent (mgmt IP) — refresh even while the
-                # chassis is Off; the BMC runs on standby power. (Off is a
-                # powered chassis that is shut down; dark, above, is no power.)
+                # chassis is Off; the BMC runs on standby power.
                 if device.device_type == DeviceType.SERVER:
                     snmp_gen.patch_bmc_metrics(device)
 

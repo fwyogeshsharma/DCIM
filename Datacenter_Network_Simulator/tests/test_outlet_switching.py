@@ -279,37 +279,3 @@ def test_a_strip_dead_upstream_darkens_its_load(rack, tmp_path):
     store._compute_unpowered_loads()
 
     assert _is_unpowered(srv.name)
-
-
-# --- the SNMP agent goes silent with the power, and comes back with it --------
-#
-# The per-tick writer kept rewriting a dark device's dataset, so a rack with both
-# strips tripped went on answering SNMP with sysUpTime 0 - a reboot, not a dead
-# box - and the NMS never marked a single SNMP endpoint down.
-
-
-def test_the_snmp_dataset_goes_with_the_power_and_returns_with_it(rack, tmp_path):
-    from core.snmprec_generator import SNMPRecGenerator
-
-    topo, pdu_a, pdu_b, srv = rack
-    store = _store(topo, (pdu_a, pdu_b, srv), tmp_path)
-    store._tick_count = 1
-    gen = SNMPRecGenerator(store._datasets_dir)
-    gen.generate_device(srv, topo)
-    dataset = gen.output_dir / f"{gen.snmp_address(srv)}.snmprec"
-    assert dataset.exists()
-
-    for pdu in (pdu_a, pdu_b):
-        store.set_pdu_condition(pdu.id, "breaker_trip", True)
-    store._compute_unpowered_loads()
-    store._sync_snmp([srv])
-    assert not dataset.exists(), "a dark server must stop answering SNMP"
-
-    store._sync_snmp([srv])          # and stay silent, tick after tick
-    assert not dataset.exists()
-
-    for pdu in (pdu_a, pdu_b):
-        store.set_pdu_condition(pdu.id, "breaker_trip", False)
-    store._compute_unpowered_loads()
-    store._sync_snmp([srv])
-    assert dataset.exists(), "power back: the agent answers again"
