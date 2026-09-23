@@ -146,6 +146,53 @@ def _is_server(device) -> bool:
     return getattr(dt, "value", dt) == "server"
 
 
+def blocked_addresses(device) -> set:
+    """The addresses this device's LIFECYCLE must silence, if any.
+
+    Not a dataset question - a wire question, and it has to be, because deleting
+    a `.snmprec` while snmpsim is serving wedges its index for the WHOLE estate.
+    That was reverted once already (cc1bf54) and this module walked straight back
+    into it: a server moved to `installed` had its OS dataset unlinked from the
+    live hot-commission path, and every device in both datacenters stopped
+    answering until snmpsim was reloaded.
+
+    So silence is made where core.dark_firewall makes it - on the wire - and this
+    is the set of addresses to drop:
+
+      off the wire entirely   both. Nothing in the box answers.
+      a SERVER in installed   the PRODUCTION address only. Its BMC is up and must
+                              keep answering; what does not exist is the OS on the
+                              production NIC. A stale dataset may well still be on
+                              disk from when the machine was in service, and the
+                              drop is what makes the NIC silent without touching
+                              the file snmpsim has indexed.
+      anything else           none.
+    """
+    prod = getattr(device, "ip_address", "") or ""
+    mgmt = getattr(device, "mgmt_ip", "") or ""
+    if is_offline(device):
+        return {a for a in (prod, mgmt) if a}
+    if not os_agent_up(device) and prod and prod != mgmt:
+        return {prod}
+    return set()
+
+
+def blocked_by_name(devices: Iterable) -> dict:
+    """{device name: addresses to drop}, for everything with any to drop.
+
+    The shape core.device_state_store unions with the power-dark set before
+    handing it to the firewall. Keyed by name so the store can merge the two
+    causes per device rather than per estate - a device can be BOTH unpowered and
+    mid-commissioning, and the union of their addresses is what has to go.
+    """
+    out = {}
+    for d in devices:
+        blocked = blocked_addresses(d)
+        if blocked:
+            out[getattr(d, "name", "")] = blocked
+    return out
+
+
 def offline_names(devices: Iterable) -> set:
     """Names of every device held off the wire by its lifecycle.
 

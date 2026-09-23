@@ -164,12 +164,20 @@ def test_an_unbuilt_server_gets_a_bmc_dataset_and_no_os_dataset(gen, plant_cache
     assert _files(gen) == {"10.51.1.10.snmprec"}
 
 
-def test_moving_back_to_installed_takes_the_os_dataset_off_disk(gen, plant_cache):
-    """Removed, not merely left unwritten.
+def test_moving_back_to_installed_does_not_unlink_the_os_dataset(gen, plant_cache):
+    """The dataset stays on disk, and this is the whole lesson of the change.
 
-    snmpsim serves whatever is on disk, so a device pulled back for rework would
-    otherwise keep answering from the file it had while it was in service - the
-    same trap that once had a de-energised server reporting an uptime of zero.
+    The first version of this code deleted it, which is the correct-looking move
+    and takes the entire estate down. snmpsim serves one wildcard listener over a
+    dbm index of its data directory; unlinking a file it has indexed wedges that
+    index for EVERY community, in both datacenters. It was reverted once as
+    cc1bf54 and reintroduced here - and reproduced live: moving one server to
+    `installed` left 659 devices timing out until /api/snmp/reload rebuilt it.
+
+    So the file is left alone and the production ADDRESS is dropped at the host
+    firewall instead, which is the same lever a de-energised chassis uses. The
+    stale file is cleaned up by `reap_orphans` on the next full regeneration,
+    when deleting is safe.
     """
     d = _dev("server", "in_service")
     gen.generate_device(d, _topo(d))
@@ -178,8 +186,38 @@ def test_moving_back_to_installed_takes_the_os_dataset_off_disk(gen, plant_cache
     d.lifecycle = "installed"
     gen.generate_device(d, _topo(d))
 
-    assert "10.50.1.10.snmprec" not in _files(gen)
+    assert "10.50.1.10.snmprec" in _files(gen), (
+        "the OS dataset was unlinked at runtime; that wedges snmpsim "
+        "estate-wide - drop the address at the firewall instead")
     assert "10.51.1.10.snmprec" in _files(gen)
+    # And the address that file is served under is the one that goes dark.
+    assert lc.blocked_addresses(d) == {"10.50.1.10"}
+
+
+def test_generate_device_never_unlinks_anything(gen, plant_cache):
+    """A source guard, because this mistake has now been made twice.
+
+    `generate_device` is reachable from the live hot-commission path, so ANY
+    unlink in it is estate-wide breakage waiting for the next state change. The
+    batch paths - generate_all, reap_orphans - may delete, because they run when
+    the datasets are being rebuilt anyway.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from core import snmprec_generator
+
+    # textwrap.dedent first: getsource returns the method at its class
+    # indentation, which ast.parse rejects outright.
+    tree = ast.parse(textwrap.dedent(
+        inspect.getsource(snmprec_generator.SNMPRecGenerator.generate_device)))
+    called = {n.func.attr for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
+
+    assert "_remove_dataset" not in called
+    assert "_remove_dataset_at" not in called
+    assert "unlink" not in called
 
 
 def test_the_guard_is_in_generate_device_not_only_in_the_loop(gen, plant_cache):
@@ -428,3 +466,49 @@ def test_an_unknown_state_is_refused_rather_than_silently_ignored(monkeypatch):
     assert exc.value.status_code == 422
     assert "in_service" in str(exc.value.detail), "the error lists what IS valid"
     assert dev.lifecycle == "in_service", "and the device was not moved"
+
+
+# ------------------------------------------------- where the silence is made
+
+@pytest.mark.parametrize("state", ["planned", "in_stock", "decommissioned",
+                                   "retired"])
+def test_absent_hardware_has_both_addresses_dropped(state):
+    """Nothing in the box answers, so neither address may."""
+    for dtype in ("server", "switch"):
+        assert lc.blocked_addresses(_dev(dtype, state)) == {"10.50.1.10",
+                                                            "10.51.1.10"}
+
+
+def test_an_unbuilt_server_drops_only_its_production_nic():
+    """One address, not two. The BMC is genuinely up and a DCIM must keep seeing
+    it - dropping the mgmt IP too would turn a commissioning window into a dead
+    chassis, which is the distinction the state exists to draw."""
+    assert lc.blocked_addresses(_dev("server", "installed")) == {"10.50.1.10"}
+
+
+@pytest.mark.parametrize("state", ["in_service", "maintenance"])
+def test_a_live_device_drops_nothing(state):
+    for dtype in ("server", "switch"):
+        assert lc.blocked_addresses(_dev(dtype, state)) == set()
+
+
+def test_an_installed_switch_drops_nothing():
+    """Its NOS agent is on the mgmt IP and running; there is no second address
+    with nothing behind it."""
+    assert lc.blocked_addresses(_dev("switch", "installed")) == set()
+
+
+def test_the_firewall_set_unions_power_and_lifecycle_per_device():
+    """A device can be unpowered AND mid-commissioning, so the two sets are
+    unioned per device rather than one being chosen. Building it per
+    device-that-is-dark instead - the shape before this - could not express an
+    installed server's single address at all.
+    """
+    live = _dev("server", "in_service", ip="10.50.1.1", mgmt="10.51.1.1")
+    built = _dev("server", "installed", ip="10.50.1.2", mgmt="10.51.1.2")
+    boxed = _dev("switch", "in_stock", ip="10.50.1.3", mgmt="10.51.1.3")
+
+    assert lc.blocked_by_name([live, built, boxed]) == {
+        built.name: {"10.50.1.2"},
+        boxed.name: {"10.50.1.3", "10.51.1.3"},
+    }

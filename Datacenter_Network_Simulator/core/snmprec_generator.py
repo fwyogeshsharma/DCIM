@@ -485,10 +485,21 @@ class SNMPRecGenerator:
         # is what a commissioning window actually looks like, and it is the state
         # a DCIM most often mis-reads as a fault.
         if not _lc.os_agent_up(device):
-            # Removed, not merely skipped: snmpsim serves whatever is on disk, so
-            # a device moved BACK to `installed` for rework would otherwise keep
-            # answering from the file it had while it was in service.
-            self._remove_dataset_at(self.snmp_address(device))
+            # NOT removed. This method is called from the live hot-commission
+            # path, and unlinking a dataset snmpsim has indexed wedges it for the
+            # WHOLE estate - the failure reverted as cc1bf54, which the first
+            # version of this guard reintroduced: moving one server to
+            # `installed` took every device in both datacenters off the air until
+            # snmpsim was reloaded.
+            #
+            # A stale file from when the machine was in service may therefore
+            # still be on disk and still be served. What makes the production NIC
+            # silent is the host firewall dropping that address
+            # (core.lifecycle.blocked_addresses -> core.dark_firewall), which is
+            # the same lever a de-energised chassis uses and for the same reason.
+            # The file itself is cleaned up by `reap_orphans` on the next full
+            # regeneration, when deleting is safe - `snmp_bind_ips` already omits
+            # this address, so no extra bookkeeping is needed to make that happen.
             if self.bmc_address(device) and _lc.bmc_up(device):
                 self.generate_server_bmc(device)
             return ""

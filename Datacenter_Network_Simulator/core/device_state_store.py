@@ -2367,18 +2367,30 @@ class DeviceStateStore:
         up, for a device that has not been racked. Only on a change: the set is
         usually empty and the firewall is not touched at all.
 
-        A racked-but-unbuilt server is deliberately NOT here. Its BMC is
-        answering and its production NIC simply has no agent listening, which
-        snmpsim already expresses by having no dataset to serve - firewalling the
-        address would make a cabled NIC look like an unplugged one.
+        A racked-but-unbuilt server contributes ONE address here, not two: its
+        production NIC, because there is no OS on it to run an agent, while its
+        BMC keeps answering. That asymmetry is why this builds the address set
+        per device instead of per device-that-is-dark - see
+        core.lifecycle.blocked_addresses.
+
+        It is also why the silence is made here at all rather than by removing
+        the dataset. Unlinking a `.snmprec` while snmpsim is serving wedges its
+        index estate-wide - reverted once as cc1bf54, and reintroduced by the
+        first version of the lifecycle work, which took both datacenters off the
+        air the moment one server was moved to `installed`.
         """
-        dark = set(self._load_unpowered_names) | set(_lifecycle_offline_cache)
+        from core import lifecycle as _lc
         ips: set = set()
-        if dark:
-            for dev in self._dm.get_all_devices():
-                if dev.name in dark:
-                    ips.update(a for a in (getattr(dev, "ip_address", ""),
-                                           getattr(dev, "mgmt_ip", "")) if a)
+        devices = self._dm.get_all_devices()
+        dark = self._load_unpowered_names
+        for dev in devices:
+            # No live cord: everything in the box, both addresses.
+            if dev.name in dark:
+                ips.update(a for a in (getattr(dev, "ip_address", ""),
+                                       getattr(dev, "mgmt_ip", "")) if a)
+            # Lifecycle: all of them, or just the production NIC. Unioned rather
+            # than elif'd, because a device can be both at once.
+            ips.update(_lc.blocked_addresses(dev))
         if ips == self._dark_ips_last:
             return
         self._dark_fw.sync(ips)
