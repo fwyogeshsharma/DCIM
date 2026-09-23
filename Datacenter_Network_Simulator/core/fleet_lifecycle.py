@@ -38,6 +38,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
+from core import lifecycle as _lc
 from core.device_manager import Device, DeviceType, Vendor, Interface, InterfaceRole
 from core.rack_capacity import (
     leaf_interface_groups, leaf_port_roles, rack_has_power_headroom,
@@ -2528,7 +2529,18 @@ class FleetLifecycleEngine:
         SNMP: snmpsim is a wildcard 0.0.0.0:161 subprocess that routes by
         community (= device IP) to <ip>.snmprec in its data-dir. Writing the file
         + host-binding the IP makes the device pollable without a restart, as long
-        as snmpsim resolves recordings from the dir per request."""
+        as snmpsim resolves recordings from the dir per request.
+
+        Nothing happens at all for a device its lifecycle keeps off the wire
+        (core.lifecycle): no address is bound, no dataset is written, and it joins
+        no protocol server. That is the whole point of `planned` and `in_stock` -
+        the record exists, the hardware does not answer - and it is checked here,
+        at the one place every device passes through on its way to being live,
+        rather than in each of the five branches below."""
+        if not _lc.on_wire(device):
+            self._log(f"[Fleet] {device.name} is {_lc.state_of(device)}: "
+                      f"not brought onto the wire")
+            return
         self._bind_ip(device.ip_address)
         # The Redfish BMC and the gNMI target both live on the device's MGMT IP
         # (_bmc_ip / gNMI bind_ip = mgmt_ip or ip_address). Bind it too, else the
@@ -2550,6 +2562,9 @@ class FleetLifecycleEngine:
             try: g.add_device(device)
             except Exception as e: self._log(f"[Fleet] gNMI commission {device.name}: {e}")
         r = getattr(self.s, "redfish", None)
+        # No lifecycle condition beyond on_wire, deliberately: a BMC runs on
+        # standby power and answers long before an OS exists, so Redfish is
+        # exactly what a racked-but-unbuilt server DOES respond to.
         if (device.device_type == DeviceType.SERVER and r is not None
                 and getattr(r, "_running", False)):
             try: r.add_device(device)

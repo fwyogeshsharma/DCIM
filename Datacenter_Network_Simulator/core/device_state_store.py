@@ -291,9 +291,34 @@ def _is_liquid_server(device_name: str) -> bool:
     return device_name in _liquid_server_cache
 
 
+#: Devices held off the wire by their LIFECYCLE rather than by their power - see
+#: core.lifecycle. Published beside _unpowered_cache and for the same reason: the
+#: dataset generators and the trap engine have no store reference and must agree
+#: with it about which boxes are silent.
+_lifecycle_offline_cache: set = set()
+
+
 def _is_unpowered(device_name: str) -> bool:
     """True when every cord feeding this load is switched off."""
     return device_name in _unpowered_cache
+
+
+def _is_lifecycle_offline(device_name: str) -> bool:
+    """True when this device is not built, not racked, or already gone."""
+    return device_name in _lifecycle_offline_cache
+
+
+def _is_off_wire(device_name: str) -> bool:
+    """The question every consumer should ask: does this box answer anything.
+
+    Two causes, one effect, and callers should not have to know there are two.
+    A device with no live cord is dark; so is one that has not been racked yet.
+    Both look identical to a poller - the request times out - and every place
+    that used to ask only about power now asks this instead, so a third cause
+    can be added in one file rather than found in five.
+    """
+    return (device_name in _unpowered_cache
+            or device_name in _lifecycle_offline_cache)
 
 
 def _get_plant_state(device_name: str) -> dict:
@@ -2318,14 +2343,36 @@ class DeviceStateStore:
                                      else self._mech_dead_s.get(dc, 0.0) + self._dt)
         self._plant_unpowered_names = unpowered
 
+    def _refresh_lifecycle_offline(self) -> None:
+        """Republish the set of devices their lifecycle keeps off the wire.
+
+        Derived every tick from the devices themselves rather than maintained by
+        whoever changes a state. Lifecycle is not a tick-driven quantity, so this
+        costs one pass and could in principle be event-driven - but the event
+        sources are the fleet engine, the add-device API, a topology load and a
+        manual transition, and a cache that four writers have to remember to
+        update is a cache that is wrong. The transition endpoint refreshes it
+        eagerly as well, so a state change takes effect immediately instead of
+        at the next tick; this is the backstop that makes that optional.
+        """
+        from core import lifecycle as _lc
+        global _lifecycle_offline_cache
+        _lifecycle_offline_cache = _lc.offline_names(self._dm.get_all_devices())
+
     def _sync_dark_firewall(self) -> None:
-        """Drop every address of every dark load; restore them with the power.
+        """Drop every address of every silent device; restore them when it speaks.
 
         Both addresses: a server answers on its production IP and its BMC on
-        the management one, and both die with the cords. Only on a change - the
-        dark set is usually empty and the firewall is not touched at all.
+        the management one, and both die with the cords - or were never brought
+        up, for a device that has not been racked. Only on a change: the set is
+        usually empty and the firewall is not touched at all.
+
+        A racked-but-unbuilt server is deliberately NOT here. Its BMC is
+        answering and its production NIC simply has no agent listening, which
+        snmpsim already expresses by having no dataset to serve - firewalling the
+        address would make a cabled NIC look like an unplugged one.
         """
-        dark = self._load_unpowered_names
+        dark = set(self._load_unpowered_names) | set(_lifecycle_offline_cache)
         ips: set = set()
         if dark:
             for dev in self._dm.get_all_devices():
@@ -6089,6 +6136,7 @@ class DeviceStateStore:
         # Which loads have lost every cord, BEFORE the flow sums them: a load whose
         # outlets are all open contributes 0 W to its PDU this tick, not next one.
         self._compute_unpowered_loads()
+        self._refresh_lifecycle_offline()  # unbuilt/unracked/gone answers nothing
         self._sync_dark_firewall()        # a dark box is off the network, SNMP included
         self._compute_power_flow()        # live watts up the power graph (server→PDU→UPS→EV2)
         # Evaporator side LAST: it reads this tick's staging, duty and per-unit

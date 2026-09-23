@@ -16,9 +16,11 @@ from api.models.schemas import (
     DevicesResponse,
     AddDeviceRequest,
     EditDeviceRequest,
+    LifecycleRequest,
     NewDeviceLink,
     OkResponse,
 )
+from core import lifecycle as _lc
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -146,6 +148,8 @@ def _device_to_info(device) -> DeviceInfo:
         _host_ip, _host_via = device.mstp_router_ip, "mstp"
         _host_index = getattr(device, "mstp_mac", 0) or None
     return DeviceInfo(
+        lifecycle=_lc.state_of(device),
+        on_wire=_lc.on_wire(device),
         host_ip=_host_ip,
         host_via=_host_via,
         host_index=_host_index,
@@ -1456,6 +1460,83 @@ def get_device_faults(device_id: str):
         active += [k for k, v in FAULT_MAP.items()
                    if v.get("pducond") in _pc and dtype in v["types"]]
     return {"device": device_id, "available": available, "active": active}
+
+
+@router.post("/{device_id}/lifecycle", response_model=DeviceInfo)
+def set_lifecycle(device_id: str, body: LifecycleRequest):
+    """Move a device through its lifecycle, and make the wire agree.
+
+    The field on its own would be inert - a string in an export. What makes it
+    worth having is this: the protocol planes are re-derived on every move, so a
+    device put into `planned` or `in_stock` goes genuinely silent (address
+    unbound, dataset removed, dropped from every protocol server) and one brought
+    back comes back. A DCIM pointed at this simulator then sees what it would see
+    of real hardware at that stage, rather than a label.
+
+    The interesting case is `installed` on a server: its BMC keeps answering
+    Redfish and BMC SNMP while its OS agent stops, because there is no OS on a
+    machine that has only just been racked. A DCIM should read that as a device
+    mid-commissioning, not as half a fault.
+
+    No matrix check - see LifecycleRequest. The DCIM owns the matrix; this is the
+    floor, where somebody can unrack a live machine.
+    """
+    s = _state()
+    device = s.device_manager.get_device(device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+    if not _lc.is_valid(body.to_state):
+        raise HTTPException(
+            status_code=422,
+            detail=(f"Unknown lifecycle state {body.to_state!r}. "
+                    f"Known: {', '.join(_lc.STATES)}"))
+
+    to_state = _lc.normalise(body.to_state)
+    was = _lc.state_of(device)
+    if to_state == was:
+        return _device_to_info(device)
+
+    import logging as _logging
+    _clog = _logging.getLogger("api.devices")
+    eng = getattr(s, "fleet_engine", None)
+    if eng is None:
+        from core.fleet_lifecycle import FleetLifecycleEngine
+        eng = FleetLifecycleEngine(s, log_cb=_clog.warning)
+        s.fleet_engine = eng
+
+    device.lifecycle = to_state
+    # Republish the off-wire set BEFORE touching the protocol planes. The dataset
+    # generator and the trap engine read it through the store's module cache, so a
+    # regeneration that ran against the old set would write a dataset for a device
+    # this call has just taken off the wire - and snmpsim serves whatever is on
+    # disk. The ticker refreshes this too; doing it here is what makes the change
+    # immediate instead of arriving up to a tick later.
+    try:
+        from core import device_state_store as _dss
+        _dss._lifecycle_offline_cache = _lc.offline_names(
+            s.device_manager.get_all_devices())
+    except Exception as _e:
+        _clog.warning("[lifecycle] offline set refresh failed: %s", _e)
+
+    # Off the wire -> unbind the addresses and drop it from every protocol
+    # server. On the wire -> the same path a newly provisioned device takes.
+    # Re-commissioned even when it was already on the wire, because the SNMP
+    # datasets differ between states: a server moving in_service -> installed
+    # keeps its BMC dataset and loses its OS one, and only a regeneration does
+    # that.
+    try:
+        if _lc.on_wire(device):
+            eng.commission_device(device)
+        else:
+            eng._decommission_net(device)
+    except Exception as _e:
+        _clog.warning("[lifecycle] %s %s -> %s: %s",
+                      device.name, was, to_state, _e)
+
+    _clog.info("[lifecycle] %s %s -> %s (on_wire=%s)",
+               device.name, was, to_state, _lc.on_wire(device))
+    s.notify_ui("sync_devices")
+    return _device_to_info(device)
 
 
 @router.post("/{device_id}/fault", response_model=OkResponse)

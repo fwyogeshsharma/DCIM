@@ -141,6 +141,7 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
 
 from core import dataset_fingerprint as _fingerprint
 from core import vendor_oids as _vendor_oids
+from core import lifecycle as _lc
 from core.device_manager import (Device, DeviceType, Vendor, SERVER_OS_INFO,
                                  device_serial)
 from core.lldp_generator import (generate_lldp_entries, generate_cdp_entries,
@@ -347,14 +348,32 @@ class SNMPRecGenerator:
 
     @classmethod
     def snmp_bind_ips(cls, device: Device) -> List[str]:
-        """All IPs snmpsim should listen on for this device (OS + BMC)."""
+        """All IPs snmpsim should listen on for this device (OS + BMC).
+
+        Lifecycle decides which of the two exist, because it decides what is
+        physically running - see core.lifecycle:
+
+          not yet racked, or already gone   neither. No agent, no dataset, and
+                                           reap_orphans deletes any file left
+                                           over from when it was live.
+          a server racked but not built     the BMC only. The controller came up
+                                           with the cords; the production NIC has
+                                           no OS on it to run an agent.
+          anything else present             both, as before.
+
+        This function is documented as the authority on what SHOULD exist - the
+        binder, the dataset reaper and generate_all all read it - so gating here
+        is what keeps those four from drifting apart.
+        """
         if device.device_type in _NO_SNMP_TYPES:
             return []
+        if not _lc.on_wire(device):
+            return []
         ips = []
-        a = cls.snmp_address(device)
+        a = cls.snmp_address(device) if _lc.os_agent_up(device) else ""
         if a:
             ips.append(a)
-        b = cls.bmc_address(device)
+        b = cls.bmc_address(device) if _lc.bmc_up(device) else ""
         if b and b != a:
             ips.append(b)
         return ips
@@ -433,7 +452,11 @@ class SNMPRecGenerator:
                 skipped += 1
                 continue
             filepath = self.generate_device(device, topology)
-            generated.append(filepath)
+            # "" when the device has no OS agent to write one for - a server
+            # racked but not yet built. generate_device has already written its
+            # BMC dataset in that case; there is simply no OS file to report.
+            if filepath:
+                generated.append(filepath)
         if skipped:
             import logging as _log
             _log.getLogger(__name__).info(
@@ -442,6 +465,33 @@ class SNMPRecGenerator:
         return generated
 
     def generate_device(self, device: Device, topology: TopologyEngine) -> str:
+        """Write this device's OS/NOS agent dataset, and its BMC's if it has one.
+
+        Returns the OS dataset's path, or "" when the device has no OS agent to
+        write one for. The guard is HERE rather than in generate_all because
+        generate_all is not the only caller: the fleet engine's hot-commission
+        path goes straight to this method, and a gate in the loop above would
+        have covered a full regeneration and missed every device added while the
+        simulator was running.
+        """
+        # Racked, powered, and nothing on the production NIC yet: a server in
+        # `installed` has a BMC answering and no OS to run an agent. Writing the
+        # OS dataset anyway would have snmpsim reporting an operating system, an
+        # uptime and a CPU load for a machine that has not been built - and a
+        # DCIM polling it would inventory it as finished.
+        #
+        # The BMC dataset IS written, because the BMC is genuinely up. That
+        # pairing - Redfish and BMC SNMP answering while the OS agent times out -
+        # is what a commissioning window actually looks like, and it is the state
+        # a DCIM most often mis-reads as a fault.
+        if not _lc.os_agent_up(device):
+            # Removed, not merely skipped: snmpsim serves whatever is on disk, so
+            # a device moved BACK to `installed` for rework would otherwise keep
+            # answering from the file it had while it was in service.
+            self._remove_dataset_at(self.snmp_address(device))
+            if self.bmc_address(device) and _lc.bmc_up(device):
+                self.generate_server_bmc(device)
+            return ""
         entries: List[OidEntry] = []
 
         entries += self._system_entries(device)
@@ -3092,14 +3142,19 @@ class SNMPRecGenerator:
             pass  # non-fatal — SNMPSim will rebuild on next request
 
     def _is_dark(self, device: "Device") -> bool:
-        """No live cord: nothing in this box is powered, including the BMC.
+        """Nothing in this box answers - no OS agent, no BMC, no ICMP.
 
-        Asked of the state store rather than of the device, because losing a
-        feed is a property of the cabling and the relays, not of the chassis -
-        and the store is what tracks both.
+        Two causes with one effect, which is why this asks the store's combined
+        question rather than about power alone: every cord is switched off, or the
+        box is not racked yet / no longer there (core.lifecycle). A dataset would
+        be wrong for the same reason either way.
+
+        Asked of the state store rather than of the device because losing a feed
+        is a property of the cabling and the relays, not of the chassis - and the
+        store is what tracks both that and the published lifecycle set.
         """
-        from core.device_state_store import _is_unpowered
-        return _is_unpowered(device.name)
+        from core.device_state_store import _is_off_wire
+        return _is_off_wire(device.name)
 
     def _remove_dataset(self, device: "Device") -> None:
         """Take a dark device's dataset off disk, with its dbm index.
@@ -3109,16 +3164,22 @@ class SNMPRecGenerator:
         """
         for addr in {getattr(device, "ip_address", ""),
                      getattr(device, "mgmt_ip", "")}:
-            if not addr:
-                continue
-            for suffix in (".snmprec", ".dbm"):
-                path = self.output_dir / f"{addr}{suffix}"
-                try:
-                    path.unlink()
-                except FileNotFoundError:
-                    pass          # already gone, which is the desired state
-                except OSError:
-                    pass          # busy or not ours; the next pass retries
+            self._remove_dataset_at(addr)
+
+    def _remove_dataset_at(self, addr: str) -> None:
+        """One address' dataset and its index, for the cases where only one
+        agent has gone quiet - a racked server whose BMC is up and whose OS does
+        not exist yet."""
+        if not addr:
+            return
+        for suffix in (".snmprec", ".dbm"):
+            path = self.output_dir / f"{addr}{suffix}"
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass          # already gone, which is the desired state
+            except OSError:
+                pass          # busy or not ours; the next pass retries
 
     def _atomic_write(self, filepath: str, entries: List[OidEntry]) -> None:
         """Write entries atomically: temp file → pre-build dbm index → rename.

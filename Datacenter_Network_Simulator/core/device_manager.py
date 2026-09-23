@@ -7,6 +7,8 @@ import uuid
 import random
 import threading
 from dataclasses import dataclass, field, asdict
+
+from core import lifecycle as lifecycle_mod
 from typing import Dict, List, Optional
 from enum import Enum
 
@@ -1402,6 +1404,22 @@ class Device:
     ups_backup: str = ""    # device ID of UPS protecting this device
     power_state: str = "On"  # chassis power ("On"/"Off") — driven by Redfish ops
 
+    # Where this box is in its life: planned / in_stock / installed / in_service /
+    # maintenance / decommissioned / retired. See core.lifecycle for what each one
+    # means ON THE WIRE, which is the only reason the simulator carries it.
+    #
+    # NOT telemetry. No real device reports this - a switch does not announce that
+    # it is racked but not yet accepted, and the field exists here for the same
+    # reason floor_x does: the simulator is standing in for the physical world, and
+    # the physical world decides what answers a poll. A DCIM reading the export
+    # must still keep its own lifecycle record and still require a person to move
+    # it; importing this one would delete the only interesting test case, which is
+    # the two disagreeing.
+    #
+    # Default in_service so every topology written before this field loads as what
+    # it was: an estate that is entirely live.
+    lifecycle: str = lifecycle_mod.DEFAULT
+
     # Physical location
     country: str = ""
     datacenter_city: str = ""
@@ -1455,6 +1473,11 @@ class Device:
             self.device_type = DeviceType(self.device_type)
         if isinstance(self.vendor, str):
             self.vendor = Vendor(self.vendor)
+        # Coerced rather than rejected. An unknown state in a hand-edited topology
+        # would otherwise take the whole file down on load, and the safe reading of
+        # a state nobody recognises is the one every topology had before the field
+        # existed: this device is live.
+        self.lifecycle = lifecycle_mod.normalise(self.lifecycle)
         # Fill an unset nameplate so the power cascade reflects real IT load
         # instead of reading 0 for devices the topology never sized.
         #

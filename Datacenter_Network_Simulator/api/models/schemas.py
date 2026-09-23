@@ -189,6 +189,19 @@ class IfaceStats(BaseModel):
     out_unicast_pkts: int
 
 
+class LifecycleRequest(BaseModel):
+    """Move a device to another lifecycle state.
+
+    No transition matrix, deliberately. The DCIM has one and should - it governs
+    what an OPERATOR may do, and it is what stops somebody marking a racked
+    machine as on a shelf. This is the physical world: somebody can walk up to a
+    live server and unrack it, and a simulator that refused to model that would
+    be unable to produce the discrepancies a DCIM exists to catch.
+    """
+
+    to_state: str
+
+
 class DeviceInfo(BaseModel):
     id: str
     name: str
@@ -202,6 +215,13 @@ class DeviceInfo(BaseModel):
     # (chiller/pump/cooling tower/valve) and passive panels (RPP) report False
     # instead of advertising a port nothing answers on.
     snmp_agent: bool = True
+    # Where this box is in its life, and what that means on the wire. NOT
+    # telemetry - see core.lifecycle. `on_wire` is the derived fact a caller
+    # actually wants: a device in planned/in_stock/decommissioned/retired answers
+    # nothing at all, and its snmp_ips is empty for that reason rather than
+    # because it has no agent.
+    lifecycle: str = "in_service"
+    on_wire: bool = True
     # The addresses that agent answers on (NOS/OS agent + BMC). Static — the UI
     # intersects it with the live endpoint list from /snmp/status to get the port
     # actually being served. No live port here on purpose: this payload refreshes

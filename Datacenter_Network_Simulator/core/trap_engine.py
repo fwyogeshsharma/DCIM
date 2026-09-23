@@ -165,7 +165,12 @@ def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str
 
 
 def _is_dark(device) -> bool:
-    """A device with no live cord sends nothing.
+    """A device that is not answering sends nothing either.
+
+    Two causes: no live cord, or not racked yet / already gone
+    (core.lifecycle). A trap from a boxed spare would be as wrong as one from a
+    de-energised chassis, and for the same reason - there is nothing in there
+    running the agent that would have sent it.
 
     Its agent, its controller and its BMC run on the power that just went. An
     in-row CDU on two tripped strips sent "plant unit stopped" thirty seconds
@@ -175,8 +180,8 @@ def _is_dark(device) -> bool:
     still goes out, and a restarted device's cold start goes out once it has
     power again.
     """
-    from core.device_state_store import _is_unpowered
-    return _is_unpowered(getattr(device, "name", ""))
+    from core.device_state_store import _is_off_wire
+    return _is_off_wire(getattr(device, "name", ""))
 
 class TrapEvent:
     def __init__(self, device: Device, trap_type: TrapType, details: str = "",
