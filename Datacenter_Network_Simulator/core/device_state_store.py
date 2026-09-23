@@ -2686,8 +2686,12 @@ class DeviceStateStore:
                 # Peak demand — the billing quantity is a 15-min sliding demand; a
                 # running peak of measured kW is the sim's proxy.
                 st["util_peak_kw"] = round(max(st.get("util_peak_kw", 0.0), kw), 1)
-                # cumulative energy (kWh) — ~1-min tick, same convention as UPS/PDU.
-                st["util_energy_kwh"] = round(st.get("util_energy_kwh", 0.0) + kw / 60.0, 3)
+                # Cumulative energy (kWh), integrated over the MEASURED tick.
+                # `_dt` and not a nominal minute: the ticker slips under load,
+                # and a counter that assumed a fixed cadence ran ~30x fast,
+                # which every downstream energy figure inherited.
+                st["util_energy_kwh"] = round(
+                    st.get("util_energy_kwh", 0.0) + kw * self._dt / 3600.0, 3)
 
         elif dtv == "switchgear":
             # Which source this board belongs to decides whether it is live: the
@@ -2762,7 +2766,8 @@ class DeviceStateStore:
                 st["swgr_load_pct"] = load_pct
             # Cumulative energy accrues only while energized (swgr_kw is 0 when dead).
             st["swgr_energy_kwh"] = round(
-                st.get("swgr_energy_kwh", 0.0) + st.get("swgr_kw", 0.0) / 60.0, 3)
+                st.get("swgr_energy_kwh", 0.0)
+                + st.get("swgr_kw", 0.0) * self._dt / 3600.0, 3)
 
         elif dtv == "ats":
             failed = device.id in self._ats_failed
@@ -2834,10 +2839,15 @@ class DeviceStateStore:
                 st["ats_frequency"] = st["ats_emergency_frequency"]
             else:
                 st["ats_frequency"] = st["ats_normal_frequency"]
-            # minutes the load has been on the emergency (generator) source
+            # Minutes the load has been on the emergency (generator) source,
+            # accumulated over the MEASURED tick rather than a nominal minute.
+            # This one is read during a real transfer to decide whether the
+            # gensets are inside their run-time limits, so a fast clock here
+            # retires a set early.
             on_emg = pos == "emergency" and not failed
             st["ats_time_on_emergency"] = round(
-                (st.get("ats_time_on_emergency", 0.0) + 1.0 / 60.0) if on_emg else 0.0, 2)
+                (st.get("ats_time_on_emergency", 0.0) + self._dt / 60.0)
+                if on_emg else 0.0, 2)
             # Latching condition points (ASCO ACC discrete inputs): 1 = asserted.
             # not-in-auto is annunciation only; fail-to-transfer is the failed state.
             st["ats_not_in_auto"] = 1.0 if device.id in self._ats_not_in_auto else 0.0
@@ -2896,7 +2906,8 @@ class DeviceStateStore:
                 st["mpp_load_pct"] = load_pct
             # Cumulative mechanical energy accrues only while energized.
             st["mpp_energy_kwh"] = round(
-                st.get("mpp_energy_kwh", 0.0) + st.get("mpp_kw", 0.0) / 60.0, 3)
+                st.get("mpp_energy_kwh", 0.0)
+                + st.get("mpp_kw", 0.0) * self._dt / 3600.0, 3)
 
         elif dtv == "mcc":
             src_ok, tie_closed = self._mcc_tie_state(dc, ctx)
@@ -2960,7 +2971,8 @@ class DeviceStateStore:
                 st["mcc_load_pct"] = load_pct
             # Cumulative mechanical energy accrues only while energized.
             st["mcc_energy_kwh"] = round(
-                st.get("mcc_energy_kwh", 0.0) + st.get("mcc_kw", 0.0) / 60.0, 3)
+                st.get("mcc_energy_kwh", 0.0)
+                + st.get("mcc_kw", 0.0) * self._dt / 3600.0, 3)
 
         _ext_state_cache[device.name] = dict(st)
 
@@ -7524,14 +7536,19 @@ class DeviceStateStore:
                 hp = max(0.0, hp - random.uniform(0.0, decay))
                 st["ups_battery_health"] = round(self._num_limit("ups_battery_health", hp), 1)
 
-            # Output energy accumulator (kWh): integrate ~3 kW frame at current % load,
-            # assuming a ~1-minute tick interval. Flag gates accumulation (freeze counter).
+            # Output energy accumulator (kWh). Flag gates accumulation
+            # (freeze counter).
             if mf["ups_energy_kwh"]:
-                # Integrate the REAL watts through the UPS (kW/60 per ~1-min tick),
-                # same convention as the util/MCC/MPP energy — not a 3 kW frame.
+                # Integrate the REAL watts through the UPS over the MEASURED
+                # tick — not a 3 kW frame, and not a nominal minute. This is
+                # the meter a Category 1 PUE divides by, so a clock error here
+                # does not cancel: it rescales every absolute kWh the platform
+                # reports, and any ratio against a non-energy quantity (water,
+                # carbon, cost) with it.
                 kw_now = st.get("ups_output_kw", 0.0)
-                st["ups_energy_kwh"] = round(st.get("ups_energy_kwh", 0.0)
-                                             + kw_now / 60.0, 3)
+                st["ups_energy_kwh"] = round(
+                    st.get("ups_energy_kwh", 0.0)
+                    + kw_now * self._dt / 3600.0, 3)
 
             # Battery runtime (minutes remaining) ∝ 1/load — a heavier load drains
             # the battery faster. Anchored at ~8 min autonomy at full load (typical
