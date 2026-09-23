@@ -641,6 +641,7 @@ class BACnetController:
              plant_overrides: dict | None = None,
              live_kw_by_ip: dict | None = None,
              circuit_kw_by_ip: dict | None = None,
+             circuit_labels_by_ip: dict | None = None,
              plant_power_by_name: dict | None = None,
              plant_cop_by_name: dict | None = None,
              plant_loadfrac_by_name: dict | None = None,
@@ -768,6 +769,17 @@ class BACnetController:
                     _ip = getattr(dev, "device_ip", "")
                     _lkw = (live_kw_by_ip or {}).get(_ip)
                     _ckw = (circuit_kw_by_ip or {}).get(_ip)
+                    # The panel schedule, written onto the CT channels. Cheap
+                    # to offer every tick - the device ignores a schedule it
+                    # already holds - and it has to be offered every tick
+                    # because a fleet add/remove re-clamps a channel without
+                    # anything else telling this meter about it.
+                    _labels = (circuit_labels_by_ip or {}).get(_ip)
+                    if _labels is not None and dev.commission_channels(_labels):
+                        self._log(f"[BACnet] EV2 {_ip}: channels commissioned "
+                                  f"({sum(1 for x in _labels if x)} clamped, "
+                                  f"{sum(1 for x in _labels if not x)} spare)",
+                                  "info")
                     # Forced EV2 alarms drive the electrical condition they
                     # represent, so the meter's own readings stay consistent with
                     # the bit it is asserting. Same two sources as the plant path:

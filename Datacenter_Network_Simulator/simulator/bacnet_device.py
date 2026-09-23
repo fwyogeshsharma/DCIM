@@ -81,6 +81,14 @@ class COVSubscription:
     expiry:          float             # monotonic time; 0.0 = never expires
 
 
+# The five analog inputs every CT channel carries, by instance offset. Same
+# order and the same words the object tree is built with, so a commissioned
+# description differs from the factory one only by the branch it names.
+_CKT_QUANTITIES = [
+    (1, "Current"), (2, "Active Power"), (3, "Energy Accumulation"),
+    (4, "Power Factor"), (5, "Current THD"),
+]
+
 # ─────────────────────────────────────────────────────────────────
 #  Required properties for all non-device objects (ordered list)
 # ─────────────────────────────────────────────────────────────────
@@ -151,6 +159,10 @@ class EV2BACnetDevice:
         self.kind            = kind     # "ev2" | "plant:<device_type>"
         self._log_cb         = log_cb
         self._port           = port
+
+        # The panel schedule written onto the CT channels, once commissioned.
+        # Empty on a plant device, which has no channels to schedule.
+        self._channel_labels: list = []
 
         if object_tree is not None:
             # Generic device (chiller-plant etc.) — caller supplies the tree.
@@ -254,6 +266,43 @@ class EV2BACnetDevice:
             if obj is not None:
                 result[name] = obj.present_value
         return result
+
+    def commission_channels(self, labels: list | None) -> bool:
+        """Write the panel schedule onto the CT channels.
+
+        A branch-circuit monitor ships with its channels called Ckt01..Ckt42
+        and nothing else; the schedule - which breaker each CT is clamped to -
+        is programmed in at commissioning, and every real BCM stores it (Veris
+        E30, Packet Power and Verdigris all do). Without it a client polling
+        this meter sees 42 anonymous numbers and cannot attribute one of them
+        to a rack, which is most of what branch metering is FOR.
+
+        The label goes in `description`, never in `object-name`: the name is
+        the meter's own point identifier, stable across a re-commissioning,
+        and it is what an integration keys on. A schedule that renamed the
+        points would break that mapping every time an electrician moved a CT.
+
+        *labels* is ordered by channel with `None` for a spare way - the same
+        list, from the same map, that drives the channel's kW. Labels and
+        readings sourced separately would drift apart eventually, and a
+        reading attributed to the WRONG rack is worse than one attributed to
+        nothing at all.
+
+        Returns True when something changed, so the caller can log a
+        re-commission rather than log every tick.
+        """
+        if labels is None or list(labels) == self._channel_labels:
+            return False
+        self._channel_labels = list(labels)
+        for ckt in range(1, self.circuits + 1):
+            who = labels[ckt - 1] if ckt - 1 < len(labels) else None
+            for offset, quantity in _CKT_QUANTITIES:
+                obj = self._objects.get((OBJ_ANALOG_INPUT, (ckt + 1) * 1000 + offset))
+                if obj is None:
+                    continue
+                obj.description = (f"Circuit {ckt} {quantity} — "
+                                   f"{who if who else 'Spare'}")
+        return True
 
     def update_present_values(self, values: Dict[str, float]):
         """

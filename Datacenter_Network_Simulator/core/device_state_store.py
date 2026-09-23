@@ -4118,17 +4118,105 @@ class DeviceStateStore:
         self._it_w = it_w
         self._facility_w = it_w + cool_w
         # Live downstream kW per EV2 meter IP, for the BACnet telemetry engines.
-        self._ev2_live_kw = {ip: through.get(panel, 0.0) / 1000.0
-                             for ip, panel in ctx.get("ev2_ip_panel", {}).items()}
+        #
+        # GATED ON THE BUS BEING ALIVE. `through` is what the model says WOULD
+        # flow through a panel, which on a de-energized board is the load its
+        # ATSs would pick up if it were carrying — the whole site. Published
+        # raw, the meter on the standby paralleling board read 189.6 kW with
+        # both gensets stopped, phase currents copied from the utility board,
+        # while the board's own Digitrip trip unit next to it read 0 kW and
+        # `swgr_bus_status: dead`. Two instruments on one bus disagreeing by
+        # the site's entire load, and the plausible one was wrong.
+        #
+        # A CT reads the field, not the single line: on a dead bus it reads
+        # zero, which is how an operator confirms a board is safe to work on.
+        # The gate is `_energized`, which is the same predicate the trip unit
+        # uses (gen_at_voltage for the paralleling board), so the meter and the
+        # board it is clamped to cannot disagree again.
+        #
         # Live kW per branch circuit (ordered), so each EV2 circuit meters the real
         # load of the PDU it clamps instead of a synthetic per-circuit random walk.
         # A None slot is a freed/spare CT channel (branch removed) — passed through
         # as None (not 0.0) so the engine can tell it apart from a real 0-load branch
         # and zero that channel's energy register.
+        _circuits = ctx.get("ev2_circuit_pdus", {})
+        _panels = ctx.get("ev2_ip_panel", {})
         self._ev2_circuit_kw = {
-            ip: [None if pid is None else through.get(pid, 0.0) / 1000.0
+            ip: [None if pid is None
+                 else self._ev2_branch_kw(_panels.get(ip), pid, through, ctx)
                  for pid in pids]
-            for ip, pids in ctx.get("ev2_circuit_pdus", {}).items()}
+            for ip, pids in _circuits.items()}
+        # The panel SCHEDULE, from the same ordered map as the readings above.
+        # A CT channel and the label on it have to come from one place or they
+        # drift apart on the next fleet churn, and a branch reading attributed
+        # to the wrong rack is worse than one attributed to nothing.
+        self._ev2_circuit_names = {
+            ip: [None if pid is None else self._device_name(pid) for pid in pids]
+            for ip, pids in _circuits.items()}
+        # The panel total is the sum of its OWN channels where it has them.
+        # Taking the incomer's throughput independently let the two disagree:
+        # the branches could each read zero for being carried elsewhere while
+        # the panel line still claimed the load they add up to.
+        self._ev2_live_kw = {
+            ip: (sum(v for v in self._ev2_circuit_kw[ip] if v is not None)
+                 if _circuits.get(ip) else self._ev2_panel_kw(panel, through))
+            for ip, panel in _panels.items()}
+
+    def _device_name(self, nid: str) -> Optional[str]:
+        """A device's name, or None when the id no longer resolves.
+
+        None rather than the raw id: an id on a panel schedule is not a label,
+        it is a leak, and a channel whose branch has gone is a spare way.
+        """
+        d = self._dm.get_device(nid)
+        return getattr(d, "name", None) if d is not None else None
+
+    def _ev2_branch_kw(self, panel_id: str, branch_id: str,
+                       through: Dict[str, float], ctx: dict) -> float:
+        """What a CT on this panel's branch to *branch_id* actually sees, in kW.
+
+        A CT measures the field around ONE conductor. `through[branch]` is
+        everything that branch draws, from whichever source is carrying it,
+        and a transfer switch is the one branch in the estate that has two.
+        Reported raw on both boards' meters, the standby paralleling board's
+        EV2 read Ckt01 110.2 kW and Ckt02 77.1 kW - ATS1 and ATS2 in full,
+        while both switches sat on their normal source and the gensets were
+        stopped. Its panel total came to 187.2 kW, within 0.2 kW of the live
+        utility board next to it, while the paralleling board's own Digitrip
+        trip unit read 0 kW on a bus it called dead.
+
+        `_active_parents` already knows which board is carrying a branch - it
+        is the rule that stops the cascade pushing half the site into a
+        standby genset - so the CT asks it. A branch fed from somewhere else
+        reads zero on this panel's channel. A branch that really is dual-fed
+        splits, exactly as the cascade splits it, so two meters on the two
+        sides cannot both claim the whole load.
+        """
+        if not self._energized.get(branch_id, True):
+            return 0.0
+        active = self._active_parents(branch_id, ctx)
+        if active:
+            if panel_id not in active:
+                return 0.0                       # carried by the other source
+            return through.get(branch_id, 0.0) / 1000.0 / len(active)
+        # No modelled feeders at all (a branch never wired into the power
+        # graph): fall through rather than blank a meter that has no way to
+        # know better.
+        return through.get(branch_id, 0.0) / 1000.0
+
+    def _ev2_panel_kw(self, panel_id: str, through: Dict[str, float]) -> float:
+        """What a CT on this panel's incomer sees, in kW.
+
+        The modelled throughput, and zero on a de-energized bus. A current
+        transformer measures the field around a conductor: no current, no
+        field, no reading. It has no way to know what the load downstream of
+        an open breaker would have drawn, and a meter that reported it anyway
+        would be the one instrument on the floor an operator could not use to
+        prove a board is dead.
+        """
+        if not self._energized.get(panel_id, True):
+            return 0.0
+        return through.get(panel_id, 0.0) / 1000.0
 
     # Lead/lag rotation periods (hours of accrued runtime). Weekly is the common BMS
     # default for both chiller trains and heat-rejection cells.
@@ -6043,6 +6131,7 @@ class DeviceStateStore:
                 self._bacnet_ctrl.tick(self._dt, self.metric_flags, self.metric_limits,
                                        _plant_ovr, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
+                                       circuit_labels_by_ip=self._ev2_circuit_names,
                                        plant_power_by_name=self._plant_power_by_name,
                                        plant_cop_by_name=self._plant_cop_by_name,
                                        plant_loadfrac_by_name=self._plant_loadfrac_by_name,
