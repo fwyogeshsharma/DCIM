@@ -116,6 +116,12 @@ class DaySummary:
     removed: list[dict] = field(default_factory=list)
     expanded_racks: list[str] = field(default_factory=list)
     total_servers: int = 0
+    # Servers that moved along the commissioning path today: {name, from, to}.
+    # Separate from added/removed, which are graph deltas - a promotion changes
+    # what a device ANSWERS without adding or removing a node.
+    promoted: list[dict] = field(default_factory=list)
+    # in_service only, which is what capacity and PUE are actually carried by.
+    live_servers: int = 0
 
 
 @dataclass
@@ -150,6 +156,39 @@ class FleetConfig:
     # the Fleet panel (bounded by the resource-safety hard cap).
     max_total_servers: int = 3000
 
+    # ── staged commissioning ────────────────────────────────────────────────
+    # A server does not appear in a rack answering SNMP. It is requested, bought,
+    # delivered, racked, powered, flashed, soaked, imaged and only then accepted -
+    # and a growing datacenter always has a population of machines part-way along
+    # that path. Collapsing it into one instant, which is what this engine did,
+    # means the estate only ever contains finished hardware and the states a DCIM
+    # spends most of its time looking at can only be produced by hand.
+    #
+    # Off restores the old behaviour: provisioned straight to in_service.
+    staged_commissioning: bool = True
+    # Durations in SIM-DAYS, which is the unit of simulated time here - real-world
+    # figures belong in these fields, and `minutes_per_day` above is the knob that
+    # compresses them for a demo. Note the warm-up that follows from that: with a
+    # 30-day lead nothing newly provisioned reaches service for about five weeks
+    # of sim time. The existing estate is untouched, so the fleet does not appear
+    # to stall, but the in_service count does not move until the first cohort
+    # lands.
+    procurement_lead_days: int = 30    # PO approved → arrives at the dock. 4-12
+                                       # weeks is the usual range for volume
+                                       # server orders; 30 is the optimistic end.
+    dock_to_rack_days: int = 3         # received → racked and cabled. Bound by
+                                       # smart hands, not by the hardware.
+    burn_in_days: int = 2              # racked → OS laid down. Firmware baseline,
+                                       # BIOS/RAID, credential rotation off the
+                                       # factory defaults, then a 24-48h thermal
+                                       # and power soak to catch early-life
+                                       # failures before a workload does.
+    acceptance_days: int = 1           # OS reporting → accepted and cut over. The
+                                       # administrative gate, not a technical one.
+    decom_drain_days: int = 3          # decommissioned → unracked and gone. The
+                                       # workload is drained and the box sits dark
+                                       # in the rack until somebody pulls it.
+
 
 class FleetLifecycleEngine:
     """Background sim-day scheduler that churns the server fleet in-memory."""
@@ -183,6 +222,15 @@ class FleetLifecycleEngine:
         # Per-DC latch for the "OOB core downlinks exhausted" warning, so the
         # management-aggregation ceiling is surfaced once per DC, not per endpoint.
         self._oob_core_warned: dict = {}
+        # Sim-day a server last changed commissioning stage, by device id. Drives
+        # the lead times in FleetConfig.
+        #
+        # Ephemeral, like `day` and `history`: a restart loses both the clock and
+        # this, so a device found in a mid-commissioning state with no entry is
+        # stamped as of now and serves its wait from there. Persisting it would
+        # mean persisting `day`, and a sim-day counter that survives a restart is
+        # a different feature.
+        self._stage_day: dict = {}
 
     # ── lifecycle ────────────────────────────────────────────────────────────
 
@@ -225,17 +273,24 @@ class FleetLifecycleEngine:
             # A full-device id diff below counts them all (the "srv" figure stays the
             # server subtotal).
             before = {d.id: d for d in self.s.device_manager.get_all_devices()}
+            # Promotions first: a machine whose burn-in finished yesterday should
+            # be in service before today's cohort is ordered, and a drained box
+            # should free its rack unit before the day looks for space.
+            self._advance_pipeline(summ)
             self._decommission(summ)
             self._provision(summ)
             after = {d.id: d for d in self.s.device_manager.get_all_devices()}
             summ.added   = [self._dev_info(after[i])  for i in (after.keys()  - before.keys())]
             summ.removed = [self._dev_info(before[i]) for i in (before.keys() - after.keys())]
             summ.total_servers = len(self._servers())
+            summ.live_servers = sum(1 for d in self._servers()
+                                    if _lc.state_of(d) == "in_service")
             self.history.append(summ)
             self.history = self.history[-60:]
             self._settle_after_change(summ)
             self._log(f"[Fleet] day {self.day}: +{len(summ.added)} -{len(summ.removed)} "
-                      f"(servers={summ.total_servers})")
+                      f"~{len(summ.promoted)} "
+                      f"(servers={summ.total_servers}, live={summ.live_servers})")
             return summ
 
     def _settle_after_change(self, summ: DaySummary) -> None:
@@ -316,21 +371,139 @@ class FleetLifecycleEngine:
 
     # ── decommission ─────────────────────────────────────────────────────────
 
+    # ── the commissioning pipeline ───────────────────────────────────────────
+
+    def _age(self, dev: Device) -> int:
+        """Sim-days since this device last changed stage. Stamps an unknown device
+        as of today rather than treating it as infinitely old, so a restart
+        mid-commissioning restarts the wait instead of completing it instantly."""
+        d = self._stage_day.get(dev.id)
+        if d is None:
+            self._stage_day[dev.id] = self.day
+            return 0
+        return self.day - d
+
+    def _set_stage(self, dev: Device, summ: DaySummary, to_state: str,
+                   *, note: str = "") -> None:
+        """Move one server along the path and make the wire agree.
+
+        `_commission` is called on every on-wire stage rather than only on the
+        first, because what a machine SERVES changes as it goes: `installed` with
+        no OS writes a BMC dataset only, and the same device once imaged needs its
+        OS dataset written too. Only a regeneration does that.
+        """
+        was = _lc.state_of(dev)
+        dev.lifecycle = to_state
+        # Chassis power follows presence. Off the wire means Off, which is what
+        # keeps a `planned` server's reserved rack units and budget from also
+        # showing up as drawn load - `_live_device_watts` reads 0 W for a chassis
+        # that is off, so no second mechanism is needed.
+        dev.power_state = _lc.power_state_for(dev)
+        if not _lc.on_wire(dev):
+            dev.os_deployed = False
+        self._stage_day[dev.id] = self.day
+        try:
+            if _lc.on_wire(dev):
+                self._commission(dev)
+            else:
+                self._decommission_net(dev)
+        except Exception as e:
+            self._log(f"[Fleet] stage {dev.name} {was} -> {to_state}: {e}")
+        summ.promoted.append({"name": dev.name, "from": was, "to": to_state,
+                              "note": note})
+
+    def _advance_pipeline(self, summ: DaySummary) -> None:
+        """Walk every server that is part-way through commissioning or leaving.
+
+        Derived from the devices themselves rather than from a registry of
+        in-flight work, so a device somebody moved by hand through the API joins
+        the pipeline and is carried the rest of the way - and so nothing can be
+        stranded by a registry that lost an entry.
+
+        Servers only. A rack's leaf, PDUs and CRAHs are commissioned before any
+        compute lands on them, which is both what happens on a real build and what
+        keeps a half-built rack from being unreachable.
+        """
+        if not self.cfg.staged_commissioning:
+            return
+        c = self.cfg
+        for dev in self._servers():
+            st = _lc.state_of(dev)
+            if st == "in_service":
+                continue
+            age = self._age(dev)
+            if st == "planned":
+                if age >= c.procurement_lead_days:
+                    # Goods receipt. Still not racked, still answering nothing.
+                    self._set_stage(dev, summ, "in_stock", note="delivered")
+            elif st == "in_stock":
+                if age >= c.dock_to_rack_days:
+                    # Racked, cabled and powered on. The BMC comes up here and is
+                    # the ONLY thing that answers: there is no OS yet.
+                    self._set_stage(dev, summ, "installed", note="racked")
+            elif st == "installed":
+                if not getattr(dev, "os_deployed", True):
+                    if age >= c.burn_in_days:
+                        # Firmware baselined, soaked, imaged. The production NIC
+                        # starts answering; the machine is still not accepted, and
+                        # a DCIM should still be shelving its alarms.
+                        dev.os_deployed = True
+                        self._stage_day[dev.id] = self.day
+                        try:
+                            self._commission(dev)
+                        except Exception as e:
+                            self._log(f"[Fleet] os deploy {dev.name}: {e}")
+                        summ.promoted.append({"name": dev.name,
+                                              "from": "installed",
+                                              "to": "installed",
+                                              "note": "os deployed"})
+                elif age >= c.acceptance_days:
+                    self._set_stage(dev, summ, "in_service", note="accepted")
+            elif st in ("decommissioned", "retired"):
+                if age >= c.decom_drain_days:
+                    self._remove_server(dev)
+            elif st == "maintenance":
+                continue    # somebody parked it; the scheduler does not move it
+        # Republish the off-wire set so the dataset generator, the trap engine and
+        # the firewall agree with what just changed, rather than waiting a tick.
+        try:
+            from core import device_state_store as _dss
+            _dss._lifecycle_offline_cache = _lc.offline_names(
+                self.s.device_manager.get_all_devices())
+        except Exception as e:
+            self._log(f"[Fleet] offline set refresh: {e}")
+
+    def _remove_server(self, dev: Device) -> None:
+        """Unrack it: out of the graph, address released."""
+        try:
+            ip = dev.ip_address
+            self._decommission_net(dev)             # stop BMC/gNMI, unbind IP
+            self.s.device_manager.remove_device(dev.id)
+            self.s.topology.remove_device(dev.id)   # also drops incident links
+            if self.s.ip_manager and ip:
+                self.s.ip_manager.release(ip)
+            self._stage_day.pop(dev.id, None)
+            # (Counted by advance_day's full-device diff, not here.)
+        except Exception as e:
+            self._log(f"[Fleet] remove {dev.name} failed: {e}")
+
     def _decommission(self, summ: DaySummary) -> None:
-        servers = self._servers()
+        # Only live machines are candidates. Something already part-way through
+        # commissioning is not a thing anybody decommissions - and picking one
+        # would have the fleet retiring hardware that has not arrived.
+        servers = [d for d in self._servers()
+                   if _lc.state_of(d) == "in_service"]
         # Keep a floor so the fleet never fully drains during a demo.
         n = min(self._lumpy(self.cfg.decommission_lambda), max(0, len(servers) - 4))
         for dev in random.sample(servers, n) if n > 0 else []:
-            try:
-                ip = dev.ip_address
-                self._decommission_net(dev)             # stop BMC/gNMI, unbind IP
-                self.s.device_manager.remove_device(dev.id)
-                self.s.topology.remove_device(dev.id)   # also drops incident links
-                if self.s.ip_manager and ip:
-                    self.s.ip_manager.release(ip)
-                # (Counted by advance_day's full-device diff, not here.)
-            except Exception as e:
-                self._log(f"[Fleet] decom {dev.name} failed: {e}")
+            if not self.cfg.staged_commissioning:
+                self._remove_server(dev)
+                continue
+            # Drained and powered down, still bolted in the rack. It stops
+            # answering now and is pulled after decom_drain_days - which is what
+            # a DCIM sees on a real floor, and it keeps the rack unit occupied
+            # until somebody actually removes the box.
+            self._set_stage(dev, summ, "decommissioned", note="drained")
 
     # ── provision ────────────────────────────────────────────────────────────
 
@@ -2344,7 +2517,17 @@ class FleetLifecycleEngine:
                                              layer="management")   # BMC (iLO/iDRAC) port -> OOB
         except Exception as e:
             self._log(f"[Fleet] BMC mgmt link {dev.name} failed: {e}")
-        self._commission(dev)   # bring it online on SNMP/gNMI/Redfish
+        if self.cfg.staged_commissioning:
+            # Ordered, not delivered. The rack unit, the power budget and the
+            # addresses are all RESERVED from this moment - which is the point,
+            # and is why the device is created and cabled now rather than when it
+            # arrives: two projects must not be sold the same slot. It simply does
+            # not answer, and does not draw, until it exists.
+            dev.lifecycle = "planned"
+            dev.os_deployed = False
+            dev.power_state = "Off"
+            self._stage_day[dev.id] = self.day
+        self._commission(dev)   # a no-op while the device is off the wire
         return dev
 
     def _scheme_name(self, dc: str, room: Optional[str], row, num,
@@ -2717,13 +2900,32 @@ class FleetLifecycleEngine:
         budget_cap_w = int(rack_pdu_w * 0.8) if rack_pdu_w else 0
         effective_budget_w = (min(self.cfg.rack_power_budget_w, budget_cap_w)
                               if budget_cap_w else self.cfg.rack_power_budget_w)
+        # Where the server fleet is along the commissioning path. The panel wants
+        # this as much as the total: "310 servers" hides that 12 of them are
+        # boxes on a dock, and the in_service figure is the one capacity and PUE
+        # are actually carried by.
+        commissioning: dict = {}
+        for d in devs:
+            if d.device_type != DeviceType.SERVER:
+                continue
+            st = _lc.state_of(d)
+            if st == "installed" and not getattr(d, "os_deployed", True):
+                st = "installed (no OS)"
+            commissioning[st] = commissioning.get(st, 0) + 1
         return {
             "enabled": self.enabled,
             "day": self.day,
+            "commissioning": commissioning,
             "config": {
                 "minutes_per_day": self.cfg.minutes_per_day,
                 "provision_lambda": self.cfg.provision_lambda,
                 "decommission_lambda": self.cfg.decommission_lambda,
+                "staged_commissioning": self.cfg.staged_commissioning,
+                "procurement_lead_days": self.cfg.procurement_lead_days,
+                "dock_to_rack_days": self.cfg.dock_to_rack_days,
+                "burn_in_days": self.cfg.burn_in_days,
+                "acceptance_days": self.cfg.acceptance_days,
+                "decom_drain_days": self.cfg.decom_drain_days,
                 "rack_power_budget_w": self.cfg.rack_power_budget_w,
                 # Panel hint: the configured budget is capped at what one rack PDU
                 # delivers on A/B failover. effective = the value the fleet

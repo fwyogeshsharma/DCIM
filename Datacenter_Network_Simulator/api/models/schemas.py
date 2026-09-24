@@ -202,6 +202,18 @@ class LifecycleRequest(BaseModel):
     to_state: str
 
 
+class OsDeployRequest(BaseModel):
+    """Lay an operating system down on a racked machine, or wipe it off again.
+
+    A separate event from the lifecycle move, because it IS one: in a real
+    commissioning window the machine is powered, flashed, soaked and only then
+    imaged, all while it stays `installed`. Folding it into the transition would
+    make the state change carry something that happens days later.
+    """
+
+    deployed: bool = True
+
+
 class DeviceInfo(BaseModel):
     id: str
     name: str
@@ -222,6 +234,10 @@ class DeviceInfo(BaseModel):
     # because it has no agent.
     lifecycle: str = "in_service"
     on_wire: bool = True
+    # Only meaningful while `lifecycle` is `installed`, where it is the difference
+    # between a chassis whose BMC is answering with nothing on its production NIC
+    # and one that is fully reporting but not yet accepted.
+    os_deployed: bool = True
     # The addresses that agent answers on (NOS/OS agent + BMC). Static — the UI
     # intersects it with the live endpoint list from /snmp/status to get the port
     # actually being served. No live port here on purpose: this payload refreshes

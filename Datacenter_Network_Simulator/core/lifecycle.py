@@ -105,6 +105,12 @@ def on_wire(device) -> bool:
     return state_of(device) in _ON_WIRE
 
 
+def on_wire_state(state: str) -> bool:
+    """The same question about a bare state, for a caller comparing the state a
+    device is LEAVING against the one it is entering."""
+    return normalise(state) in _ON_WIRE
+
+
 def is_offline(device) -> bool:
     """The inverse, named for what a poller experiences rather than for a state.
 
@@ -118,16 +124,62 @@ def is_offline(device) -> bool:
 def os_agent_up(device) -> bool:
     """Is there an agent on this device's PRODUCTION address.
 
-    False for a server that is racked but not yet built: the OS is not installed,
-    so nothing is listening on the production NIC even though the chassis is
-    powered and its BMC is answering. True for network and facility gear in the
-    same state, which is configured and serving its own agent.
+    For a SERVER in `installed` this is `os_deployed`, and that is the whole
+    reason the flag exists: `installed` spans two states that look completely
+    different to a poller, and collapsing them - which this module did at first -
+    makes the longer and more interesting of the two impossible to produce.
+
+      racked, no OS yet    nothing on the production NIC. The BMC is answering
+                           because it runs on standby power, and a DCIM seeing
+                           Redfish ONLINE against SNMP OFFLINE is reading that
+                           correctly.
+      OS deployed          the agent answers, the machine is in monitoring, and
+                           it is still not accepted. Nothing about the wire says
+                           so - only the DCIM's record does, which is exactly
+                           why `installed` shelves alarms rather than expecting
+                           silence.
+
+    Network and facility gear is True throughout `installed`: its agent is part
+    of the NOS or the controller, not something installed onto it afterwards.
     """
     if not on_wire(device):
         return False
     if state_of(device) not in _NO_OS_AGENT:
         return True
-    return not _is_server(device)
+    if not _is_server(device):
+        return True
+    return bool(getattr(device, "os_deployed", True))
+
+
+def can_deploy_os(device) -> tuple:
+    """May an OS be laid down on this box right now: (ok, why not).
+
+    Two gates, both physical. The chassis has to be racked and cabled, and it has
+    to be POWERED - you cannot PXE a machine that is off, which is the ordering
+    the four-step plan for this had inverted. Redfish power-on comes first and the
+    deploy follows it; neither is the thing that puts a device into service.
+    """
+    if not on_wire(device):
+        return False, (f"{state_of(device)} hardware cannot be built: it is not "
+                       f"racked and cabled")
+    if str(getattr(device, "power_state", "On")) == "Off":
+        return False, ("the chassis is powered off; power it on over Redfish "
+                       "before deploying an OS")
+    return True, ""
+
+
+def power_state_for(device) -> str:
+    """The chassis power a device in this state should be in.
+
+    Not a preference - it is what makes reserved capacity stop being DRAWN
+    capacity. `_live_device_watts` already returns 0 W for a chassis that is Off,
+    so a `planned` server holding rack units and budget contributes no load to the
+    PDU/UPS cascade or to PUE without any second mechanism needing to exist.
+
+    An `installed` machine is On, and genuinely draws: burn-in is a full-power
+    soak, and it SHOULD show up on the UPS. That is the point of doing it.
+    """
+    return "On" if on_wire(device) else "Off"
 
 
 def bmc_up(device) -> bool:

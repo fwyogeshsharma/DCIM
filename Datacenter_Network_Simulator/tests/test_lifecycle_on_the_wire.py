@@ -23,8 +23,18 @@ from core.device_manager import Device, DeviceType, Vendor
 from core.snmprec_generator import SNMPRecGenerator
 
 
-def _dev(dtype="server", state="in_service", ip="10.50.1.10", mgmt="10.51.1.10"):
-    return Device(
+def _dev(dtype="server", state="in_service", ip="10.50.1.10", mgmt="10.51.1.10",
+         os_deployed=None):
+    """A device in one state.
+
+    `os_deployed` defaults to False for `installed` and True everywhere else,
+    which is how hardware actually arrives in each: a machine racked this morning
+    has no operating system on it, and a machine in service does. The flag only
+    changes anything for a SERVER in `installed` - that is the one state where the
+    production NIC's agent is something installed onto the box afterwards rather
+    than part of what shipped.
+    """
+    d = Device(
         name=f"{dtype}-{state}",
         device_type=DeviceType(dtype),
         vendor=Vendor.SUPERMICRO,
@@ -32,6 +42,8 @@ def _dev(dtype="server", state="in_service", ip="10.50.1.10", mgmt="10.51.1.10")
         mgmt_ip=mgmt,
         lifecycle=state,
     )
+    d.os_deployed = (state != "installed") if os_deployed is None else os_deployed
+    return d
 
 
 # ------------------------------------------------------------------- the field
@@ -118,6 +130,23 @@ def test_a_racked_but_unbuilt_server_answers_on_its_bmc_and_nowhere_else():
     assert SNMPRecGenerator.bmc_address(d) == "10.51.1.10"
 
 
+def test_an_imaged_but_unaccepted_server_answers_everywhere():
+    """The second half of `installed`, and the longer half.
+
+    Firmware is baselined, the soak has passed and the OS is down. Everything
+    answers and nothing on the wire distinguishes this from in_service - only the
+    DCIM's record does, which is precisely why `installed` shelves alarms instead
+    of expecting silence. Before `os_deployed` existed this row could not be
+    produced at all.
+    """
+    d = _dev("server", "installed", os_deployed=True)
+
+    assert lc.on_wire(d) and lc.bmc_up(d)
+    assert lc.os_agent_up(d)
+    assert SNMPRecGenerator.snmp_bind_ips(d) == ["10.50.1.10", "10.51.1.10"]
+    assert lc.blocked_addresses(d) == set()
+
+
 def test_installed_does_not_silence_a_switch():
     """A switch in `installed` has been through ZTP: it is configured, reachable
     and waiting on a cut-over, so on the wire it is indistinguishable from
@@ -183,6 +212,9 @@ def test_moving_back_to_installed_does_not_unlink_the_os_dataset(gen, plant_cach
     gen.generate_device(d, _topo(d))
     assert "10.50.1.10.snmprec" in _files(gen)
 
+    # Pulled back for rework. The disk still has the OS on it, so the production
+    # NIC keeps answering - a machine does not forget its image because somebody
+    # moved a record. What changes is that the DCIM stops treating it as live.
     d.lifecycle = "installed"
     gen.generate_device(d, _topo(d))
 
@@ -190,7 +222,14 @@ def test_moving_back_to_installed_does_not_unlink_the_os_dataset(gen, plant_cach
         "the OS dataset was unlinked at runtime; that wedges snmpsim "
         "estate-wide - drop the address at the firewall instead")
     assert "10.51.1.10.snmprec" in _files(gen)
-    # And the address that file is served under is the one that goes dark.
+    assert lc.blocked_addresses(d) == set()
+
+    # Wiped for a rebuild. NOW there is nothing on the production NIC, and the
+    # address goes dark - still without unlinking the file snmpsim has indexed.
+    d.os_deployed = False
+    gen.generate_device(d, _topo(d))
+
+    assert "10.50.1.10.snmprec" in _files(gen), "still not unlinked"
     assert lc.blocked_addresses(d) == {"10.50.1.10"}
 
 
@@ -436,7 +475,10 @@ def test_a_transition_back_onto_the_wire_recommissions(monkeypatch):
 
     assert calls == ["commission"]
     assert info.on_wire is True
-    assert info.snmp_ips == ["10.51.1.10"], "BMC only; there is no OS yet"
+    # Still both: the machine was live a moment ago and its OS is still on the
+    # disk. `installed` is a statement about acceptance, not about the image.
+    assert info.snmp_ips == ["10.50.1.10", "10.51.1.10"]
+    assert info.os_deployed is True
 
 
 def test_an_unknown_state_is_refused_rather_than_silently_ignored(monkeypatch):

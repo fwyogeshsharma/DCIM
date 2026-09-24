@@ -1419,6 +1419,24 @@ class Device:
     # Default in_service so every topology written before this field loads as what
     # it was: an estate that is entirely live.
     lifecycle: str = lifecycle_mod.DEFAULT
+    # Has an operating system been laid down on this box yet.
+    #
+    # Only meaningful while `lifecycle` is `installed`, and it is what splits that
+    # state into the two genuinely different things it covers:
+    #
+    #   False  racked, powered, BMC answering, production NIC silent. There is no
+    #          OS, so there is no agent on it. Hours to days of a real
+    #          commissioning window look like this.
+    #   True   OS deployed and reporting, in monitoring, NOT yet accepted into
+    #          service. Everything answers; the machine simply is not carrying
+    #          production workload and its alarms should not page the shift that
+    #          does not own it yet.
+    #
+    # Defaults True so every topology written before this field loads as what it
+    # was - a built estate. A device the fleet provisions starts False and is
+    # flipped by the deploy step, after power-on, because you cannot PXE a chassis
+    # that is off.
+    os_deployed: bool = True
 
     # Physical location
     country: str = ""

@@ -18,6 +18,7 @@ from api.models.schemas import (
     EditDeviceRequest,
     LifecycleRequest,
     NewDeviceLink,
+    OsDeployRequest,
     OkResponse,
 )
 from core import lifecycle as _lc
@@ -150,6 +151,7 @@ def _device_to_info(device) -> DeviceInfo:
     return DeviceInfo(
         lifecycle=_lc.state_of(device),
         on_wire=_lc.on_wire(device),
+        os_deployed=bool(getattr(device, "os_deployed", True)),
         host_ip=_host_ip,
         host_via=_host_via,
         host_index=_host_index,
@@ -1462,6 +1464,98 @@ def get_device_faults(device_id: str):
     return {"device": device_id, "available": available, "active": active}
 
 
+def _fleet_engine(s):
+    """The fleet engine, created on demand. It owns commission/decommission, so
+    anything that changes what a device should be answering goes through it."""
+    import logging as _logging
+
+    eng = getattr(s, "fleet_engine", None)
+    if eng is None:
+        from core.fleet_lifecycle import FleetLifecycleEngine
+        eng = FleetLifecycleEngine(
+            s, log_cb=_logging.getLogger("api.devices").warning)
+        s.fleet_engine = eng
+    return eng
+
+
+def rederive_wire(s, device, *, why: str = "") -> None:
+    """Make the protocol planes agree with what this device should now answer.
+
+    Shared by every event that changes that - a lifecycle move, an OS deploy, and
+    the fleet's day scheduler - because the ORDER inside it is load-bearing and
+    was got wrong once already.
+
+    The off-wire set is republished FIRST. The dataset generator and the trap
+    engine read it through the state store's module cache, so a regeneration that
+    ran against the stale set would write a dataset for a device this call has
+    just taken dark, and snmpsim serves whatever is on disk. The ticker refreshes
+    the set too; doing it here is what makes the change immediate rather than
+    arriving up to a tick later.
+
+    Then the planes. Re-commissioned even when the device was already on the wire,
+    because what it should SERVE differs between states: a server moving
+    in_service -> installed keeps its BMC dataset and must lose its OS one, and
+    only a regeneration does that.
+    """
+    import logging as _logging
+
+    _clog = _logging.getLogger("api.devices")
+    try:
+        from core import device_state_store as _dss
+        _dss._lifecycle_offline_cache = _lc.offline_names(
+            s.device_manager.get_all_devices())
+    except Exception as _e:
+        _clog.warning("[lifecycle] offline set refresh failed: %s", _e)
+
+    eng = _fleet_engine(s)
+    try:
+        if _lc.on_wire(device):
+            eng.commission_device(device)
+        else:
+            eng._decommission_net(device)
+    except Exception as _e:
+        _clog.warning("[lifecycle] rederive %s%s: %s",
+                      device.name, f" ({why})" if why else "", _e)
+
+
+@router.post("/{device_id}/os-deploy", response_model=DeviceInfo)
+def set_os_deployed(device_id: str, body: OsDeployRequest):
+    """Lay an OS down on a racked machine, or wipe it off again.
+
+    The second half of a commissioning window, and a separate event from the
+    lifecycle move because it happens days after it. A machine stays `installed`
+    across this: what changes is that its production NIC starts answering, while
+    the DCIM still holds it out of service and still shelves its alarms.
+
+    Refused on a chassis that is off or not yet racked - you cannot PXE either
+    one. That ordering is the part most often drawn backwards: Redfish power-on
+    comes FIRST, the deploy follows it, and neither is what puts the machine into
+    service. Acceptance does that.
+    """
+    s = _state()
+    device = s.device_manager.get_device(device_id)
+    if device is None:
+        raise HTTPException(status_code=404, detail=f"Device {device_id} not found")
+
+    if body.deployed:
+        ok, why = _lc.can_deploy_os(device)
+        if not ok:
+            raise HTTPException(status_code=409, detail=why)
+
+    if bool(getattr(device, "os_deployed", True)) == bool(body.deployed):
+        return _device_to_info(device)
+
+    import logging as _logging
+    device.os_deployed = bool(body.deployed)
+    rederive_wire(s, device, why="os-deploy")
+    _logging.getLogger("api.devices").info(
+        "[lifecycle] %s os_deployed=%s (lifecycle=%s, os_agent_up=%s)",
+        device.name, device.os_deployed, _lc.state_of(device),
+        _lc.os_agent_up(device))
+    s.notify_ui("sync_devices")
+    return _device_to_info(device)
+
+
 @router.post("/{device_id}/lifecycle", response_model=DeviceInfo)
 def set_lifecycle(device_id: str, body: LifecycleRequest):
     """Move a device through its lifecycle, and make the wire agree.
@@ -1498,43 +1592,29 @@ def set_lifecycle(device_id: str, body: LifecycleRequest):
 
     import logging as _logging
     _clog = _logging.getLogger("api.devices")
-    eng = getattr(s, "fleet_engine", None)
-    if eng is None:
-        from core.fleet_lifecycle import FleetLifecycleEngine
-        eng = FleetLifecycleEngine(s, log_cb=_clog.warning)
-        s.fleet_engine = eng
 
     device.lifecycle = to_state
-    # Republish the off-wire set BEFORE touching the protocol planes. The dataset
-    # generator and the trap engine read it through the store's module cache, so a
-    # regeneration that ran against the old set would write a dataset for a device
-    # this call has just taken off the wire - and snmpsim serves whatever is on
-    # disk. The ticker refreshes this too; doing it here is what makes the change
-    # immediate instead of arriving up to a tick later.
-    try:
-        from core import device_state_store as _dss
-        _dss._lifecycle_offline_cache = _lc.offline_names(
-            s.device_manager.get_all_devices())
-    except Exception as _e:
-        _clog.warning("[lifecycle] offline set refresh failed: %s", _e)
 
-    # Off the wire -> unbind the addresses and drop it from every protocol
-    # server. On the wire -> the same path a newly provisioned device takes.
-    # Re-commissioned even when it was already on the wire, because the SNMP
-    # datasets differ between states: a server moving in_service -> installed
-    # keeps its BMC dataset and loses its OS one, and only a regeneration does
-    # that.
-    try:
-        if _lc.on_wire(device):
-            eng.commission_device(device)
-        else:
-            eng._decommission_net(device)
-    except Exception as _e:
-        _clog.warning("[lifecycle] %s %s -> %s: %s",
-                      device.name, was, to_state, _e)
+    # Chassis power follows presence, and only on a CROSSING - so a deliberate
+    # Redfish power-off on a live machine is never undone by an unrelated state
+    # change. Off the wire means Off, which is what stops a `planned` server that
+    # holds rack units and budget from also contributing load: _live_device_watts
+    # already reads 0 W for a powered-down chassis, so reserved capacity stays
+    # reserved rather than becoming drawn.
+    #
+    # Coming back on, the chassis is energised and - for a server - is once again
+    # a machine with no OS on it until somebody deploys one. Re-racked hardware
+    # does not remember its old image.
+    if _lc.on_wire(device) != (was in _lc.STATES and _lc.on_wire_state(was)):
+        device.power_state = _lc.power_state_for(device)
+        if not _lc.on_wire(device):
+            device.os_deployed = False
 
-    _clog.info("[lifecycle] %s %s -> %s (on_wire=%s)",
-               device.name, was, to_state, _lc.on_wire(device))
+    rederive_wire(s, device, why=f"{was} -> {to_state}")
+
+    _clog.info("[lifecycle] %s %s -> %s (on_wire=%s, os_agent=%s)",
+               device.name, was, to_state, _lc.on_wire(device),
+               _lc.os_agent_up(device))
     s.notify_ui("sync_devices")
     return _device_to_info(device)
 
