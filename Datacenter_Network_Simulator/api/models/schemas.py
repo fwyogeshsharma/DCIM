@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from core import lifecycle as lifecycle_mod
 
 
 # ── Generic ──────────────────────────────────────────────────────────────────
@@ -434,18 +433,20 @@ class AddDeviceRequest(BaseModel):
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
-    # Where in its life this device is born. Defaults to in_service, which is what
-    # every caller before this field got and what somebody adding a machine to a
-    # running estate almost always means.
+    # What is PHYSICALLY true of the box somebody just bolted into the rack. Not a
+    # lifecycle state: this form briefly offered one, and it was a category error.
     #
-    # `planned` is the interesting one: the rack unit, the power budget, the
-    # addresses and the cables are all reserved, and the device answers nothing
-    # until it is walked forward. That is how a manually added server can be put
-    # through the same commissioning path the fleet scheduler uses, instead of
-    # appearing fully built the way a device added here always used to.
-    lifecycle: str = Field(
-        lifecycle_mod.DEFAULT,
-        description=" | ".join(lifecycle_mod.STATES))
+    # `planned` and `in_stock` are a DCIM's record of a purchase, not facts about
+    # hardware - a field engineer racking a machine does not choose them, and a
+    # reservation belongs in the DCIM where the request was raised. What an
+    # engineer actually controls is whether the thing is powered and whether an OS
+    # has been laid down on it, so that is what this asks.
+    #
+    # The defaults are what racking a box actually produces: energised, and with
+    # nothing on its production NIC yet. See core.lifecycle for what that looks
+    # like to a poller - the BMC answers, the OS agent does not.
+    powered: bool = True
+    os_installed: bool = False
     # Cabling, created atomically with the device: either every link lands or the
     # device itself is rolled back. A device added with no cables is a dead node —
     # it answers SNMP but carries no traffic, draws no metered power and never

@@ -274,42 +274,16 @@ interface Form {
   rack_num: number
   rack_unit: number
   metrics_enabled: boolean
-  lifecycle: string
+  powered: boolean
+  os_installed: boolean
 }
 
-// ── Lifecycle ────────────────────────────────────────────────────────────────
-// The states a device can be created in, and what each one means ON THE WIRE.
-// Mirrors core/lifecycle.py - the server coerces anything it does not know, so a
-// list that drifts here shows the operator a choice that silently becomes
-// in_service rather than failing.
-const LIFECYCLE_OPTIONS = [
-  { value: 'in_service',     label: 'In service — live (default)' },
-  { value: 'planned',        label: 'Planned — on order, nothing racked' },
-  { value: 'in_stock',       label: 'In stock — received, on a shelf' },
-  { value: 'installed',      label: 'Installed — racked, not yet accepted' },
-  { value: 'maintenance',    label: 'Maintenance — live, work in progress' },
-  { value: 'decommissioned', label: 'Decommissioned — drained, still racked' },
-  { value: 'retired',        label: 'Retired — gone' },
-]
-
-const LIFECYCLE_HINT: Record<string, string> = {
-  in_service:
-    'Answers everything the moment it is created, and draws its nameplate.',
-  planned:
-    'Reserves the rack unit, the power budget, the addresses and the cables. '
-    + 'Answers nothing and draws nothing — a DCIM sees the record, not a device.',
-  in_stock:
-    'Received but not racked. Same as planned on the wire: silent, no draw.',
-  installed:
-    'Racked, cabled and powered. A server answers on its BMC only — there is no '
-    + 'OS on it yet — while a switch answers normally. Alarms should be shelved.',
-  maintenance:
-    'Reports exactly as in service. Gear does not go quiet because a ticket says '
-    + 'somebody is working on it.',
-  decommissioned:
-    'Powered down and silent, still occupying its rack unit.',
-  retired:
-    'Silent. Kept only so its history has something to hang on.',
+const physLabel: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+  fontSize: 11, color: 'var(--text-muted)',
+}
+const physBox: React.CSSProperties = {
+  accentColor: 'var(--accent)', width: 13, height: 13,
 }
 
 // ── Link candidates (LINKS section) ──────────────────────────────────────────
@@ -468,7 +442,8 @@ export default function AddDeviceDialog({ onClose }: Props) {
     country: '', datacenter_city: '', datacenter: '',
     room: '', floor: '', rack_row: 0, rack_num: 0, rack_unit: 0,
     metrics_enabled: true,
-    lifecycle: 'in_service',
+    powered: true,
+    os_installed: false,
   })
   const [busy, setBusy] = useState(false)
   const [err,  setErr]  = useState('')
@@ -1167,27 +1142,37 @@ export default function AddDeviceDialog({ onClose }: Props) {
               }
             </div>
           </FormRow>
-          {/* What state it is BORN in. Default in_service: that is what adding a
-              device here has always produced, and what somebody filling a rack in
-              a running estate means.
+          {/* PHYSICAL state, not a lifecycle. This briefly offered the DCIM's
+              seven states and that was a category error: `planned` and `in_stock`
+              are a record of a purchase, and a field engineer racking a box does
+              not choose them — the request they belong to was raised in the DCIM.
 
-              `planned` is the one worth reaching for. The rack unit, the power
-              budget, the addresses and the cables are all reserved by this form
-              either way — what changes is that a planned device answers nothing
-              and draws nothing until it is walked forward, so it can go through
-              the same commissioning path the fleet scheduler uses instead of
-              appearing fully built. */}
-          <FormRow label="Lifecycle">
-            <select style={{ flex: 1 }} value={form.lifecycle}
-                    onChange={e => set('lifecycle', e.target.value)}>
-              {LIFECYCLE_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </FormRow>
-          <FormRow label="">
-            <div style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.5 }}>
-              {LIFECYCLE_HINT[form.lifecycle] ?? ''}
+              What an engineer controls is whether it is energised and whether an
+              OS has been laid down. The defaults are what racking actually
+              produces: powered, and nothing on the production NIC yet. */}
+          <FormRow label="State">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={physLabel}>
+                <input type="checkbox" checked={form.powered}
+                       onChange={e => set('powered', e.target.checked)}
+                       style={physBox} />
+                Powered on
+              </label>
+              <label style={physLabel}>
+                <input type="checkbox" checked={form.os_installed}
+                       onChange={e => set('os_installed', e.target.checked)}
+                       style={physBox} />
+                Operating system installed
+              </label>
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+                {!form.powered
+                  ? 'Dark. Nothing answers, and it draws nothing.'
+                  : form.os_installed
+                    ? 'Answers on every plane, and draws its nameplate.'
+                    : 'Answers on its BMC only — Redfish and BMC SNMP are up, the '
+                      + 'production NIC has no agent on it yet. This is what a '
+                      + 'machine racked this morning looks like.'}
+              </div>
             </div>
           </FormRow>
           {/* Nothing polls a passive panel, so there are no metrics to simulate — the

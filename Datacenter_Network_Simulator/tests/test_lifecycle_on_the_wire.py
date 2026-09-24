@@ -558,68 +558,48 @@ def test_the_firewall_set_unions_power_and_lifecycle_per_device():
     }
 
 
-# ------------------------------------------------- born in a state, not just live
+# --------------------------------------- racked, not "born in a lifecycle state"
 
-def test_add_device_defaults_to_in_service():
-    """Every caller before the field existed got a live device, and somebody
-    filling a rack in a running estate means that too."""
+def test_add_device_asks_what_is_physically_true():
+    """The form briefly offered the DCIM's seven lifecycle states, and that was a
+    category error.
+
+    `planned` and `in_stock` are a record of a purchase, not facts about hardware;
+    a field engineer racking a box does not choose them, and the request they
+    belong to was raised in the DCIM. What an engineer controls is whether the
+    thing is energised and whether an OS has been laid down on it.
+    """
     from api.models.schemas import AddDeviceRequest
 
     req = AddDeviceRequest(name="x", device_type="server", ip_address="10.0.0.1")
-    assert req.lifecycle == "in_service"
+    assert req.powered is True
+    assert req.os_installed is False, (
+        "racking a box does not install an operating system on it")
+    assert not hasattr(req, "lifecycle"), (
+        "the simulator's add form must not speak the DCIM's vocabulary")
 
 
-def test_add_device_can_create_reserved_hardware():
-    """The point of the field: a manually added server can enter the same
-    commissioning path the fleet scheduler uses, instead of appearing fully
-    built."""
-    from api.models.schemas import AddDeviceRequest
-
-    for state in lc.STATES:
-        req = AddDeviceRequest(name="x", device_type="server",
-                               ip_address="10.0.0.1", lifecycle=state)
-        assert req.lifecycle == state
-
-
-def test_the_handler_applies_the_invariants():
-    """A device created off the wire must be powered down - that is what keeps its
-    reserved rack unit and budget from also counting as drawn load - and only a
-    machine in service is asserted to have an OS on it."""
+def test_a_racked_device_is_installed_not_in_service():
+    """`in_service` is a claim about a DCIM's ACCEPTANCE decision, which is not the
+    floor's to make. On the wire the two are identical once an OS is on it."""
     src = (Path(__file__).resolve().parents[1] / "api" / "routers"
            / "devices.py").read_text(encoding="utf-8")
-    # Searched FORWARD from the construction: `eng = getattr(s, "fleet_engine")`
-    # also appears earlier in the file, and slicing to the first one gave an empty
-    # string that passed nothing and failed everything.
     start = src.index("device = Device(")
     body = src[start:src.index("eng = getattr(s, \"fleet_engine\"", start)]
 
-    assert "lifecycle=_lc.normalise(req.lifecycle)" in body
-    assert "device.power_state = _lc.power_state_for(device)" in body
-    assert "device.os_deployed = _lc.os_deployed_for(" in body
+    assert 'lifecycle="installed"' in body
+    assert 'device.power_state = "On" if req.powered else "Off"' in body
+    assert "device.os_deployed = bool(req.os_installed)" in body
 
 
-def test_an_unknown_state_is_refused_before_anything_is_built():
-    """Validated ahead of the Device, the placement and the cabling: a typo must
-    not leave a half-created device behind."""
-    src = (Path(__file__).resolve().parents[1] / "api" / "routers"
-           / "devices.py").read_text(encoding="utf-8")
-    guard = src.index("if not _lc.is_valid(req.lifecycle):")
-
-    assert guard < src.index("device = Device(")
-
-
-def test_the_form_offers_exactly_the_states_that_exist():
-    """A list that drifts shows the operator a choice the server silently coerces
-    to in_service, which is worse than not offering it."""
-    import re
-
+def test_the_form_offers_no_lifecycle_vocabulary():
+    """A drift guard in the other direction: if the dropdown comes back, the two
+    systems are speaking each other's language again."""
     src = (Path(__file__).resolve().parents[1] / "webui" / "src" / "components"
            / "AddDeviceDialog.tsx").read_text(encoding="utf-8")
-    block = src[src.index("const LIFECYCLE_OPTIONS"):src.index("const LIFECYCLE_HINT")]
-    offered = set(re.findall(r"value: '([a-z_]+)'", block))
 
-    assert offered == set(lc.STATES)
-    # And every one of them explains itself.
-    hints = src[src.index("const LIFECYCLE_HINT"):]
-    for state in lc.STATES:
-        assert f"  {state}:" in hints, f"{state} has no hint"
+    assert "LIFECYCLE_OPTIONS" not in src
+    assert "form.powered" in src
+    assert "form.os_installed" in src
+    # And it says what each combination means on the wire.
+    assert "BMC only" in src
