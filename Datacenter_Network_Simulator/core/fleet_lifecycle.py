@@ -399,8 +399,8 @@ class FleetLifecycleEngine:
         # showing up as drawn load - `_live_device_watts` reads 0 W for a chassis
         # that is off, so no second mechanism is needed.
         dev.power_state = _lc.power_state_for(dev)
-        if not _lc.on_wire(dev):
-            dev.os_deployed = False
+        dev.os_deployed = _lc.os_deployed_for(
+            to_state, bool(getattr(dev, "os_deployed", True)))
         self._stage_day[dev.id] = self.day
         try:
             if _lc.on_wire(dev):

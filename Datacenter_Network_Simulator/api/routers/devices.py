@@ -1605,10 +1605,14 @@ def set_lifecycle(device_id: str, body: LifecycleRequest):
     # Coming back on, the chassis is energised and - for a server - is once again
     # a machine with no OS on it until somebody deploys one. Re-racked hardware
     # does not remember its old image.
-    if _lc.on_wire(device) != (was in _lc.STATES and _lc.on_wire_state(was)):
+    if _lc.on_wire(device) != _lc.on_wire_state(was):
         device.power_state = _lc.power_state_for(device)
-        if not _lc.on_wire(device):
-            device.os_deployed = False
+    # Whether there is an OS on it is decided by the state it is ENTERING, on
+    # every move rather than only on a crossing: `in_service` means built and
+    # accepted, and landing there straight from a boxed spare used to leave the
+    # record claiming a live machine with no operating system.
+    device.os_deployed = _lc.os_deployed_for(
+        to_state, bool(getattr(device, "os_deployed", True)))
 
     rederive_wire(s, device, why=f"{was} -> {to_state}")
 

@@ -356,3 +356,44 @@ def test_the_census_separates_racked_from_built(eng):
 
     assert census == {"planned": 1, "in_stock": 1, "installed (no OS)": 1,
                       "installed": 1, "in_service": 1}
+
+
+def test_a_machine_cannot_be_in_service_without_an_os(eng):
+    """An invariant, found by verifying live rather than by reading the code.
+
+    Walking a device straight from `in_stock` to `in_service` - which the floor
+    allows, because somebody can rack a spare and declare it live - left the
+    record saying a production machine had no operating system on it. Nothing on
+    the wire broke, because the flag only gates `installed`, which is exactly why
+    it went unnoticed: an incoherent record that still behaves correctly.
+    """
+    d = _srv(eng, state="in_stock", os_deployed=False, power="Off")
+    summ = DaySummary(day=eng.day)
+
+    eng._set_stage(d, summ, "in_service")
+
+    assert d.os_deployed is True
+    assert d.power_state == "On"
+
+
+def test_going_off_the_wire_forgets_the_image(eng):
+    """Unracked hardware has no image the simulator should claim to know, and a
+    box that comes back has to be built again."""
+    d = _srv(eng, state="in_service", os_deployed=True, power="On")
+    summ = DaySummary(day=eng.day)
+
+    eng._set_stage(d, summ, "in_stock")
+
+    assert d.os_deployed is False
+    assert d.power_state == "Off"
+
+
+def test_installed_keeps_whatever_the_disk_has(eng):
+    """The one state where the flag is the point: a wipe and an image are
+    explicit events there, not consequences of the state change."""
+    d = _srv(eng, state="in_service", os_deployed=True, power="On")
+    summ = DaySummary(day=eng.day)
+
+    eng._set_stage(d, summ, "installed")
+
+    assert d.os_deployed is True, "rework does not wipe the disk"

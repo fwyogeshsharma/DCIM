@@ -168,6 +168,29 @@ def can_deploy_os(device) -> tuple:
     return True, ""
 
 
+def os_deployed_for(to_state: str, current: bool) -> bool:
+    """Whether a device entering `to_state` has an OS on it.
+
+    An invariant rather than a preference, because two of the states carry the
+    answer by definition and leaving the flag alone produced records that
+    contradicted themselves - a live verification found an `in_service` machine
+    marked as having no operating system, which is not a thing:
+
+      off the wire   False. Unracked or boxed hardware has no image that the
+                     simulator should claim to know about, and a device that
+                     comes back has to be built again.
+      in_service     True. Accepted into service is downstream of being built;
+                     there is no path to it that skips the OS.
+      installed      unchanged - this is the state where the flag is the whole
+      maintenance    point, and where a wipe or an image is an explicit event.
+    """
+    if not on_wire_state(to_state):
+        return False
+    if normalise(to_state) == "in_service":
+        return True
+    return bool(current)
+
+
 def power_state_for(device) -> str:
     """The chassis power a device in this state should be in.
 
