@@ -4,6 +4,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
+from core import lifecycle as lifecycle_mod
+
 
 # ── Generic ──────────────────────────────────────────────────────────────────
 
@@ -432,6 +434,18 @@ class AddDeviceRequest(BaseModel):
     rack_row: int = 0
     rack_num: int = 0
     rack_unit: int = 0
+    # Where in its life this device is born. Defaults to in_service, which is what
+    # every caller before this field got and what somebody adding a machine to a
+    # running estate almost always means.
+    #
+    # `planned` is the interesting one: the rack unit, the power budget, the
+    # addresses and the cables are all reserved, and the device answers nothing
+    # until it is walked forward. That is how a manually added server can be put
+    # through the same commissioning path the fleet scheduler uses, instead of
+    # appearing fully built the way a device added here always used to.
+    lifecycle: str = Field(
+        lifecycle_mod.DEFAULT,
+        description=" | ".join(lifecycle_mod.STATES))
     # Cabling, created atomically with the device: either every link lands or the
     # device itself is rolled back. A device added with no cables is a dead node —
     # it answers SNMP but carries no traffic, draws no metered power and never

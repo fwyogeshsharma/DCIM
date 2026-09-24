@@ -1946,6 +1946,11 @@ def add_device(req: AddDeviceRequest):
         if req.rack_unit:    loc_parts.append(f"U{req.rack_unit}")
     sys_location = ", ".join(loc_parts) if loc_parts else ""
 
+    if not _lc.is_valid(req.lifecycle):
+        raise HTTPException(
+            status_code=422,
+            detail=(f"Unknown lifecycle state {req.lifecycle!r}. "
+                    f"Known: {', '.join(_lc.STATES)}"))
     try:
         device = Device(
             name=req.name,
@@ -1968,7 +1973,14 @@ def add_device(req: AddDeviceRequest):
             rack_row=req.rack_row,
             rack_num=req.rack_num,
             rack_unit=req.rack_unit,
+            lifecycle=_lc.normalise(req.lifecycle),
         )
+        # The two invariants that go with the state, applied here rather than left
+        # to the caller: a device off the wire is powered down - which is what
+        # keeps its reserved rack units and budget from also counting as drawn load
+        # - and only a machine in service is asserted to have an OS on it.
+        device.power_state = _lc.power_state_for(device)
+        device.os_deployed = _lc.os_deployed_for(device.lifecycle, True)
         # Resolve (or create) the fleet engine once — used for both physical
         # placement and hot-commission. Log routes to the app logger so any
         # placement/commission failure is visible, not silently swallowed.
@@ -2014,8 +2026,11 @@ def add_device(req: AddDeviceRequest):
         # running is skipped, and any failure never fails the add.
         try:
             eng.commission_device(device)
-            _clog.info("[add_device] commissioned %s (%s) onto live sims",
-                       device.name, device.device_type.value)
+            _clog.info("[add_device] %s (%s) added as %s — %s",
+                       device.name, device.device_type.value,
+                       _lc.state_of(device),
+                       "live on the protocol sims" if _lc.on_wire(device)
+                       else "reserved only, answering nothing")
         except Exception as _e:
             _clog.warning("[add_device] commission %s failed: %s", device.name, _e)
         s.notify_ui("sync_devices")
