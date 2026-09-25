@@ -655,6 +655,11 @@ MODEL_SYSDESCR = {
         "15.2(7)E6, RELEASE SOFTWARE (fc2)",
     "HPE Aruba 2530-48G":      "HP J9775A Aruba 2530-48G Switch, ProCurve OS, Version WB.16.10.0023",
     "HPE Aruba 2530-24G":      "HP J9776A Aruba 2530-24G Switch, ProCurve OS, Version WB.16.10.0023",
+    # Had no row at all, so it fell through to VENDOR_SYSDESCR - which is the S5248F
+    # SONiC string. A 48-port 1G OOB switch was announcing itself with a 25G leaf's
+    # HwSku, the same fall-through that made 8 Catalyst 9300-48Ts serve the core
+    # routers' bytes. Its siblings run DNOS, so it says so.
+    "Dell N3248TE-ON":         "Dell EMC Networking N3248TE-ON, DNOS 6.5.1.9, 48-port GbE + 4-port SFP+",
     "Dell N1148T-ON":          "Dell EMC Networking N1148T-ON, DNOS 6.5.1.9, 48-port GbE + 4-port SFP+",
     "Dell N1124T-ON":          "Dell EMC Networking N1124T-ON, DNOS 6.5.1.9, 24-port GbE + 4-port SFP+",
     # Environmental Sensors
@@ -748,6 +753,11 @@ MODEL_SYSOID = {
     "Cisco Catalyst 1000-24T": "1.3.6.1.4.1.9.1.2775",
     "HPE Aruba 2530-48G":      "1.3.6.1.4.1.11.2.3.7.11.136",
     "HPE Aruba 2530-24G":      "1.3.6.1.4.1.11.2.3.7.11.137",
+    # Following the sibling convention above rather than a datasheet: the N-series
+    # product arcs here are sequential and local, not sourced. What matters is that
+    # it has ONE of its own instead of inheriting the vendor fallback, which points
+    # at a different switch entirely.
+    "Dell N3248TE-ON":         "1.3.6.1.4.1.674.10895.5002",
     "Dell N1148T-ON":          "1.3.6.1.4.1.674.10895.5000",
     "Dell N1124T-ON":          "1.3.6.1.4.1.674.10895.5001",
     # Environmental Sensor OIDs

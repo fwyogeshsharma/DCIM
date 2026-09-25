@@ -351,6 +351,58 @@ def test_the_f5_deliberately_does_not_name_itself(estate):
     assert seen, "no load balancer on the wire; this check is not exercising anything"
 
 
+def test_two_models_are_always_distinguishable_on_the_wire(estate):
+    """Something has to tell one model from another, or inventory cannot.
+
+    Sharing a sysDescr is legitimate and real: a Catalyst 9300-48P and a 9300-48T run
+    the same CAT9K image and report the same string, and the model comes from
+    sysObjectID or ENTITY-MIB. What is NOT legitimate is sharing BOTH leaves, which is
+    what a missing MODEL_SYSDESCR row produces - the model falls through to the vendor
+    fallback and answers as whatever device that string describes.
+
+    It has happened twice: 8 Catalyst 9300-48Ts served the core routers' bytes, and a
+    48-port 1G Dell OOB switch announced a 25G leaf's SONiC HwSku.
+    """
+    by_identity = {}
+    for device in estate:
+        if not _answers_snmp(device) or not device.model_name:
+            continue
+        by_identity.setdefault((device.sys_descr, device.sys_oid), set()).add(
+            device.model_name)
+
+    clashes = {k: v for k, v in by_identity.items() if len(v) > 1}
+    assert not clashes, "models that answer identically on BOTH leaves: " + "; ".join(
+        sorted(", ".join(sorted(v)) for v in clashes.values()))
+
+
+def test_a_model_does_not_answer_with_another_model_name(estate):
+    """The symptom that makes a fall-through obvious.
+
+    A Dell N3248TE-ON reporting "HwSku: DellEMC-S5248f" is not a vague string, it is
+    the wrong switch - and an operator reading the sweep would record the wrong SKU.
+    """
+    names = {d.model_name for d in estate if d.model_name}
+    # The distinctive part of a SKU, not the vendor prefix every Dell shares.
+    def tokens(model):
+        return [t for t in str(model).replace("-", " ").split()
+                if len(t) >= 5 and any(c.isdigit() for c in t)]
+
+    offenders = []
+    for device in estate:
+        if not _answers_snmp(device) or not device.model_name:
+            continue
+        descr = device.sys_descr.lower()
+        mine = {t.lower() for t in tokens(device.model_name)}
+        for other in names:
+            if other == device.model_name:
+                continue
+            theirs = {t.lower() for t in tokens(other)} - mine
+            hit = [t for t in theirs if t in descr]
+            if hit:
+                offenders.append(f"{device.model_name} answers with {other}'s {hit}")
+    assert not offenders, "; ".join(sorted(set(offenders))[:6])
+
+
 # --------------------------------------------------------------- the rest of it
 
 def test_no_new_gear_claims_to_be_a_ups(estate):
