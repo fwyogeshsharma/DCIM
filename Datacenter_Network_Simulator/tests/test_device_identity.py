@@ -305,6 +305,52 @@ def test_a_cisco_sysdescr_names_its_image(estate):
     assert not offenders, "; ".join(sorted(set(offenders)))
 
 
+def test_a_firewall_says_it_is_a_firewall(estate):
+    """PAN-OS names the model and the equipment class, so the string should too.
+
+    It used to read "Palo Alto Networks PAN-OS, Version 11.0.2" - the OS and nothing
+    else - so a sweep could tell the vendor and not the role. A real PA-5220 answers
+    "Palo Alto Networks PA-5220 series firewall".
+    """
+    seen = 0
+    for device in estate:
+        if device.device_type is not DeviceType.FIREWALL or not _answers_snmp(device):
+            continue
+        seen += 1
+        assert "firewall" in device.sys_descr.lower(), \
+            f"{device.name}: {device.sys_descr}"
+    assert seen, "no firewall on the wire; this check is not exercising anything"
+
+
+def test_the_f5_deliberately_does_not_name_itself(estate):
+    """The awkward truth, pinned so nobody tidies it away.
+
+    TMOS runs on a Linux host and BIG-IP answers sysDescr with that host's uname: no
+    "BIG-IP", no "load balancer", nothing about what the box is for. That is why F5
+    monitoring reads sysObjectID and the F5-BIGIP-SYSTEM-MIB instead, and modelling
+    it honestly is what makes this simulator exercise that path.
+
+    Writing a friendlier string here would make the DCIM's job easier and teach a
+    collector something false - that sysDescr is always enough. The enterprise OID
+    carries the answer and must therefore be right.
+    """
+    seen = 0
+    for device in estate:
+        if device.device_type is not DeviceType.LOAD_BALANCER:
+            continue
+        if not _answers_snmp(device):
+            continue
+        seen += 1
+        descr = device.sys_descr.lower()
+        assert "big-ip" not in descr and "load balanc" not in descr, (
+            f"{device.name} names its product in sysDescr; a real BIG-IP does not, "
+            f"and the OID is what identifies it: {device.sys_descr}")
+        assert device.sys_oid.startswith("1.3.6.1.4.1.3375"), (
+            f"{device.name}: sysDescr says nothing, so the OID is the only thing "
+            f"that can - and it is {device.sys_oid}")
+    assert seen, "no load balancer on the wire; this check is not exercising anything"
+
+
 # --------------------------------------------------------------- the rest of it
 
 def test_no_new_gear_claims_to_be_a_ups(estate):

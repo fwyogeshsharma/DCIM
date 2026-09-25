@@ -525,6 +525,32 @@ MODEL_SYSDESCR = {
     # Eaton Floor PDU
     "Eaton PDU 80kVA":    "Eaton Power Distribution Unit, 80kVA, 3-phase, floor-mounted, fw 3.0.8",
     "Eaton PDU 160kVA":   "Eaton Power Distribution Unit, 160kVA, 3-phase, floor-mounted, fw 3.0.8",
+    # Palo Alto and F5, which fail in opposite directions.
+    #
+    # PAN-OS DOES name itself: a real PA-5220 answers sysDescr with "Palo Alto
+    # Networks PA-5220 series firewall", model and equipment class included. The old
+    # string was "Palo Alto Networks PAN-OS, Version 11.0.2" - the OS and nothing
+    # else - so a sweep could tell the vendor and not the role, the same evidence the
+    # Cisco rows had been stripped of.
+    "PA-5220":
+        "Palo Alto Networks PA-5220 series firewall, PAN-OS 11.0.2",
+    # F5 is the awkward one, and modelling it honestly makes this simulator HARDER
+    # on purpose. TMOS runs on a Linux host and BIG-IP answers sysDescr with that
+    # host's uname - no "BIG-IP", no "load balancer", nothing about what the box is
+    # for. It is why F5 monitoring reads sysObjectID and the F5-BIGIP-SYSTEM-MIB
+    # (sysProductName under 3375.2.1.4) instead, and why a collector that trusts
+    # sysDescr alone files a load balancer as a Linux server.
+    #
+    # Serving the friendly string instead would have taught the collector that
+    # sysDescr is always enough. It is not, and the enterprise OID is the leaf that
+    # carries the answer - which is the lesson worth reproducing.
+    #
+    # UNVERIFIED: the exact kernel string is modelled. The SHAPE - a Linux uname
+    # with F5's `.ve.` TMOS kernel suffix, and no product name anywhere - is the part
+    # worth trusting.
+    "BIG-IP i5800":
+        "Linux f5-i5800-dc1.mgmt 3.10.0-1160.45.1.el7.ve.x86_64 #1 SMP "
+        "Thu Oct 19 2023 x86_64",
     # ASCO transfer switch and paralleling switchgear.
     #
     # The switch itself is contactors and a controller; what has the Ethernet port is
