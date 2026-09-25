@@ -354,6 +354,16 @@ VENDOR_SYSOID = {
     Vendor.RARITAN:           "1.3.6.1.4.1.13742.6",
     Vendor.SERVER_TECHNOLOGY: "1.3.6.1.4.1.1718.3.1",
     Vendor.VERDIGRIS:         "1.3.6.1.4.1.57628.1",   # Verdigris Technologies
+    # Two arcs that are not in doubt: F5's MIBs hang off 3375 and PAN-OS's off
+    # 25461. Both were falling through to "1.3.6.1.4.1.0.0", which is not an
+    # assignable OID at all - a discovery tool matching on it learns nothing and
+    # may treat the device as unidentifiable, on the one leaf it keys on first.
+    #
+    # Caterpillar is deliberately absent: its EMCP controllers reach a network
+    # through a gateway whose PEN I could not source, and a guessed arc is worse
+    # than none because vendor tooling would follow it into the wrong MIB.
+    Vendor.PALO_ALTO_NETWORKS: "1.3.6.1.4.1.25461",
+    Vendor.F5_NETWORKS:        "1.3.6.1.4.1.3375",
 }
 
 VENDOR_SYSDESCR = {
@@ -369,9 +379,23 @@ VENDOR_SYSDESCR = {
     Vendor.IBM:             "IBM System x3850 X6, Red Hat Enterprise Linux 9.2",
     Vendor.PALO_ALTO_NETWORKS: "Palo Alto Networks PAN-OS, Version 11.0.2",
     Vendor.F5_NETWORKS:     "F5 Networks BIG-IP, TMOS Version 17.1.0",
-    Vendor.APC:               "APC Web/SNMP Management Card (AP9630), firmware v6.9.6, APC Smart-UPS",
-    Vendor.EATON:             "Eaton Network Management Card 2, firmware version 2.6, Eaton 9PX UPS",
-    Vendor.VERTIV:            "Liebert IntelliSlot Web/SNMP Card, firmware version 1.55, Liebert GXT5 UPS",
+    # No product class on the end, the same reason the Eaton and Vertiv entries give:
+    # an AP9630 card goes in UPSs, rack PDUs, RPPs and NetBotz appliances alike, so
+    # naming one UPS made every APC device without a MODEL_SYSDESCR row claim to be
+    # a Smart-UPS. The UPS and PDU branches of sys_descr append the class, so those
+    # read correctly without it - and appending it here would have doubled it.
+    Vendor.APC:               "APC Web/SNMP Management Card (AP9630), firmware v6.9.6",
+    # No product class on the end. An NMC 2 is a UPS/ePDU card, and naming a
+    # specific UPS here meant every Eaton device with no MODEL_SYSDESCR row claimed
+    # to be that UPS. The UPS and PDU branches of sys_descr prepend the real model,
+    # so those read correctly without it.
+    Vendor.EATON:             "Eaton Network Management Card 2, firmware version 2.6",
+    # No product class on the end, for the reason the Eaton entry gives: an
+    # IntelliSlot card is fitted to UPSs, CRAHs, PDUs and plant transmitters alike,
+    # so naming one UPS here made every Vertiv device without a MODEL_SYSDESCR row
+    # claim to be that UPS. The UPS, PDU and SENSOR branches of sys_descr prepend
+    # the real model, so those read correctly without it.
+    Vendor.VERTIV:            "Liebert IntelliSlot Web/SNMP card, firmware version 1.55",
     Vendor.RARITAN:           "Raritan PX3 Rack PDU SNMP Agent, firmware version 3.7.0",
     Vendor.SERVER_TECHNOLOGY: "Server Technology Sentry SNMP Agent, firmware version 8.2a",
     Vendor.VERDIGRIS:         "Verdigris EV2 Energy Intelligence Platform, BACnet/IP, firmware 2.4.1",
@@ -385,16 +409,38 @@ VENDOR_SYSDESCR = {
 # Cisco NX-OS (Nexus) and IOS XR (ASR 9K) differ significantly from IOS XE.
 MODEL_SYSDESCR = {
     # Cisco IOS XE — ISR/ASR 1K routers
-    "Cisco ISR 4321":   "Cisco IOS XE Software, Version 17.9.4a, RELEASE SOFTWARE (fc3)",
-    "Cisco ISR 4431":   "Cisco IOS XE Software, Version 17.9.4a, RELEASE SOFTWARE (fc3)",
-    "Cisco ASR 1001-X": "Cisco IOS XE Software, Version 17.9.4a, RELEASE SOFTWARE (fc3)",
+    "Cisco ISR 4321":
+        "Cisco IOS Software [Amsterdam], ISR Software "
+        "(X86_64_LINUX_IOSD-UNIVERSALK9-M), Version 17.9.4a, RELEASE SOFTWARE "
+        "(fc3)",
+    "Cisco ISR 4431":
+        "Cisco IOS Software [Amsterdam], ISR Software "
+        "(X86_64_LINUX_IOSD-UNIVERSALK9-M), Version 17.9.4a, RELEASE SOFTWARE "
+        "(fc3)",
+    "Cisco ASR 1001-X":
+        "Cisco IOS Software [Amsterdam], ASR1000 Software "
+        "(X86_64_LINUX_IOSD-UNIVERSALK9-M), Version 17.9.4a, RELEASE SOFTWARE "
+        "(fc3)",
     # Cisco IOS XR — ASR 9K routers
-    "Cisco ASR 9001":   "Cisco IOS XR Software, Version 7.9.1, Copyright (c) 2013-2023 by Cisco Systems, Inc.",
-    "Cisco ASR 9904":   "Cisco IOS XR Software, Version 7.9.1, Copyright (c) 2013-2023 by Cisco Systems, Inc.",
+    "Cisco ASR 9001":
+        "Cisco IOS XR Software (Cisco ASR9K Series), Version 7.9.1[Default], "
+        "Copyright (c) 2013-2023 by Cisco Systems, Inc.",
+    "Cisco ASR 9904":
+        "Cisco IOS XR Software (Cisco ASR9K Series), Version 7.9.1[Default], "
+        "Copyright (c) 2013-2023 by Cisco Systems, Inc.",
     # Cisco IOS / IOS XE — Catalyst switches
-    "Cisco Catalyst 2960-X-24TS": "Cisco IOS Software, Version 15.2(7)E6, RELEASE SOFTWARE (fc2)",
-    "Cisco Catalyst 3850-48":     "Cisco IOS XE Software, Version 16.12.7, RELEASE SOFTWARE (fc3)",
-    "Cisco Catalyst 9300-48P":    "Cisco IOS XE Software, Version 17.12.1, RELEASE SOFTWARE (fc3)",
+    "Cisco Catalyst 2960-X-24TS":
+        "Cisco IOS Software, C2960X Software (C2960X-UNIVERSALK9-M), Version "
+        "15.2(7)E6, RELEASE SOFTWARE (fc2)",
+    "Cisco Catalyst 3850-48":
+        "Cisco IOS XE Software, Catalyst L3 Switch Software "
+        "(CAT3K_CAA-UNIVERSALK9-M), Version 16.12.7, RELEASE SOFTWARE (fc3)",
+    "Cisco Catalyst 9300-48P":
+        "Cisco IOS XE Software, Catalyst L3 Switch Software (CAT9K_IOSXE), "
+        "Version 17.12.1, RELEASE SOFTWARE (fc3)",
+    "Cisco Catalyst 9300-48T":
+        "Cisco IOS XE Software, Catalyst L3 Switch Software (CAT9K_IOSXE), "
+        "Version 17.12.1, RELEASE SOFTWARE (fc3)",
     # Cisco NX-OS — Nexus switches
     "Cisco Nexus 9372PX":    "Cisco NX-OS(tm) n9000, Software (n9000-dk9), Version 10.3(2), RELEASE SOFTWARE",
     "Cisco Nexus 93180YC-FX":"Cisco NX-OS(tm) n9000, Software (n9000-dk9), Version 10.3(2), RELEASE SOFTWARE",
@@ -429,17 +475,158 @@ MODEL_SYSDESCR = {
     # APC Floor PDU / RPP
     "APC FlexPDU 40kVA":  "APC FlexPDU 40kVA, 3-phase, (6) 3-phase breakers, NMC3 fw v1.4.2",
     "APC Galaxy RPP 80A": "APC Galaxy Remote Power Panel, 80A, 3-phase, (12) branch circuits, NMC3 fw v1.4.2",
+    # Schneider utility-feed metering.
+    #
+    # The vendor fallback described a Remote Power Panel and said, in the string
+    # itself, "no SNMP agent" - served as the sysDescr of a device that answers
+    # SNMP. A responder contradicting itself on the wire is not something a DCIM can
+    # resolve; it is also the wrong equipment, since the utility feed is modelled as
+    # a PowerLogic ION9000 revenue meter, not a breaker panel.
+    #
+    # UNVERIFIED: firmware string is modelled. The protocol list is the part worth
+    # trusting - an ION9000 is a metering device with an Ethernet port, and Modbus
+    # TCP is how a BMS normally reads one.
+    "Schneider PowerLogic ION9000":
+        "Schneider Electric PowerLogic ION9000, revenue-grade power quality meter, "
+        "fw 4.2.1, utility service-entrance metering, Modbus TCP",
+    # Eaton switchgear / MCC / panelboard.
+    #
+    # None of these has an SNMP agent of its own. A Magnum DS breaker carries a
+    # Digitrip trip unit on INCOM, a Freedom 2100 carries C441 relays on Modbus and
+    # a Pow-R-Line panelboard carries branch meters; what speaks Ethernet - and
+    # therefore what answers a sweep - is Eaton's Power Xpert Gateway sitting in
+    # front of them. So the sysDescr names the gateway first and the equipment it
+    # fronts second, which is the order a real walk returns.
+    #
+    # Before this they fell through to VENDOR_SYSDESCR and announced themselves as
+    # an "Eaton 9PX UPS" - a 1-3 kVA rack UPS. A DCIM that classifies by regexing
+    # sysDescr (and they do) filed a 4000 A switchgear lineup as a small rack UPS.
+    # Wrong equipment CLASS is worse than a vague description: it survives into the
+    # asset record and nothing downstream questions it.
+    #
+    # UNVERIFIED: the "PXG 900" designation and the firmware string are modelled,
+    # not read off a datasheet. The gateway-fronts-the-switchgear architecture is
+    # the part worth trusting; check the model name before quoting it at a vendor.
+    #
+    # STILL A FICTION, deliberately left: one gateway per device. A PXG fronts a
+    # whole INCOM/Modbus segment, so in a real lineup the panelboards and MCCs would
+    # answer THROUGH the switchgear's gateway on one address - the same remodel the
+    # plant instruments got when they moved behind the Moxa gateways. Fixing that
+    # moves IP addresses, so it is a separate change.
+    "Eaton Magnum DS 4000A":
+        "Eaton Power Xpert Gateway PXG 900, fw 2.1.5, INCOM-to-Ethernet, "
+        "Magnum DS low-voltage switchgear, 4000A, Digitrip 1150 trip units",
+    "Eaton Freedom 2100 MCC 1600A":
+        "Eaton Power Xpert Gateway PXG 900, fw 2.1.5, Modbus-to-Ethernet, "
+        "Freedom 2100 motor control center, 1600A, C441 motor protection relays",
+    "Eaton Pow-R-Line 3a 150A":
+        "Eaton Power Xpert Gateway PXG 900, fw 2.1.5, Modbus-to-Ethernet, "
+        "Pow-R-Line 3a panelboard, 150A, Power Xpert Meter 2000 branch metering",
     # Eaton Floor PDU
     "Eaton PDU 80kVA":    "Eaton Power Distribution Unit, 80kVA, 3-phase, floor-mounted, fw 3.0.8",
     "Eaton PDU 160kVA":   "Eaton Power Distribution Unit, 160kVA, 3-phase, floor-mounted, fw 3.0.8",
+    # ASCO transfer switch and paralleling switchgear.
+    #
+    # The switch itself is contactors and a controller; what has the Ethernet port is
+    # the connectivity module bolted to it, and the process data is Modbus. Same
+    # shape as the Eaton gateways below, and the same warning applies: a sweep that
+    # finds this has found the module, not the breaker positions.
+    #
+    # UNVERIFIED: "ASCO Connectivity Module" and the 5350 controller pairing are
+    # modelled from ASCO's published architecture, not a datasheet in hand. "ASCO
+    # 7000 Series" and the ratings are real.
+    "ASCO 7000 Series 4000A":
+        "ASCO 7000 Series automatic transfer switch, 4000A, 5350 controller, "
+        "ASCO Connectivity Module, Modbus TCP",
+    "ASCO 7000 Paralleling Switchgear":
+        "ASCO 7000 Series paralleling switchgear, generator paralleling controls, "
+        "ASCO Connectivity Module, Modbus TCP",
+    # CoolIT liquid-cooling CDU.
+    #
+    # A real CHx80 integrates with a BMS over Modbus TCP; SNMP on it is the less
+    # common path, and this simulator serves it one because the estate's CDUs are
+    # polled like everything else. The string says both so a reader is not taught
+    # that Modbus is absent.
+    "CoolIT CHx80":
+        "CoolIT CHx80 coolant distribution unit, 80 kW liquid-to-liquid, "
+        "onboard controller fw 2.4.1, Modbus TCP to the BMS",
+    # Protocol gateways: the two devices whose whole job is to stand in front of
+    # something else.
+    #
+    # Both serve ONLY MIB-II - no enterprise tree at all - and that is correct
+    # rather than incomplete. A gateway's SNMP agent answers "the gateway is up"; it
+    # says nothing about the field devices behind it, which are on Modbus or BACnet
+    # and invisible to a sweep. The 12 plant instruments that live behind these two
+    # MGates have no addresses of their own, so a DCIM that took a reachable MGate
+    # as evidence those instruments are healthy would be wrong in the most expensive
+    # direction.
+    #
+    # UNVERIFIED: firmware strings are modelled. The part numbers, port counts and
+    # protocol pairs are real.
+    "LOYTEC LINX-151":
+        "LOYTEC LINX-151 L-INX automation server, "
+        "BACnet/IP to BACnet MS/TP router, fw 7.4.2",
+    "Moxa MGate MB3480":
+        "Moxa MGate MB3480, 4-port Modbus RTU/ASCII to Modbus TCP gateway, fw 4.2",
+    # APC environmental probes.
+    #
+    # An AP9335T/TH is a thermistor on a cable: no agent, no address, no MIB of its
+    # own. It plugs into a sensor port and is read through whatever it is plugged
+    # into - which is how this estate models it. All 52 sensors have NO SNMP address,
+    # so none of these strings is ever SERVED as an agent's identity; they are record
+    # fields, reaching a DCIM through the topology export.
+    #
+    # That is why they say what the thing IS rather than naming a management card.
+    # Before this they fell through to VENDOR_SYSDESCR and read "APC AP9335T, APC
+    # Web/SNMP Management Card (AP9630), firmware v6.9.6, APC Smart-UPS" - a UPS card
+    # and a UPS, on a temperature probe.
+    #
+    # Saying "no network interface" here is a statement of fact, not the
+    # contradiction the Schneider utility feed was making: that one answered a sweep
+    # while its sysDescr denied having an agent. These answer nothing.
+    "APC AP9335T":
+        "APC AP9335T temperature probe, universal sensor port - read through its "
+        "host rack PDU, no network interface of its own",
+    "APC AP9335TH":
+        "APC AP9335TH temperature and humidity probe, universal sensor port - read "
+        "through its host rack PDU, no network interface of its own",
+    # Vertiv Liebert cooling and UPS.
+    #
+    # The IntelliSlot card is what answers - a PCW's controls are an iCOM, which
+    # speaks no Ethernet on its own - so the card comes first and the unit second,
+    # the same order the Eaton gateways use above.
+    #
+    # Unlike the Eaton case the unit model here is genuinely discoverable: an
+    # IntelliSlot card reads the identity of the ONE machine it is fitted to off the
+    # iCOM, where a Power Xpert Gateway fronts a whole INCOM segment and cannot say
+    # which device a walk is about. So a DCIM classifying a PCW as a CRAH from this
+    # string is reading real evidence, not a string this repo wrote.
+    #
+    # Before this, both fell through to VENDOR_SYSDESCR and announced a "Liebert
+    # GXT5 UPS" - a 5-10 kVA rack UPS. 28 chilled-water air handlers were suggested
+    # to an operator as UPSs, and the CRAHs are the machines the cooling alarms hang
+    # off; a wrong class on those is a wrong class on the estate's thermal model.
+    #
+    # UNVERIFIED: the card generation and firmware string are modelled. "PCW",
+    # "iCOM" and "EXL S1" are product names worth trusting.
+    "Vertiv Liebert PCW 100kW":
+        "Liebert IntelliSlot Web/SNMP card, firmware version 1.55, "
+        "Liebert PCW chilled-water CRAH, 100 kW, iCOM controller",
+    "Vertiv Liebert EXL S1 1200kVA":
+        "Liebert IntelliSlot Web/SNMP card, firmware version 1.55, "
+        "Liebert EXL S1 three-phase UPS, 1200 kVA",
     # Vertiv Liebert Floor PDU
     "Vertiv Liebert MPX 60kVA":  "Liebert MPX Floor PDU, 60kVA, 3-phase, (12) 30A branch circuits, fw 2.1.0",
     "Vertiv Liebert MPH2 24kVA": "Liebert MPH2 Modular Power Hub, 24kVA, 3-phase, wall/floor mount, fw 2.1.0",
     # Raritan Floor PDU
     "Raritan PX3-5000 Floor 30A": "Raritan PX3 Floor PDU, 30A, 208V, (24)C19 outlets, fw 3.7.0",
     # OOB Management Switches
-    "Cisco Catalyst 1000-48T": "Cisco IOS Software, Version 15.2(7)E6, RELEASE SOFTWARE (fc2), Catalyst 1000 48-port",
-    "Cisco Catalyst 1000-24T": "Cisco IOS Software, Version 15.2(7)E6, RELEASE SOFTWARE (fc2), Catalyst 1000 24-port",
+    "Cisco Catalyst 1000-48T":
+        "Cisco IOS Software, C1000 Software (C1000-UNIVERSALK9-M), Version "
+        "15.2(7)E6, RELEASE SOFTWARE (fc2)",
+    "Cisco Catalyst 1000-24T":
+        "Cisco IOS Software, C1000 Software (C1000-UNIVERSALK9-M), Version "
+        "15.2(7)E6, RELEASE SOFTWARE (fc2)",
     "HPE Aruba 2530-48G":      "HP J9775A Aruba 2530-48G Switch, ProCurve OS, Version WB.16.10.0023",
     "HPE Aruba 2530-24G":      "HP J9776A Aruba 2530-24G Switch, ProCurve OS, Version WB.16.10.0023",
     "Dell N1148T-ON":          "Dell EMC Networking N1148T-ON, DNOS 6.5.1.9, 48-port GbE + 4-port SFP+",
@@ -484,6 +671,31 @@ MODEL_SYSOID = {
     "Raritan PX3-5190R":  "1.3.6.1.4.1.13742.6.3.2.21",
     "Raritan PX3-5161R":  "1.3.6.1.4.1.13742.6.3.2.22",
     "Raritan PX2-5170CR": "1.3.6.1.4.1.13742.6.3.2.14",
+    # Schneider Electric enterprise root (IANA PEN 3833). It was falling through to
+    # VENDOR_SYSOID's "1.3.6.1.4.1.0.0" placeholder, which is not an assignable OID
+    # at all - a discovery tool matching on it learns nothing and may well treat the
+    # device as unidentifiable. The root is generic but true.
+    "Schneider PowerLogic ION9000": "1.3.6.1.4.1.3833",
+    # Moxa Inc., IANA PEN 8691 - the arc Moxa's own MIBs hang off (8691.7 NPort,
+    # 8691.10 EDS). The other three vendors here keep the bogus "1.3.6.1.4.1.0.0"
+    # fallback deliberately: enterprise 0 is not assignable, so it identifies
+    # nothing, but a GUESSED PEN is worse - vendor tooling matches on this leaf and
+    # would go and read the wrong MIB. Sourcing ASCO's, LOYTEC's and CoolIT's is a
+    # datasheet job, not a judgement call.
+    "Moxa MGate MB3480": "1.3.6.1.4.1.8691",
+    # Eaton switchgear / MCC / panelboard.
+    #
+    # The Eaton enterprise ROOT, not the 534.2 sub-arc the vendor fallback uses:
+    # 534.2 is the Powerware UPS branch, so a 4000A switchgear lineup was
+    # identifying itself as a UPS on the one leaf a discovery tool keys on FIRST.
+    # Fixing only the sysDescr would have left the machine-readable half lying.
+    #
+    # The root rather than an invented Power Xpert Gateway arc: a wrong specific
+    # OID is worse than an honest generic one, because vendor tooling matches on it
+    # and would then read the wrong MIB. "Eaton, product arc not modelled" is true.
+    "Eaton Magnum DS 4000A":        "1.3.6.1.4.1.534",
+    "Eaton Freedom 2100 MCC 1600A": "1.3.6.1.4.1.534",
+    "Eaton Pow-R-Line 3a 150A":     "1.3.6.1.4.1.534",
     # Eaton ePDU OIDs
     "Eaton ePDU G3 MA 1U 16A":  "1.3.6.1.4.1.534.6.6.7.1",
     "Eaton ePDU G3 MA 1U 32A":  "1.3.6.1.4.1.534.6.6.7.2",
@@ -1714,9 +1926,19 @@ class Device:
             return f"{hw} running {os_name} {os_ver}"
         if self.device_type in (DeviceType.UPS, DeviceType.PDU):
             base = VENDOR_SYSDESCR.get(self.vendor, "SNMP Management Card")
+            # The equipment class, spelled out.
+            #
+            # The vendor strings no longer name a product class - they described one
+            # specific UPS, which every device without a MODEL_SYSDESCR row then
+            # claimed to be - and a model name alone does not say what the box IS:
+            # "Vertiv Liebert EXL S1 20kVA" contains no word a DCIM classifying by
+            # sysDescr can match, so an un-catalogued SKU would have arrived with no
+            # suggested type at all. A real management card names the unit it is
+            # fitted to; this is the same fact, generically.
+            klass = "UPS" if self.device_type == DeviceType.UPS else "rack PDU"
             if self.model_name:
-                return f"{self.model_name}, {base}"
-            return base
+                return f"{self.model_name}, {base}, {klass}"
+            return f"{base}, {klass}"
         if self.device_type == DeviceType.OOB_SWITCH:
             return VENDOR_SYSDESCR.get(self.vendor, "Out-of-Band Management Switch")
         if self.device_type == DeviceType.SENSOR:

@@ -215,10 +215,22 @@ RARITAN_SENSOR_STATE = {
     "notDetected": 10, "alarmed": 11, "ok": 12, "fail": 14,
 }
 
-# Liebert (Vertiv) — LIEBERT-GP-CONDITIONS / -NOTIFICATIONS
+# Liebert (Vertiv) — LIEBERT-GP-CONDITIONS / -NOTIFICATIONS / -REGISTRATION
 LIEBERT = {
     "conditionDescr":   "1.3.6.1.4.1.476.1.42.3.2.3.1.1",    # lgpConditionDescr
     "conditionTime":    "1.3.6.1.4.1.476.1.42.3.2.3.1.3",    # lgpConditionTime
+    # lgpAgentIdentSerialNumber — the chassis serial as the IS-UNITY card reports
+    # it. Standard UPS-MIB (RFC 1628) has NO serial object at all: its upsIdent
+    # group carries manufacturer, model and two software versions and stops, which
+    # is exactly why a UPS serial has to come from the vendor tree.
+    #
+    # UNVERIFIED against LIEBERT-GP-REGISTRATION itself — no MIB was available.
+    # The lgpAgentIdent group order (Manufacturer, Model, FirmwareVersion,
+    # SerialNumber, PartNumber) is the conventional shape and .4 is consistent
+    # with it, but confirm against a real Unity card before trusting the OID
+    # rather than the value. Wrong here means a poller reads the serial off the
+    # firmware-version leaf, which looks like a serial and is not one.
+    "agentIdentSerial": "1.3.6.1.4.1.476.1.42.2.1.4",        # lgpAgentIdentSerialNumber
 }
 
 # Cisco

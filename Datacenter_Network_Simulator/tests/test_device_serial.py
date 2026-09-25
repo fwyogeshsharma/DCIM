@@ -156,3 +156,99 @@ def test_export_round_trips_the_serial_unchanged():
                 for n in dump["nodes"]}
 
     assert by_name(again.to_dict()) == by_name(first)
+
+
+# ------------------------------------------------- the vendor identity tables
+
+def _entries_by_oid(entries):
+    return {e.oid if hasattr(e, "oid") else e[0]:
+            (e.value if hasattr(e, "value") else e[-1]) for e in entries}
+
+
+@pytest.mark.parametrize("vendor,oid_key,suffix", [
+    # rPDUIdentSerialNumber and pduSerialNumber - the leaves an APC- or
+    # Raritan-aware NMS actually reads, because neither strip implements
+    # ENTITY-MIB.
+    (Vendor.APC, ("APC", "identSerial"), ".0"),
+    (Vendor.RARITAN, ("RARITAN", "pduSerial"), ".1"),
+])
+def test_a_pdu_publishes_its_real_serial_not_its_name(vendor, oid_key, suffix):
+    """A name-derived serial is a serial that matches nothing.
+
+    Both strip vendors used to publish ``SN-<device name>`` here while ENTITY-MIB
+    and Redfish published the real one, so a DCIM reconciling PDUs on serial filed
+    every strip twice - once off the poll and once off the trap. That is the same
+    two-serials-for-one-chassis failure ``device_serial`` exists to prevent; it was
+    fixed for servers and left in place for PDUs.
+    """
+    from core import vendor_oids as vo
+
+    device = Device(name="PDUA-DC1-HA-R1-01", device_type=DeviceType.PDU,
+                    vendor=vendor, ip_address="10.50.2.10", id="pduid001",
+                    model_name="APC AP8886" if vendor is Vendor.APC
+                    else "Raritan PX2-5170CR")
+    gen = SNMPRecGenerator(output_dir="datasets/_test_serial")
+    rows = _entries_by_oid(gen._pdu_entries(device, None))
+
+    oid = getattr(vo, oid_key[0])[oid_key[1]] + suffix
+    assert oid in rows, f"{vendor.value} PDU publishes no serial at {oid}"
+    assert rows[oid] == device_serial(device)
+    assert not rows[oid].startswith("SN-PDUA")
+
+
+def test_no_plane_derives_a_serial_from_a_device_name():
+    """A guard, because this bug came back in five places at once.
+
+    The fix is one line per call site and there is nothing to stop the next one
+    being written the same way, so the pattern itself is banned.
+    """
+    import pathlib
+
+    offenders = []
+    for path in pathlib.Path("core").glob("*.py"):
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if 'SN-{device.name}' in line:
+                offenders.append(f"{path}:{n}")
+    assert not offenders, (
+        "a serial derived from a device name - use device_serial(device): "
+        + ", ".join(offenders))
+
+
+@pytest.mark.parametrize("device_type", [DeviceType.UPS, DeviceType.CRAH])
+def test_vertiv_gear_publishes_a_serial_at_the_vendor_oid(device_type):
+    """UPS-MIB has no serial object, so it has to come from the vendor tree.
+
+    RFC 1628's upsIdent group carries manufacturer, model and two software
+    versions and stops. A Liebert UPS and a Liebert CRAH both answer through an
+    IS-UNITY card, which is where their serial lives.
+    """
+    from core import vendor_oids as vo
+
+    device = Device(name="UPS1-DC1-EL", device_type=device_type,
+                    vendor=Vendor.VERTIV, ip_address="10.50.3.10", id="upsid001")
+    gen = SNMPRecGenerator(output_dir="datasets/_test_serial")
+    rows = _entries_by_oid(gen._vendor_ident_entries(device))
+
+    oid = vo.LIEBERT["agentIdentSerial"] + ".0"
+    assert rows.get(oid) == device_serial(device)
+
+
+def test_gear_that_cannot_report_a_serial_does_not_pretend_to():
+    """The deliberate half of this, pinned so nobody 'fixes' it.
+
+    An ASCO 7000 transfer switch, an Eaton Magnum DS breaker and a CAT EMCP 4 are
+    Modbus (and CAN) controllers; neither Modbus nor BACnet defines a serial
+    register. A serial for those reaches a DCIM off the delivery note, which is
+    what the reservation-attach path is for. Publishing a fake one would teach a
+    collector that a serial is always discoverable - and that is the one lesson a
+    simulator must not teach, because the whole commissioning flow is built around
+    it sometimes not being.
+    """
+    gen = SNMPRecGenerator(output_dir="datasets/_test_serial")
+    for device_type, vendor in [(DeviceType.ATS, Vendor.ASCO),
+                                (DeviceType.SWITCHGEAR, Vendor.EATON),
+                                (DeviceType.GENERATOR, Vendor.CATERPILLAR),
+                                (DeviceType.SERVER, Vendor.DELL)]:
+        device = Device(name=f"X-{device_type.value}", device_type=device_type,
+                        vendor=vendor, ip_address="10.50.4.10", id="xid00001")
+        assert gen._vendor_ident_entries(device) == [], device_type.value

@@ -18,7 +18,7 @@ from typing import Optional, TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal
 
-from core.device_manager import Device, DeviceType
+from core.device_manager import Device, DeviceType, device_serial
 from core.trap_definitions import (
     TrapType, TrapDefinition, TRAP_DEFINITIONS, OID_TO_TRAP_TYPE,
     # sensor trap types imported explicitly for varbind dispatch
@@ -731,7 +731,7 @@ class TrapEngine(QObject):
                          TrapType.PDU_BREAKER_TRIPPED: 4}.get(trap_type, 2)
                 vbs = [
                     _s(APC["identName"], device.name),
-                    _s(APC["identSerial"], f"SN-{device.name}"),
+                    _s(APC["identSerial"], device_serial(device)),
                     _g(APC["loadStatusLoad"], amps10),
                     _i(APC["loadStatusState"], state),
                     _s(APC["trapArgs"], f"{trap_type.value} on {device.name}"),
@@ -849,7 +849,7 @@ class TrapEngine(QObject):
                 value = 0
             vbs = [
                 _s(RARITAN["pduName"], device.name),
-                _s(RARITAN["pduSerial"], f"SN-{device.name}"),
+                _s(RARITAN["pduSerial"], device_serial(device)),
                 _i(RARITAN["typeOfSensor"], sensor),
                 _g(RARITAN[f"{table}Value"], value),
                 _i(RARITAN[f"{table}State"], state),
@@ -943,7 +943,7 @@ class TrapEngine(QObject):
                     text = f"{text} ({_fmt(mv)})"
                 return [
                     _s(LENOVO["spTxtId"], f"{device.name}: {text}"),
-                    _s(LENOVO["sysSern"], f"SN-{device.name}"),
+                    _s(LENOVO["sysSern"], device_serial(device)),
                 ]
             return None
 

@@ -143,7 +143,7 @@ from core import dataset_fingerprint as _fingerprint
 from core import vendor_oids as _vendor_oids
 from core import lifecycle as _lc
 from core.device_manager import (Device, DeviceType, Vendor, SERVER_OS_INFO,
-                                 device_serial)
+                                 device_serial, probe_channels)
 from core.lldp_generator import (generate_lldp_entries, generate_cdp_entries,
                                   LLDP_BASE, CDP_BASE)
 from core.mac_table_generator import generate_mac_table, generate_stp_entries
@@ -518,6 +518,8 @@ class SNMPRecGenerator:
                          DeviceType.LOAD_BALANCER, DeviceType.OOB_SWITCH)
         if device.device_type in _ENTITY_TYPES:
             entries += self._entity_entries(device)
+
+        entries += self._vendor_ident_entries(device)
 
         neighbor_tuples = self._build_neighbor_tuples(device, topology)
         _NETWORK_TYPES = (DeviceType.ROUTER, DeviceType.SWITCH,
@@ -1522,6 +1524,54 @@ class SNMPRecGenerator:
     #  System OIDs                                                         #
     # ------------------------------------------------------------------ #
 
+    # Vendor trees that carry a chassis serial for gear which implements no
+    # ENTITY-MIB. Keyed on (vendor, device_type) because the answer is a property
+    # of the management card, not of the vendor: a Vertiv Liebert UPS and CRAH both
+    # answer through an IS-UNITY card and both report a serial, while Vertiv's
+    # Geist rPDUs use a different tree entirely and are handled in _pdu_entries.
+    #
+    # Deliberately short, and it is meant to stay short. A serial reaches a DCIM
+    # over SNMP only where real hardware actually publishes one, and most of this
+    # estate does not:
+    #
+    #   servers        - net-snmp implements no ENTITY-MIB and no serial OID. Real
+    #                    server serials come from Redfish `SerialNumber`, IPMI FRU
+    #                    or dmidecode via the host agent, and this simulator serves
+    #                    them over Redfish for exactly that reason. Only a vendor
+    #                    host agent (Dell OMSA, HP Insight) exposes one over SNMP.
+    #   ATS/switchgear/MCC/MPP/generator
+    #                  - ASCO 7000, Eaton Magnum DS and CAT EMCP 4 are Modbus (and
+    #                    CAN) controllers. Neither Modbus nor BACnet defines a
+    #                    serial register, so their serial is a nameplate fact that
+    #                    reaches a DCIM off the delivery note, not off the wire.
+    #   CDU/chiller/pump/tower/valve
+    #                  - same argument, and the reason those types generate no
+    #                    SNMP file at all.
+    #   sensors        - an AP9335T or DPX2 probe has no agent of its own; it is
+    #                    read through the strip it is plugged into.
+    #   energy monitors- Verdigris EV2 reports through the vendor's cloud API.
+    #
+    # Inventing a serial for those would teach a collector that a serial is always
+    # discoverable, which is the one lesson a simulator must not teach: the whole
+    # point of the reservation-attach path is that some serials only ever arrive
+    # by hand.
+    _VENDOR_IDENT_SERIAL = {
+        (Vendor.VERTIV, DeviceType.UPS):  _vendor_oids.LIEBERT["agentIdentSerial"],
+        (Vendor.VERTIV, DeviceType.CRAH): _vendor_oids.LIEBERT["agentIdentSerial"],
+    }
+
+    def _vendor_ident_entries(self, device: Device) -> List[OidEntry]:
+        """The chassis serial at the vendor's identity OID, where one exists.
+
+        Same string as ENTITY-MIB and Redfish serve, from device_serial - a DCIM
+        that reads a UPS over SNMP and a server over Redfish has to be able to
+        treat both answers as the same kind of key.
+        """
+        oid = self._VENDOR_IDENT_SERIAL.get((device.vendor, device.device_type))
+        if not oid:
+            return []
+        return [_oid_entry(f"{oid}.0", "4", device_serial(device))]
+
     @staticmethod
     def _entity_serial(device: Device) -> str:
         """The device's chassis serial, from the one place that owns it.
@@ -1876,7 +1926,10 @@ class SNMPRecGenerator:
                 _oid_entry(f"{A['rpdu2BankCurrent']}.1",  "2", "100"),
                 _oid_entry(f"{A['rpdu2OutletState']}.1",  "2", "1"),    # on
                 _oid_entry(f"{A['identName']}.0",         "4", device.name),
-                _oid_entry(f"{A['identSerial']}.0",       "4", f"SN-{device.name}"),
+                # device_serial, NOT a name-derived string. The strip's serial has
+                # to be the same string every plane reports, or a DCIM matching on
+                # serial files one strip twice - see device_serial's docstring.
+                _oid_entry(f"{A['identSerial']}.0",       "4", device_serial(device)),
             ]
             # rPDU2SensorTempHumidityStatusTable: one row per fitted probe.
             # An AP9335T carries a thermistor only, so it publishes no
@@ -1913,7 +1966,7 @@ class SNMPRecGenerator:
                 _oid_entry(f"{R['ocpState']}.1.1.{ST['trip']}",       "2",  str(SS["closed"])),
                 _oid_entry(f"{R['pduName']}.1",   "4", device.name),
                 _oid_entry(f"{R['pduModel']}.1",  "4", getattr(device, "model_name", "") or "PX3"),
-                _oid_entry(f"{R['pduSerial']}.1", "4", f"SN-{device.name}"),
+                _oid_entry(f"{R['pduSerial']}.1", "4", device_serial(device)),
             ]
             return rows
         entries += [
@@ -2964,20 +3017,40 @@ class SNMPRecGenerator:
             ]
 
         elif device.vendor == Vendor.APC:
-            # APC NetBotz 250 (APC-NETBOTZ-MIB enterprise 318.1.1.10.4.2.2.1)
-            # Three rows: 1=temperature, 2=humidity, 3=airflow
+            # APC NetBotz 250 (APC-NETBOTZ-MIB enterprise 318.1.1.10.4.2.2.1),
+            # one row per channel the FITTED PROBE actually has.
+            #
+            # It used to publish temperature, humidity and airflow on every APC
+            # sensor regardless of model, so an AP9335T - a thermistor, nothing else
+            # - reported a humidity reading. The same probe read through its host
+            # strip already published no humidity column (see _attached_probes), so
+            # one machine gave two different answers about what it can measure
+            # depending on which agent you asked, and a DCIM polling both had no way
+            # to tell which was real.
+            #
+            # probe_channels is the one place that knows, and it is what the strip
+            # side reads too.
             b = _APC_NETBOTZ
-            entries += [
-                _oid_entry(f"{b}.2.1",  "4", "Temperature"),        # label
-                _oid_entry(f"{b}.10.1", "2", str(inlet_t10)),       # value ×10 °C
-                _oid_entry(f"{b}.11.1", "2", "4"),                  # state=normal
-                _oid_entry(f"{b}.2.2",  "4", "Humidity"),           # label
-                _oid_entry(f"{b}.10.2", "2", str(humid_t10 // 10)), # value % (integer)
-                _oid_entry(f"{b}.11.2", "2", "4"),                  # state=normal
-                _oid_entry(f"{b}.2.3",  "4", "Airflow"),            # label
-                _oid_entry(f"{b}.10.3", "2", str(airflow_t10)),     # value ×10 m/s
-                _oid_entry(f"{b}.11.3", "2", "4"),                  # state=normal
+            channels = probe_channels(device.model_name)
+            rows = [
+                ("inlet",    "Temperature", inlet_t10),
+                ("humidity", "Humidity",    humid_t10 // 10),
+                # An airflow channel is a separate transducer (AP9335 has none); it
+                # stays behind the same gate rather than being published always.
+                ("airflow",  "Airflow",     airflow_t10),
             ]
+            # Indexed in the order the rows appear, the way a real sensor table is:
+            # a walk must not leave a hole where an absent channel would have sat.
+            i = 0
+            for channel, label, value in rows:
+                if channel not in channels:
+                    continue
+                i += 1
+                entries += [
+                    _oid_entry(f"{b}.2.{i}",  "4", label),
+                    _oid_entry(f"{b}.10.{i}", "2", str(value)),
+                    _oid_entry(f"{b}.11.{i}", "2", "4"),   # state=normal
+                ]
 
         return entries
 
