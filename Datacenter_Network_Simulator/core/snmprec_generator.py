@@ -143,7 +143,7 @@ from core import dataset_fingerprint as _fingerprint
 from core import vendor_oids as _vendor_oids
 from core import lifecycle as _lc
 from core.device_manager import (Device, DeviceType, Vendor, SERVER_OS_INFO,
-                                 device_serial, probe_channels)
+                                 bmc_sysoid, device_serial, probe_channels)
 from core.lldp_generator import (generate_lldp_entries, generate_cdp_entries,
                                   LLDP_BASE, CDP_BASE)
 from core.mac_table_generator import generate_mac_table, generate_stp_entries
@@ -665,7 +665,13 @@ class SNMPRecGenerator:
             _oid_entry(f"{SYSTEM_BASE}.1.0", "4",
                        f"{bmc_name} {fw} — {device.vendor.value} "
                        f"{device.model_name or 'Server'} BMC"),
-            _oid_entry(f"{SYSTEM_BASE}.2.0", "6", BMC_BASE),
+            # The CONTROLLER's product OID, not this simulator's placeholder
+            # enterprise. It used to serve BMC_BASE (99999.26), so the leaf a
+            # discovery tool reads first named no vendor at all - on the one
+            # agent a management-plane sweep actually reaches. The metric
+            # subtree below stays under 99999.26: that is modelled DATA, and
+            # only the identity leaf has to name a real product.
+            _oid_entry(f"{SYSTEM_BASE}.2.0", "6", bmc_sysoid(device)),
             _oid_entry(f"{SYSTEM_BASE}.3.0", "67", str(uptime_cs)),
             _oid_entry(f"{SYSTEM_BASE}.4.0", "4",
                        device.sys_contact or f"admin@{device.name.lower()}.example.com"),

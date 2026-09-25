@@ -805,6 +805,60 @@ PROBE_CHANNELS = {
 PROBE_DEFAULT_CHANNELS = ("inlet", "humidity")
 
 
+#: sysObjectID for the agent running ON the host, keyed on the OS family, because
+#: that is what decides it. A Linux box answers as net-snmp and a Windows one as the
+#: Microsoft SNMP service whatever badge is on the bezel - the chassis vendor does not
+#: appear on this leaf at all.
+#:
+#: Servers used to inherit VENDOR_SYSOID, which put 82 Dell hosts on Dell's NETWORKING
+#: arc (674.10895, PowerConnect) and 49 HPE hosts on the ProCurve SWITCH arc
+#: (11.2.3.7.11). A discovery tool keying on sysObjectID would have read a rack of
+#: servers as switches.
+OS_AGENT_SYSOID = {
+    "linux":   "1.3.6.1.4.1.8072.3.2.10",       # net-snmp, Linux
+    "windows": "1.3.6.1.4.1.311.1.1.3.1.2",     # Microsoft SNMP service
+    "esxi":    "1.3.6.1.4.1.6876",              # VMware
+}
+
+#: sysObjectID for the BMC, keyed on the vendor, because a management controller IS a
+#: vendor product: an iDRAC is Dell's, an iLO is HP's.
+#:
+#: UNVERIFIED sub-arcs. The enterprise numbers are certain - 674 Dell, 232 HP servers
+#: (not 11, which is HP networking), 19046 Lenovo, 10876 Supermicro, 2 IBM - and the
+#: subtrees below them are the conventional management arcs rather than datasheet
+#: values. Getting the enterprise right is what stops a sweep reading the wrong vendor.
+BMC_SYSOID = {
+    "Dell Technologies":         "1.3.6.1.4.1.674.10892.5",   # iDRAC / RAC
+    "Hewlett Packard Enterprise": "1.3.6.1.4.1.232.9.4",      # iLO / cpqSm2
+    "Lenovo":                    "1.3.6.1.4.1.19046.11.1",    # XClarity Controller
+    "Supermicro":                "1.3.6.1.4.1.10876.2.1",
+    "IBM":                       "1.3.6.1.4.1.2.6.190",       # IMM
+}
+
+
+def os_agent_sysoid(os_name: str) -> str:
+    """Which agent answers on the host, from the OS family it runs."""
+    low = str(os_name or "").lower()
+    if "windows" in low:
+        return OS_AGENT_SYSOID["windows"]
+    if "esxi" in low or "vmware" in low:
+        return OS_AGENT_SYSOID["esxi"]
+    return OS_AGENT_SYSOID["linux"]
+
+
+def bmc_sysoid(device) -> str:
+    """The management controller's own product OID.
+
+    Falls back to the chassis vendor's arc where the controller is not modelled, which
+    is still the right VENDOR even when the sub-arc is not the right product - and a
+    right vendor is most of what this leaf is read for.
+    """
+    vendor = getattr(device.vendor, "value", device.vendor)
+    if vendor in BMC_SYSOID:
+        return BMC_SYSOID[vendor]
+    return VENDOR_SYSOID.get(device.vendor, "1.3.6.1.4.1.0.0")
+
+
 def probe_channels(model_name: str) -> tuple:
     """The channels this probe model reports, in the order it takes slots."""
     return PROBE_CHANNELS.get(str(model_name or ""), PROBE_DEFAULT_CHANNELS)
@@ -1994,6 +2048,15 @@ class Device:
     def sys_oid(self) -> str:
         if self.model_name and self.model_name in MODEL_SYSOID:
             return MODEL_SYSOID[self.model_name]
+        # A server's own agent is net-snmp or the Microsoft SNMP service, not a
+        # chassis-vendor product. Inheriting VENDOR_SYSOID put Dell hosts on Dell's
+        # networking arc and HPE hosts on the ProCurve switch arc - so a sweep reading
+        # sysObjectID, which is the leaf it keys on first, saw switches.
+        #
+        # The BMC in front of the host is a different agent with a different identity;
+        # see bmc_sysoid. Two agents on one machine legitimately answer differently.
+        if self.device_type == DeviceType.SERVER:
+            return os_agent_sysoid(self.os_name)
         return VENDOR_SYSOID.get(self.vendor, "1.3.6.1.4.1.0.0")
 
     @property
