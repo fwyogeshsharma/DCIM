@@ -454,3 +454,46 @@ def test_nothing_that_answers_snmp_says_it_has_no_snmp_agent(estate):
         if _answers_snmp(d) and "no snmp agent" in d.sys_descr.lower()
     ]
     assert not offenders, "\n".join(offenders)
+
+
+# ------------------------------------------------------------ DisplayString
+
+def _is_display_string(s: str) -> bool:
+    """SNMPv2-TC DisplayString: NVT ASCII, at most 255 octets."""
+    return len(s) <= 255 and all(32 <= ord(ch) < 127 or ch in "\r\n\t" for ch in s)
+
+
+def test_every_sysdescr_is_a_display_string(estate):
+    """Found live: the Dell BMC's sysDescr carried an em dash, went out as UTF-8 and
+    net-snmp printed it as a Hex-STRING. Real firmware sends ASCII."""
+    bad = [(d.name, d.sys_descr) for d in estate if not _is_display_string(d.sys_descr)]
+    assert bad == [], bad[:5]
+
+
+def test_every_bmc_sysdescr_is_a_display_string_and_names_the_vendor_once(estate):
+    from core.snmprec_generator import bmc_sys_descr
+    for d in estate:
+        if d.device_type != DeviceType.SERVER:
+            continue
+        s = bmc_sys_descr(d)
+        assert _is_display_string(s), (d.name, s)
+        # "Dell Technologies Dell PowerEdge R760 DLC BMC" was the old reading.
+        assert "Technologies Dell" not in s and "Enterprise HPE" not in s, s
+
+
+def test_the_source_strings_are_ascii_too():
+    """The sanitiser is a backstop for names typed into the UI, not a licence for
+    the catalog to carry typography it then has to undo."""
+    from core.device_manager import MODEL_SYSDESCR, VENDOR_SYSDESCR
+    for table in (MODEL_SYSDESCR, VENDOR_SYSDESCR):
+        bad = {k: v for k, v in table.items() if not _is_display_string(v)}
+        assert bad == {}, bad
+
+
+def test_display_string_spells_typography_the_way_an_agent_would():
+    from core.device_manager import display_string
+    assert display_string("iDRAC9 6.10 — R760") == "iDRAC9 6.10 - R760"
+    assert display_string("1× temperature") == "1x temperature"
+    assert display_string("Café ‘A’") == "Cafe 'A'"
+    assert display_string("x" * 300) == "x" * 255
+    assert display_string(None) == ""

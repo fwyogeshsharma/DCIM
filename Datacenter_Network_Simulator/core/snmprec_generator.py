@@ -239,6 +239,29 @@ def _sort_oids(entries: List[OidEntry]) -> List[OidEntry]:
     return sorted(entries, key=oid_key)
 
 
+def bmc_sys_descr(device: Device) -> str:
+    """The management controller's sysDescr: product, firmware, the host it manages.
+
+    Plain ASCII - it is a DisplayString, and the em dash this used to carry went
+    out as UTF-8 and printed as a Hex-STRING. And the vendor once: model names in
+    the catalog already begin with it ("Dell PowerEdge R760 DLC"), so prefixing
+    the vendor as well read "Dell Technologies Dell PowerEdge R760 DLC BMC".
+    """
+    from core.redfish_data_generator import _bmc_branding
+    from core.device_manager import display_string
+    bmc_name, _short, fw = _bmc_branding(device.vendor.value)
+    host = device.model_name or "Server"
+    vendor = device.vendor.value
+    # Only prefixed when the model does not already say whose it is. Compared on
+    # the first word, because the vendor's legal name ("Dell Technologies",
+    # "Hewlett Packard Enterprise") is not how its model names begin.
+    first = vendor.split()[0].lower() if vendor else ""
+    if first and not host.lower().startswith(first) and not host.lower().startswith(
+            {"hewlett": "hpe", "cisco": "ucs"}.get(first, "\0")):
+        host = f"{vendor} {host}"
+    return display_string(f"{bmc_name} {fw} - {host} BMC")
+
+
 def _oid_entry(oid: str, typ: str, val: str) -> OidEntry:
     return (oid, typ, str(val))
 
@@ -654,17 +677,14 @@ class SNMPRecGenerator:
 
     def _bmc_entries(self, device: Device) -> List[OidEntry]:
         import time as _time
-        from core.redfish_data_generator import _bmc_branding, _live_watts
-        bmc_name, _short, fw = _bmc_branding(device.vendor.value)
+        from core.redfish_data_generator import _live_watts
         boot = _BMC_BOOT.setdefault(device.name, _time.time())
         uptime_cs = int((_time.time() - boot) * 100)   # BMC uptime ≠ host uptime
         off = getattr(device, "power_state", "On") == "Off"
         watts = _live_watts(device)                    # 0 while chassis Off
 
         entries = [
-            _oid_entry(f"{SYSTEM_BASE}.1.0", "4",
-                       f"{bmc_name} {fw} — {device.vendor.value} "
-                       f"{device.model_name or 'Server'} BMC"),
+            _oid_entry(f"{SYSTEM_BASE}.1.0", "4", bmc_sys_descr(device)),
             # The CONTROLLER's product OID, not this simulator's placeholder
             # enterprise. It used to serve BMC_BASE (99999.26), so the leaf a
             # discovery tool reads first named no vendor at all - on the one

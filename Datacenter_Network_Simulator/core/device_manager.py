@@ -663,9 +663,9 @@ MODEL_SYSDESCR = {
     "Dell N1148T-ON":          "Dell EMC Networking N1148T-ON, DNOS 6.5.1.9, 48-port GbE + 4-port SFP+",
     "Dell N1124T-ON":          "Dell EMC Networking N1124T-ON, DNOS 6.5.1.9, 24-port GbE + 4-port SFP+",
     # Environmental Sensors
-    "Raritan DPX2-T1H1":  "Raritan DPX2 Environmental Sensor, 1× temperature, 1× humidity, fw 3.7.0",
-    "Raritan DPX2-T3H1":  "Raritan DPX2 Environmental Sensor, 3× temperature, 1× humidity, fw 3.7.0",
-    "Raritan DPX2-CC2":   "Raritan DPX2 Contact Closure Sensor, 2× contact closure (water rope + temp probe), fw 3.7.0",
+    "Raritan DPX2-T1H1":  "Raritan DPX2 Environmental Sensor, 1x temperature, 1x humidity, fw 3.7.0",
+    "Raritan DPX2-T3H1":  "Raritan DPX2 Environmental Sensor, 3x temperature, 1x humidity, fw 3.7.0",
+    "Raritan DPX2-CC2":   "Raritan DPX2 Contact Closure Sensor, 2x contact closure (water rope + temp probe), fw 3.7.0",
     "Vertiv Geist GTHD":  "Geist Temperature/Humidity/Dewpoint Sensor, fw 4.6.0",
     "Vertiv Geist IMD-3": "Geist Intelligent Rack Monitoring Device, 3-sensor, fw 4.6.0",
     "APC NetBotz 250":    "APC NetBotz Room Monitor 250, temperature/humidity/airflow, fw 5.2.0",
@@ -844,6 +844,38 @@ def os_agent_sysoid(os_name: str) -> str:
     if "esxi" in low or "vmware" in low:
         return OS_AGENT_SYSOID["esxi"]
     return OS_AGENT_SYSOID["linux"]
+
+
+#: Typographic characters a human writes into a description, and the ASCII a
+#: management agent actually sends for each.
+_DISPLAY_ASCII = str.maketrans({
+    "\u2014": "-", "\u2013": "-", "\u2012": "-", "\u2212": "-",   # dashes, minus
+    "\u00d7": "x",                                                  # multiplication
+    "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"',   # smart quotes
+    "\u00a0": " ", "\u2009": " ", "\u202f": " ",                   # odd spaces
+    "\u2026": "...", "\u2192": "->", "\u2260": "!=",
+    "\u00b0": " deg", "\u00b5": "u", "\u00ae": "(R)", "\u2122": "(TM)",
+    "\u00a9": "(C)",
+})
+
+
+def display_string(text: str, limit: int = 255) -> str:
+    """Make `text` a legal SNMPv2-TC DisplayString: NVT ASCII, at most 255 octets.
+
+    sysDescr, sysName, sysContact and sysLocation are all DisplayString (RFC 2579),
+    and real firmware sends plain ASCII - "Integrated Lights-Out 5", "iDRAC9",
+    "Cisco IOS XE Software". A description with an em dash in it went out as UTF-8,
+    which net-snmp prints as a Hex-STRING and a strict parser can reject, so a
+    sweep reading the one field it classifies on could get bytes instead of text.
+
+    Mapped where there is an obvious ASCII spelling (an em dash is a hyphen, a
+    multiplication sign is an x), then anything left is folded to its base letter
+    or dropped - an agent never sends what it cannot encode.
+    """
+    import unicodedata
+    out = str(text or "").translate(_DISPLAY_ASCII)
+    out = unicodedata.normalize("NFKD", out).encode("ascii", "ignore").decode("ascii")
+    return out[:limit]
 
 
 def bmc_sysoid(device) -> str:
@@ -2008,6 +2040,14 @@ class Device:
 
     @property
     def sys_descr(self) -> str:
+        """sysDescr.0 as the agent serves it - always a legal DisplayString.
+
+        Also what LLDP/CDP neighbours and gNMI report about this device, so the
+        same bytes appear everywhere it is described.
+        """
+        return display_string(self._describe())
+
+    def _describe(self) -> str:
         if self.model_name and self.model_name in MODEL_SYSDESCR:
             return MODEL_SYSDESCR[self.model_name]
         if self.device_type == DeviceType.SERVER:
