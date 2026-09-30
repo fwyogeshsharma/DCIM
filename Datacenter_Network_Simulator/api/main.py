@@ -13,6 +13,7 @@ from api.auth import require_auth
 from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow, bacnet, redfish
 from api.routers import modbus
 from api.routers import events, jobs, tick, fleet, floorplan
+from api.routers import provider as provider_router
 from api.routers import auth as auth_router
 from api.routers import graph as graph_router
 
@@ -67,6 +68,11 @@ app.include_router(jobs.router, prefix="/api", dependencies=_AUTH)
 app.include_router(tick.router, prefix="/api", dependencies=_AUTH)
 app.include_router(fleet.router, prefix="/api", dependencies=_AUTH)
 app.include_router(floorplan.router, prefix="/api", dependencies=_AUTH)
+# The colo-provider mock authenticates its own way (OAuth2 client-credentials,
+# a real Equinix-style tenant's own auth) - this app's own admin bearer auth
+# must NOT gate it, or a collector could only reach it by also holding this
+# simulator's own admin session. See api/routers/provider.py's module docstring.
+app.include_router(provider_router.router, prefix="/api")
 
 
 import os as _os

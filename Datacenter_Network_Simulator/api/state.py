@@ -98,6 +98,17 @@ class AppState:
         # Trap receiver config
         self.trap_receiver_ip: str = "127.0.0.1"
         self.trap_receiver_port: int = 162
+
+        # Colo-provider mock API (docs/26 Phase S/10 on the DCIM platform
+        # side — an Equinix Smart View / API Plus shaped stand-in, so a
+        # collector's provider adapter has something real to poll in this
+        # simulator rather than only against a live tenant. No process to
+        # start/stop: it answers directly off existing device state, the
+        # same way the read-only estate/devices routers do.
+        self.provider_client_id: str = "dcim-poller"
+        self.provider_client_secret: str = "dcim-poller-dev-secret"
+        # issued bearer token -> unix expiry; see api/routers/provider.py.
+        self.provider_tokens: Dict[str, float] = {}
         self.rule_engine_enabled: bool = False
 
         # Trap history (ring buffer — last 1000)
