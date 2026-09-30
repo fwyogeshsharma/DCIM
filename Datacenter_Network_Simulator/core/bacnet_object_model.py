@@ -158,6 +158,12 @@ BVLC_RESULT             = 0x00
 BVLC_ORIGINAL_UNICAST   = 0x0A
 BVLC_ORIGINAL_BROADCAST = 0x0B
 BVLC_FORWARDED_NPDU     = 0x04
+# Annex J.5.2 - a foreign device asks to be added to the BBMD's broadcast
+# distribution table (BDT/FDT) for `ttl` seconds; see BACnetController's BBMD
+# handling in simulator/bacnet_controller.py.
+BVLC_REGISTER_FOREIGN_DEVICE = 0x05
+
+BVLC_RESULT_SUCCESS = 0x0000
 
 # ─────────────────────────────────────────────────────────────────
 #  Verdigris-specific constants
@@ -416,6 +422,13 @@ def build_bvll(npdu_data: bytes, broadcast: bool = False) -> bytes:
     func = BVLC_ORIGINAL_BROADCAST if broadcast else BVLC_ORIGINAL_UNICAST
     length = 4 + len(npdu_data)
     return bytes([BVLL_TYPE, func, length >> 8, length & 0xFF]) + npdu_data
+
+
+def build_bvlc_result(result_code: int = BVLC_RESULT_SUCCESS) -> bytes:
+    """A BVLC-Result reply (Annex J.5.2's ack to Register-Foreign-Device;
+    also the generic BVLC-level NAK). 6 bytes total: header + 2-byte code."""
+    return bytes([BVLL_TYPE, BVLC_RESULT, 0x00, 0x06,
+                  (result_code >> 8) & 0xFF, result_code & 0xFF])
 
 
 # ─────────────────────────────────────────────────────────────────

@@ -38,8 +38,8 @@ from typing import Callable, Dict, List, Optional
 from core.bacnet_object_model import (
     BACNET_PORT, OBJ_DEVICE,
     BVLL_TYPE, BVLC_ORIGINAL_UNICAST, BVLC_ORIGINAL_BROADCAST,
-    BVLC_FORWARDED_NPDU,
-    parse_bvll, parse_npdu, parse_apdu,
+    BVLC_FORWARDED_NPDU, BVLC_REGISTER_FOREIGN_DEVICE, BVLC_RESULT_SUCCESS,
+    parse_bvll, parse_npdu, parse_apdu, build_bvlc_result,
     SVC_WHO_IS, SVC_READ_PROPERTY, SVC_READ_PROPERTY_MULTIPLE,
     SVC_SUBSCRIBE_COV,
     decode_whois,
@@ -90,6 +90,21 @@ class BACnetController:
         # MS/TP trunks: router IP -> {mac: device}. These devices own no address
         # of their own; the router's IP carries them and the MAC selects one.
         self._mstp: Dict[str, Dict[int, EV2BACnetDevice]]  = {}
+
+        # BBMD (Annex J.5.2): foreign device source IP -> registration expiry
+        # (time.monotonic() seconds). A real BBMD forgets an entry the instant
+        # its TTL lapses, with no grace window — see the matching comment on
+        # the collector side, RenewForeignDeviceRegistration in dcim-platform's
+        # internal/adapters/bacnet/fdr.go.
+        self._foreign_devices: Dict[str, float] = {}
+        # device_instance values that answer a DIRECTED Who-Is normally but do
+        # NOT answer a BROADCAST one unless the requester currently holds an
+        # active foreign-device registration — the application-level stand-in
+        # for "this device sits on a subnet this collector cannot broadcast
+        # into" that this simulator's single-host networking cannot model at
+        # the OS level (docs/26 Phase S; real subnet isolation is Phase S's
+        # network-namespace item, deliberately out of scope for this pass).
+        self._fdr_gated_instances: set = set()
 
         # Per-device telemetry engines
         self._telemetry: Dict[int, EV2TelemetryEngine]     = {}
@@ -978,6 +993,10 @@ class BACnetController:
         if bvlc_func is None:
             return
 
+        if bvlc_func == BVLC_REGISTER_FOREIGN_DEVICE:
+            self._handle_register_foreign_device(npdu_data, src_addr)
+            return
+
         from core.bacnet_object_model import parse_npdu_routed
         _routed = parse_npdu_routed(npdu_data)
         if _routed is None:
@@ -1027,10 +1046,18 @@ class BACnetController:
                         pass
                 else:
                     # Broadcast Who-Is on wildcard socket — all matching
-                    # devices reply (simulator convenience behaviour).
+                    # devices reply (simulator convenience behaviour), EXCEPT
+                    # an FDR-gated device: it only answers a requester that
+                    # currently holds an active foreign-device registration -
+                    # see _foreign_devices / _fdr_gated_instances above.
+                    requester_registered = self._is_registered_foreign_device(
+                        src_addr[0] if src_addr else "")
                     with self._dev_lock:
                         _devs = list(self._devices.values())
+                        _gated = set(self._fdr_gated_instances)
                     for dev in _devs:
+                        if dev.device_instance in _gated and not requester_registered:
+                            continue
                         try:
                             dev.handle_whois(low, high, src_addr)
                         except Exception:
@@ -1065,6 +1092,61 @@ class BACnetController:
                                     build_reject(invoke_id), src_addr)
                         except Exception:
                             pass
+
+    # ── BBMD / Foreign Device Registration (Annex J.5.2) ────────────────────
+
+    def _handle_register_foreign_device(self, payload: bytes, src_addr) -> None:
+        """Register `src_addr` for `ttl` seconds and ack with a BVLC-Result.
+
+        Real time.monotonic(), not time.time(): a foreign device's
+        registration must not appear to jump forward or back if the host
+        clock steps, which would make a TTL either expire early or never.
+        """
+        ok = len(payload) >= 2 and src_addr
+        if ok:
+            ttl = (payload[0] << 8) | payload[1]
+            with self._dev_lock:
+                self._foreign_devices[src_addr[0]] = time.monotonic() + max(ttl, 0)
+            self._log(f"[BACnet BBMD] registered foreign device {src_addr[0]} "
+                      f"for {ttl}s")
+        if self._recv_sock:
+            try:
+                self._recv_sock.sendto(build_bvlc_result(BVLC_RESULT_SUCCESS
+                                                          if ok else 0x0010),
+                                       src_addr)
+            except OSError:
+                pass
+
+    def _is_registered_foreign_device(self, ip: str) -> bool:
+        if not ip:
+            return False
+        with self._dev_lock:
+            expiry = self._foreign_devices.get(ip)
+        return expiry is not None and expiry > time.monotonic()
+
+    def foreign_devices(self) -> Dict[str, float]:
+        """Currently-registered foreign devices and their remaining TTL in
+        seconds - for the status endpoint. Expired entries are dropped here
+        rather than swept on a timer: nothing needs the table's size bounded
+        faster than the next status poll or FDR-gated Who-Is checks it."""
+        now = time.monotonic()
+        with self._dev_lock:
+            live = {ip: exp for ip, exp in self._foreign_devices.items() if exp > now}
+            self._foreign_devices = live
+            return {ip: round(exp - now, 1) for ip, exp in live.items()}
+
+    def set_fdr_gated_instances(self, instances) -> None:
+        """Replace the set of device_instance values that require an active
+        foreign-device registration to answer a BROADCAST Who-Is. A directed
+        Who-Is (the device_instance already known) is unaffected - FDR gates
+        discovery, not reachability, the same split the real Annex J
+        mechanism draws."""
+        with self._dev_lock:
+            self._fdr_gated_instances = set(int(i) for i in instances)
+
+    def fdr_gated_instances(self):
+        with self._dev_lock:
+            return sorted(self._fdr_gated_instances)
 
     def _route_confirmed(
         self,
