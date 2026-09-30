@@ -86,6 +86,23 @@ class TrapReceiverRequest(BaseModel):
     port: int = Field(162, ge=1, le=65535)
 
 
+class TrapDestinationEntry(BaseModel):
+    ip: str = Field("127.0.0.1")
+    port: int = Field(162, ge=1, le=65535)
+
+
+class TrapDestinationsRequest(BaseModel):
+    """Per-device and per-plane trap destination overrides.
+
+    ``devices`` keys on the device's own name; ``planes`` keys on a CIDR
+    string (e.g. ``"10.51.0.0/16"``) matched against the firing device's own
+    source address, first match wins. Both default empty - unset overrides
+    fall back to the single global receiver from ``POST /trap-receiver``.
+    """
+    devices: Dict[str, TrapDestinationEntry] = Field(default_factory=dict)
+    planes: Dict[str, TrapDestinationEntry] = Field(default_factory=dict)
+
+
 class SnmpStartRequest(BaseModel):
     port: int = Field(161, ge=1, le=65535, description="UDP port for snmpsim to listen on")
     mgmt_port: int = Field(1161, ge=1, le=65535, description="UDP port for SNMP SET management agent")
@@ -472,3 +489,16 @@ class EditDeviceRequest(BaseModel):
     rack_num: Optional[int] = None
     rack_unit: Optional[int] = None
     sys_location: Optional[str] = None
+
+
+# ── Colo provider mock (docs/26 Phase 10/S) ──────────────────────────────────
+
+class ProviderCredentialsRequest(BaseModel):
+    client_id: str = Field("dcim-poller")
+    client_secret: str = Field("dcim-poller-dev-secret")
+
+
+class ProviderTelemetryResponse(BaseModel):
+    power_w: float
+    temperature_c: float
+    humidity_pct: float

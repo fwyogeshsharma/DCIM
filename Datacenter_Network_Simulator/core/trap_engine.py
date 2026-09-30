@@ -11,6 +11,7 @@ is never blocked.  Emits Qt signals for the UI to consume.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import random
 import threading
 from datetime import datetime
@@ -264,6 +265,27 @@ class TrapEngine(QObject):
         self._loop:   Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
 
+        # Per-device and per-plane trap destination overrides (docs/26 Phase S
+        # on the DCIM platform side; see set_device_destinations/
+        # set_plane_destinations). Real agents commonly ship with ONE trap
+        # sink and a real NMS points a whole plane at one receiver (or a
+        # floating VIP - the Phase 6 HA case this exists to exercise);
+        # per-device overrides are the rarer but still real case of a
+        # supervisor with its own snmpTargetAddrTable entry. Device wins over
+        # plane, plane wins over the single global receiver_ip/port above.
+        # Restored from saved settings for the same reason receiver_ip/port
+        # is: a restart must not silently drop attribution back to one
+        # receiver.
+        self._device_dest: dict[str, tuple[str, int]] = {
+            k: (v[0], int(v[1])) for k, v in
+            (sim_settings.get("trap_device_destinations", {}) or {}).items()
+        }
+        self._plane_dest: list[tuple[ipaddress.IPv4Network, tuple[str, int]]] = [
+            (ipaddress.ip_network(cidr, strict=False), (ip, int(port)))
+            for cidr, ip, port in
+            (sim_settings.get("trap_plane_destinations", []) or [])
+        ]
+
         # Rule engine integration
         self._rule_engine: Optional["RuleEngine"] = None
         self._device_manager: Optional["DeviceManager"] = None
@@ -275,7 +297,7 @@ class TrapEngine(QObject):
         # is incremental. All of these are touched ONLY from the trap loop thread.
         self._snmp_engine = None
         self._dispatcher  = None
-        self._targets: dict[str, str] = {}   # community → pysnmp target-address name
+        self._targets: dict[tuple[str, str, int], str] = {}   # (community, ip, port) → pysnmp target-address name
         self._engine_lock: Optional[asyncio.Lock] = None
         self._engine_epoch = 0    # bumped by configure() to force a rebuild
         self._built_epoch  = -1
@@ -301,6 +323,60 @@ class TrapEngine(QObject):
     @property
     def receiver_port(self) -> int:
         return self._receiver_port
+
+    def set_device_destinations(self, devices: dict[str, tuple[str, int]]):
+        """Replace the whole per-device trap-destination override set.
+
+        A bulk replace, not a merge - the same idempotent-PUT-shaped contract
+        the web UI's other bulk-config endpoints use, so a client that reads
+        the current set, edits it, and posts it back cannot leave an entry it
+        never intended to keep.
+        """
+        self._device_dest = {name: (str(ip), int(port))
+                             for name, (ip, port) in devices.items()}
+        sim_settings.set_many({"trap_device_destinations":
+                               {k: list(v) for k, v in self._device_dest.items()}})
+
+    def set_plane_destinations(self, planes: list[tuple[str, str, int]]):
+        """Replace the whole per-plane override set: (cidr, ip, port) triples.
+
+        A plane is matched by the FIRING DEVICE's own source address - the
+        same address that already stands in for its SNMPv2c community on the
+        poll side - against these CIDRs, first match wins. This is the
+        VIP-shaped path: point 10.51.0.0/16 (a site's IT-OOB plane, this
+        project's own mgmt-plane numbering) at that plane's collector pool's
+        floating IP, and every device on it fails over with the VIP with no
+        per-device edits.
+        """
+        self._plane_dest = [(ipaddress.ip_network(cidr, strict=False), (str(ip), int(port)))
+                            for cidr, ip, port in planes]
+        sim_settings.set_many({"trap_plane_destinations":
+                               [[str(net), ip, port] for net, (ip, port) in self._plane_dest]})
+
+    @property
+    def device_destinations(self) -> dict[str, tuple[str, int]]:
+        return dict(self._device_dest)
+
+    @property
+    def plane_destinations(self) -> list[tuple[str, str, int]]:
+        return [(str(net), ip, port) for net, (ip, port) in self._plane_dest]
+
+    def resolve_destination(self, device: Device, source_ip: str) -> tuple[str, int]:
+        """Where THIS device's traps go: device override, then plane override
+        (first CIDR match), then the single global receiver.
+        """
+        override = self._device_dest.get(device.name)
+        if override:
+            return override
+        try:
+            addr = ipaddress.ip_address(source_ip)
+        except ValueError:
+            addr = None
+        if addr is not None:
+            for net, dest in self._plane_dest:
+                if addr in net:
+                    return dest
+        return (self._receiver_ip, self._receiver_port)
 
     def set_rule_engine(self, engine: "RuleEngine", device_manager: "DeviceManager"):
         """Attach a rule engine and device manager for rule-driven trap dispatch."""
@@ -453,13 +529,18 @@ class TrapEngine(QObject):
         self._dispatcher  = None
         self._targets     = {}
 
-    async def _ensure_target(self, community: str) -> str:
-        """Return the pysnmp target-address name for `community`, building the
-        shared engine/dispatcher/transport on first use.
+    async def _ensure_target(self, community: str, ip: str, port: int) -> str:
+        """Return the pysnmp target-address name for (`community`, `ip`, `port`),
+        building the shared engine/dispatcher/transport on first use.
 
         The trap source IP doubles as the v1 community (same convention as the
-        poll side), so one target is registered per distinct source IP — bounded
-        by device count, and far cheaper than a fresh SnmpEngine per trap.
+        poll side), so one target is registered per distinct (source IP,
+        destination) pair — bounded by device count times the small number of
+        distinct destinations a topology actually uses, and far cheaper than a
+        fresh SnmpEngine per trap. Keyed on the destination too, not just the
+        community: two devices sharing nothing else can still route to two
+        different receivers once a device or plane override is set, and a
+        target address is destination-specific in pysnmp's own model.
         """
         from pysnmp.entity.engine import SnmpEngine
         from pysnmp.entity import config as snmp_config
@@ -486,7 +567,8 @@ class TrapEngine(QObject):
                 self._dispatcher  = dispatcher
                 self._targets     = {}
 
-            name = self._targets.get(community)
+            key = (community, ip, port)
+            name = self._targets.get(key)
             if name is None:
                 idx = len(self._targets)
                 sec, params, addr = f'tc{idx}', f'tp{idx}', f'tt{idx}'
@@ -496,11 +578,11 @@ class TrapEngine(QObject):
                 )
                 snmp_config.add_target_address(
                     self._snmp_engine, addr, udp_mod.DOMAIN_NAME,
-                    (self._receiver_ip, self._receiver_port),
+                    (ip, port),
                     params, tagList='trap-tag',
                     timeout=100, retryCount=0,
                 )
-                self._targets[community] = addr
+                self._targets[key] = addr
                 name = addr
             return name
 
@@ -517,10 +599,14 @@ class TrapEngine(QObject):
             from pyasn1.type import univ
 
             # Community mirrors the firing agent's IP (server OS → prod IP,
-            # BMC → mgmt IP) — same convention as the poll side.
+            # BMC → mgmt IP) — same convention as the poll side. It also IS
+            # the address a device- or plane-destination override matches
+            # against: the same "which interface is actually sending this"
+            # signal, reused rather than recomputed.
             community = (_trap_source_ip(device, trap_type)
                          or device.snmp_community)
-            target = await self._ensure_target(community)
+            dest_ip, dest_port = self.resolve_destination(device, community)
+            target = await self._ensure_target(community, dest_ip, dest_port)
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -580,7 +666,8 @@ class TrapEngine(QObject):
 
             # Raw OIDs are rule-driven → always the OS/NOS agent, never BMC.
             community = _trap_source_ip(device, None) or device.snmp_community
-            target = await self._ensure_target(community)
+            dest_ip, dest_port = self.resolve_destination(device, community)
+            target = await self._ensure_target(community, dest_ip, dest_port)
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))

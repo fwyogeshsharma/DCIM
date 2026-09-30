@@ -13,6 +13,8 @@ from api.state import AppState
 from api.routers._bind_guard import require_bound
 from api.models.schemas import (
     TrapReceiverRequest,
+    TrapDestinationEntry,
+    TrapDestinationsRequest,
     SnmpStartRequest,
     SnmpStatusResponse,
     JobResponse,
@@ -389,6 +391,41 @@ def set_trap_receiver(req: TrapReceiverRequest):
         s.trap_engine.configure(req.ip, req.port)
     s.notify_ui("sync_rules")
     return OkResponse(message=f"Trap receiver set to {req.ip}:{req.port}")
+
+
+@router.post("/trap-destinations", response_model=OkResponse)
+def set_trap_destinations(req: TrapDestinationsRequest):
+    """Replace the per-device and per-plane trap destination overrides.
+
+    A bulk PUT-shaped replace of both sets at once - a client that only wants
+    to touch one of them must still send the other's current value, read back
+    from GET /trap-destinations first, so a partial POST can never silently
+    drop overrides it did not mean to touch.
+    """
+    s = _state()
+    if not s.trap_engine:
+        raise HTTPException(400, "SNMP not started — trap engine not available")
+    s.trap_engine.set_device_destinations(
+        {name: (e.ip, e.port) for name, e in req.devices.items()})
+    s.trap_engine.set_plane_destinations(
+        [(cidr, e.ip, e.port) for cidr, e in req.planes.items()])
+    s.notify_ui("sync_rules")
+    return OkResponse(
+        message=f"{len(req.devices)} device and {len(req.planes)} plane "
+                f"trap destination overrides set")
+
+
+@router.get("/trap-destinations", response_model=TrapDestinationsRequest)
+def get_trap_destinations():
+    s = _state()
+    if not s.trap_engine:
+        return TrapDestinationsRequest()
+    return TrapDestinationsRequest(
+        devices={name: TrapDestinationEntry(ip=ip, port=port)
+                for name, (ip, port) in s.trap_engine.device_destinations.items()},
+        planes={cidr: TrapDestinationEntry(ip=ip, port=port)
+               for cidr, ip, port in s.trap_engine.plane_destinations},
+    )
 
 
 @router.get("/jobs/{job_id}", response_model=JobStatusResponse)
