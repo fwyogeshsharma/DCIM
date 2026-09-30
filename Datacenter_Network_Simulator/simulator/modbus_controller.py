@@ -67,6 +67,12 @@ _MAX_PDU = 253
 # Vertiv/Schneider cards typically cap at 4–8; exceeding it gets you refused.
 MAX_CONNS_PER_DEVICE = 8
 
+# A serial gateway is different hardware serving a different role: it forwards
+# TCP masters onto one shared RS-485 trunk rather than answering from its own
+# register set, and vendors size it for more simultaneous masters than a power
+# card's own embedded comm chip. Moxa's MGate line commonly advertises 16.
+MAX_CONNS_PER_GATEWAY = 16
+
 # RS-485 trunk timing behind a gateway. At 19200 baud a request/response pair of
 # ~20 registers is roughly 40–60 ms on the wire, and the gateway serialises the
 # whole trunk — which is why an 18-slave trunk cannot be polled in under a couple
@@ -314,7 +320,8 @@ class ModbusController:
         local_ip = conn.getsockname()[0]
 
         with self._dev_lock:
-            known = local_ip in self._by_ip or local_ip in self._gateways
+            is_gateway = local_ip in self._gateways
+            known = local_ip in self._by_ip or is_gateway
         if not known:
             # The listener is on 0.0.0.0, so it also answers on the host's own
             # LAN address. Nothing is bound there — close rather than pretend.
@@ -325,7 +332,8 @@ class ModbusController:
             self.stats["refused"] += 1
             return
 
-        if self._conn_count.get(local_ip, 0) >= MAX_CONNS_PER_DEVICE:
+        limit = MAX_CONNS_PER_GATEWAY if is_gateway else MAX_CONNS_PER_DEVICE
+        if self._conn_count.get(local_ip, 0) >= limit:
             try:
                 conn.close()
             except OSError:

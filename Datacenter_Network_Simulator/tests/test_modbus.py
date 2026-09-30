@@ -388,6 +388,59 @@ def test_rs485_trunk_serialises_transactions(trunk):
     assert time.monotonic() - t0 >= 0.25
 
 
+def test_gateway_accepts_more_concurrent_masters_than_a_device(trunk):
+    """A serial gateway (Moxa MGate-class, 16 masters) is sized differently
+    from the power card behind the plain `server` fixture (Vertiv/Schneider-
+    class, 8) - same enforcement path, a higher ceiling for a different role."""
+    from simulator.modbus_controller import MAX_CONNS_PER_GATEWAY
+    ctrl, c = trunk
+    socks = []
+    try:
+        for _ in range(MAX_CONNS_PER_GATEWAY):
+            s = socket.create_connection((HOST, c.port), timeout=5)
+            socks.append(s)
+        time.sleep(0.05)  # let the accept loop register every connection
+        assert ctrl._conn_count.get(HOST) == MAX_CONNS_PER_GATEWAY
+
+        refused = socket.create_connection((HOST, c.port), timeout=5)
+        socks.append(refused)
+        # The controller closes a refused connection rather than replying -
+        # recv returns b"" once the peer has actually closed.
+        refused.settimeout(2)
+        assert refused.recv(1) == b""
+    finally:
+        for s in socks:
+            try:
+                s.close()
+            except OSError:
+                pass
+
+
+def test_device_connection_limit_is_unchanged_by_the_gateway_ceiling(server):
+    """The plain, non-gateway fixture must still cap at the original device
+    limit - the gateway ceiling is additive, not a blanket raise."""
+    from simulator.modbus_controller import MAX_CONNS_PER_DEVICE
+    ctrl, c = server
+    socks = []
+    try:
+        for _ in range(MAX_CONNS_PER_DEVICE):
+            s = socket.create_connection((HOST, c.port), timeout=5)
+            socks.append(s)
+        time.sleep(0.05)
+        assert ctrl._conn_count.get(HOST) == MAX_CONNS_PER_DEVICE
+
+        refused = socket.create_connection((HOST, c.port), timeout=5)
+        socks.append(refused)
+        refused.settimeout(2)
+        assert refused.recv(1) == b""
+    finally:
+        for s in socks:
+            try:
+                s.close()
+            except OSError:
+                pass
+
+
 def test_an_ip_is_a_device_or_a_gateway_never_both():
     ctrl = ModbusController()
     port = _free_port()
