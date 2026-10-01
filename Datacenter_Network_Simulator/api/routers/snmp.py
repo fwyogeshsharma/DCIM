@@ -407,12 +407,13 @@ def set_trap_destinations(req: TrapDestinationsRequest):
         raise HTTPException(400, "SNMP not started — trap engine not available")
     s.trap_engine.set_device_destinations(
         {name: (e.ip, e.port) for name, e in req.devices.items()})
-    s.trap_engine.set_plane_destinations(
-        [(cidr, e.ip, e.port) for cidr, e in req.planes.items()])
+    triples = [(cidr, e.ip, e.port) for cidr, val in req.planes.items()
+               for e in (val if isinstance(val, list) else [val])]
+    s.trap_engine.set_plane_destinations(triples)
     s.notify_ui("sync_rules")
     return OkResponse(
         message=f"{len(req.devices)} device and {len(req.planes)} plane "
-                f"trap destination overrides set")
+                f"trap destination overrides set ({len(triples)} plane receivers)")
 
 
 @router.get("/trap-destinations", response_model=TrapDestinationsRequest)
@@ -423,9 +424,17 @@ def get_trap_destinations():
     return TrapDestinationsRequest(
         devices={name: TrapDestinationEntry(ip=ip, port=port)
                 for name, (ip, port) in s.trap_engine.device_destinations.items()},
-        planes={cidr: TrapDestinationEntry(ip=ip, port=port)
-               for cidr, ip, port in s.trap_engine.plane_destinations},
+        planes=_planes_out(s.trap_engine.plane_destinations),
     )
+
+
+def _planes_out(triples):
+    """A plane with one receiver reads back as one entry, exactly as before
+    multi-receiver planes existed; a plane with several reads back as a list."""
+    grouped: dict = {}
+    for cidr, ip, port in triples:
+        grouped.setdefault(cidr, []).append(TrapDestinationEntry(ip=ip, port=port))
+    return {cidr: (v[0] if len(v) == 1 else v) for cidr, v in grouped.items()}
 
 
 @router.get("/jobs/{job_id}", response_model=JobStatusResponse)

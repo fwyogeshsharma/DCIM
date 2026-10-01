@@ -1,7 +1,7 @@
 """Pydantic request/response schemas for the REST API."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
@@ -100,7 +100,10 @@ class TrapDestinationsRequest(BaseModel):
     fall back to the single global receiver from ``POST /trap-receiver``.
     """
     devices: Dict[str, TrapDestinationEntry] = Field(default_factory=dict)
-    planes: Dict[str, TrapDestinationEntry] = Field(default_factory=dict)
+    # One receiver, or a list: a plane served by an HA collector pool lists
+    # every member, and each trap is sent to all of them.
+    planes: Dict[str, Union[TrapDestinationEntry, List[TrapDestinationEntry]]] = Field(
+        default_factory=dict)
 
 
 class SnmpStartRequest(BaseModel):

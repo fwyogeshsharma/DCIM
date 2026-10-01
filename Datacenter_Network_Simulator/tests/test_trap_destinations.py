@@ -134,3 +134,35 @@ def test_restores_device_and_plane_overrides_from_saved_settings(monkeypatch):
 
     assert device_dest == {"SWGR-1": ("10.51.9.9", 6162)}
     assert plane_dest == [(ipaddress.ip_network("10.51.0.0/16"), ("10.51.1.1", 6162))]
+
+
+# --- several receivers per plane (docs/26 Phase 6 trap HA) ----------------------
+
+def test_a_plane_with_two_receivers_sends_to_both():
+    """An HA collector pool lists every member; each trap goes to all of them,
+    as an agent configured with two trap hosts sends to both."""
+    import ipaddress
+    net = ipaddress.ip_network("10.52.0.0/20")
+    eng = _engine(plane_dest=[(net, ("127.0.0.1", 11622)), (net, ("127.0.0.1", 11627))])
+    assert eng.resolve_destinations(_device("CRAH-1"), "10.52.11.14") == [
+        ("127.0.0.1", 11622), ("127.0.0.1", 11627)]
+    # The single-destination accessor still answers with the first.
+    assert eng.resolve_destination(_device("CRAH-1"), "10.52.11.14") == ("127.0.0.1", 11622)
+
+
+def test_only_the_first_matching_planes_receivers_are_used():
+    import ipaddress
+    narrow, wide = ipaddress.ip_network("10.52.11.0/24"), ipaddress.ip_network("10.52.0.0/16")
+    eng = _engine(plane_dest=[(narrow, ("10.0.0.1", 162)), (wide, ("10.0.0.2", 162)),
+                              (narrow, ("10.0.0.3", 162))])
+    assert eng.resolve_destinations(_device("X"), "10.52.11.5") == [
+        ("10.0.0.1", 162), ("10.0.0.3", 162)]
+    assert eng.resolve_destinations(_device("X"), "10.52.20.5") == [("10.0.0.2", 162)]
+
+
+def test_a_device_override_is_still_a_single_receiver():
+    import ipaddress
+    net = ipaddress.ip_network("10.52.0.0/20")
+    eng = _engine(device_dest={"SWGR-1": ("10.9.9.9", 162)},
+                  plane_dest=[(net, ("127.0.0.1", 1)), (net, ("127.0.0.1", 2))])
+    assert eng.resolve_destinations(_device("SWGR-1"), "10.52.1.1") == [("10.9.9.9", 162)]

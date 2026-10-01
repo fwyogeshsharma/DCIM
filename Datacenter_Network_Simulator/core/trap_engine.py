@@ -361,9 +361,35 @@ class TrapEngine(QObject):
     def plane_destinations(self) -> list[tuple[str, str, int]]:
         return [(str(net), ip, port) for net, (ip, port) in self._plane_dest]
 
+    def resolve_destinations(self, device: Device, source_ip: str) -> list[tuple[str, int]]:
+        """EVERY receiver this device's traps go to.
+
+        A plane may list several receivers - several triples with the same
+        CIDR - and a device then sends each trap to all of them, the way a
+        real agent configured with two trap hosts (snmpTargetAddrTable has
+        room for many; most facility cards take two) does. That is docs/26
+        Phase 6's alternative to a floating VIP: both members of a collector
+        pool receive every trap, so one dying loses nothing, and the platform
+        keeps the owner's copy. Only the FIRST matching CIDR's receivers are
+        used, so a narrower plane listed first still overrides a wider one.
+        """
+        override = self._device_dest.get(device.name)
+        if override:
+            return [override]
+        try:
+            addr = ipaddress.ip_address(source_ip)
+        except ValueError:
+            addr = None
+        if addr is not None:
+            for net, _dest in self._plane_dest:
+                if addr in net:
+                    return [d for n, d in self._plane_dest if n == net]
+        return [(self._receiver_ip, self._receiver_port)]
+
     def resolve_destination(self, device: Device, source_ip: str) -> tuple[str, int]:
         """Where THIS device's traps go: device override, then plane override
-        (first CIDR match), then the single global receiver.
+        (first CIDR match), then the single global receiver. The first of
+        resolve_destinations, for callers that only ever want one.
         """
         override = self._device_dest.get(device.name)
         if override:
@@ -605,8 +631,8 @@ class TrapEngine(QObject):
             # signal, reused rather than recomputed.
             community = (_trap_source_ip(device, trap_type)
                          or device.snmp_community)
-            dest_ip, dest_port = self.resolve_destination(device, community)
-            target = await self._ensure_target(community, dest_ip, dest_port)
+            targets = [await self._ensure_target(community, ip, port)
+                       for ip, port in self.resolve_destinations(device, community)]
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -628,9 +654,10 @@ class TrapEngine(QObject):
             )
             proto_v2c.apiPDU.set_varbinds(pdu, all_varbinds)
 
-            ntforg.NotificationOriginator().send_pdu(
-                self._snmp_engine, target, None, b'', pdu,
-            )
+            for target in targets:
+                ntforg.NotificationOriginator().send_pdu(
+                    self._snmp_engine, target, None, b'', pdu,
+                )
 
         except Exception as ex:
             self.trap_error.emit(
@@ -666,8 +693,8 @@ class TrapEngine(QObject):
 
             # Raw OIDs are rule-driven → always the OS/NOS agent, never BMC.
             community = _trap_source_ip(device, None) or device.snmp_community
-            dest_ip, dest_port = self.resolve_destination(device, community)
-            target = await self._ensure_target(community, dest_ip, dest_port)
+            targets = [await self._ensure_target(community, ip, port)
+                       for ip, port in self.resolve_destinations(device, community)]
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -705,9 +732,10 @@ class TrapEngine(QObject):
                 varbinds.append((_oid(vendor_oids.SYNTH_PDU_OUTLET_NAME),
                                  rfc1902.OctetString(outlet_label)))
             proto_v2c.apiPDU.set_varbinds(pdu, varbinds)
-            ntforg.NotificationOriginator().send_pdu(
-                self._snmp_engine, target, None, b'', pdu,
-            )
+            for target in targets:
+                ntforg.NotificationOriginator().send_pdu(
+                    self._snmp_engine, target, None, b'', pdu,
+                )
         except Exception as ex:
             self.trap_error.emit(f"Raw trap error ({device.name} / {oid}): {ex}")
             return
