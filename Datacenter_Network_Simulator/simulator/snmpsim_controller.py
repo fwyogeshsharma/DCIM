@@ -136,6 +136,10 @@ class SNMPSimController:
         # settings; None or {} keeps the original single wildcard v2c listener.
         self._v3_provider: Optional[Callable[[], dict]] = None
         self._v3_count = 0
+        # The v3 engines run in their own snmpsim processes (see
+        # _write_v3_args): commands built per start, processes kept to stop.
+        self._v3_shard_cmds: List[List[str]] = []
+        self._shards: List[subprocess.Popen] = []
 
     def set_v3_provider(self, fn: Optional[Callable[[], dict]]):
         self._v3_provider = fn
@@ -453,6 +457,7 @@ class SNMPSimController:
             self._job_handle = _assign_job_object(self._process.pid)
             self._set_status("Starting…")
             self._start_monitor()
+            self._start_shards(env, frozen)
             return True
         except Exception as e:
             self._log(f"ERROR starting SNMPSim: {e}")
@@ -479,9 +484,17 @@ class SNMPSimController:
         else:
             base_cmd = [snmpsim_path]
 
+        self._v3_shard_cmds = []
         if v3_agents:
+            self._v3_shard_files = []
             cmd = base_cmd + [f"--args-from-file={self._write_v3_args(device_ips, port, v3_agents)}",
                               "--log-level=info"]
+            user = (["--process-user=root", "--process-group=root"]
+                    if sys.platform != "win32" and os.getuid() == 0 else [])
+            # error, not info: info logs a line per request, which this process
+            # and the reader in ours would both spend CPU on for every v3 poll.
+            self._v3_shard_cmds = [base_cmd + [f"--args-from-file={f}", "--log-level=error"] + user
+                                   for f in self._v3_shard_files]
         else:
             cmd = base_cmd + [
                 f"--data-dir={self.datasets_dir}",
@@ -550,6 +563,7 @@ class SNMPSimController:
         args += [f"--agent-udpv4-endpoint={ip}:{port}" for ip in v2c_eps]
         v3_served = 0
         mirrors: dict = {}
+        blocks: List[List[str]] = []
         for ip, agent in sorted(v3_agents.items()):
             src = Path(self.datasets_dir) / f"{ip}.snmprec"
             if not src.exists() or not self._locally_bound(ip):
@@ -568,29 +582,93 @@ class SNMPSimController:
                 shutil.copy2(src, dst)
                 copies.append(str(dst))
             mirrors[str(src.resolve())] = copies
-            args += [f"--v3-engine-id={agent.engine_id}", f"--data-dir={d}",
+            block = [f"--v3-engine-id={agent.engine_id}", f"--data-dir={d}",
                      f"--agent-udpv4-endpoint={ip}:{port}"]
             for u in agent.users:
-                args += [f"--v3-user={u.name}",
-                         f"--v3-auth-key={u.auth_key}", f"--v3-auth-proto={u.auth_proto}",
-                         f"--v3-priv-key={u.priv_key}", f"--v3-priv-proto={u.priv_proto}"]
+                block += [f"--v3-user={u.name}",
+                          f"--v3-auth-key={u.auth_key}", f"--v3-auth-proto={u.auth_proto}",
+                          f"--v3-priv-key={u.priv_key}", f"--v3-priv-proto={u.priv_proto}"]
+            blocks.append(block)
             v3_served += 1
         from core import snmprec_generator
         snmprec_generator.set_v3_mirrors(mirrors)
+        # The v3 engines go to their own processes. snmpsim is single-threaded,
+        # and a real device has its own CPU: with every engine in one process
+        # the AES and HMAC for 178 devices, on top of 716 v2c agents, pinned it
+        # at one core and timed v2c devices out too (live run, 2026-10-05). So
+        # the v2c engine keeps the primary process and the v3 engines are dealt
+        # round-robin into shards, ~60 engines each (SNMPSIM_V3_PROCESSES
+        # overrides), each a process of its own.
+        def _write(path: Path, lines: List[str]) -> None:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as fh:
+                fh.write("\n".join(lines) + "\n")
+
+        for old in root.glob("args-v3-*.txt"):
+            old.unlink()
+        n = int(os.environ.get("SNMPSIM_V3_PROCESSES") or 0) or \
+            max(1, min(4, -(-len(blocks) // 60)))
+        shard_files: List[str] = []
+        for i in range(min(n, len(blocks))):
+            mine = [a for b in blocks[i::n] for a in b]
+            f = root / f"args-v3-{i}.txt"
+            _write(f, mine)
+            shard_files.append(str(f))
+        self._v3_shard_files = shard_files
         path = root / "args.txt"
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(fd, "w") as fh:
-            fh.write("\n".join(args) + "\n")
-        self._log(f"  SNMPv3:     {v3_served} device engine(s); v2c engine on "
-                  f"{len(v2c_eps)} address(es)"
+        _write(path, args)
+        self._log(f"  SNMPv3:     {v3_served} device engine(s) in {len(shard_files)} process(es); "
+                  f"v2c engine on {len(v2c_eps)} address(es)"
                   + (f", {skipped} skipped (not bound on this host)" if skipped else ""))
         return str(path)
+
+    def _start_shards(self, env: dict, frozen: bool) -> None:
+        """Launch the v3 engine processes. Their output is forwarded only when
+        it is an error: they run at --log-level=error, so anything at all is."""
+        self._shards = []
+        for i, cmd in enumerate(self._v3_shard_cmds):
+            try:
+                proc = subprocess.Popen(
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    bufsize=1, env=env,
+                    creationflags=(subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS)
+                    if sys.platform == "win32" else 0,
+                    preexec_fn=None if sys.platform == "win32" else _setup_child_linux,
+                )
+            except Exception as e:
+                self._log(f"ERROR starting SNMPv3 process {i}: {e}")
+                continue
+            _assign_job_object(proc.pid)
+            self._shards.append(proc)
+
+            def _read(p=proc, n=i):
+                for line in p.stdout:
+                    line = line.rstrip()
+                    if line and "Variation module" not in line:
+                        self._log(f"[snmpsim-v3-{n}] {line}")
+                p.wait()
+                if self._running:
+                    self._log(f"SNMPv3 process {n} ended unexpectedly (exit {p.returncode}).")
+
+            threading.Thread(target=_read, daemon=True).start()
 
     # ------------------------------------------------------------------ #
     #  Stop                                                                #
     # ------------------------------------------------------------------ #
 
     def stop(self):
+        for proc in self._shards:
+            if proc.poll() is None:
+                try:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                except Exception as e:
+                    self._log(f"Error stopping an SNMPv3 process: {e}")
+        self._shards = []
         if self._process and self._process.poll() is None:
             self._log("Stopping SNMPSim...")
             try:

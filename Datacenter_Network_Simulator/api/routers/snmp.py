@@ -506,9 +506,14 @@ def put_snmp_v3(body: SnmpV3Request):
 
         def _run():
             ok = s.reload_snmp(log_cb=lambda m: s.update_job(job_id, message=m))
-            s.update_job(job_id, status="completed" if ok else "failed",
-                         error=None if ok else "SNMP reload skipped or failed",
-                         finished_at=datetime.utcnow().isoformat())
+            # The job status schema takes a string error; None fails validation
+            # and turns GET /snmp/jobs/{id} into a 500, so set it only on failure.
+            done = {"finished_at": datetime.utcnow().isoformat()}
+            if ok:
+                s.update_job(job_id, status="completed", message="SNMP reloaded", **done)
+            else:
+                s.update_job(job_id, status="failed",
+                             error="SNMP reload skipped or failed", **done)
 
         s.submit_job(job_id, _run)
     return {**snmp_v3.redacted(cfg), "reload_job": job_id}
