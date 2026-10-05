@@ -376,6 +376,25 @@ class TrapEngine(QObject):
     def plane_destinations(self) -> list[tuple[str, str, int]]:
         return [(str(net), ip, port) for net, (ip, port) in self._plane_dest]
 
+    def receiver_addresses(self) -> list[str]:
+        """Every non-loopback address a trap destination names - a collector's
+        trap VIP on a management network. The host has to carry them: a device
+        that sends from its own address (SNMPv3 does) cannot reach 127.0.0.1,
+        which Linux will not accept from a non-loopback source, and on a real
+        site the collector's receiver sits on the devices' own network anyway.
+        The binder binds them with the device IPs; the orphan reaper leaves
+        them alone."""
+        out: list[str] = []
+        addrs = [ip for _net, (ip, _port) in self._plane_dest]
+        addrs += [ip for ip, _port in (self._device_dest or {}).values()]
+        for ip in addrs:
+            try:
+                if ip and not ipaddress.ip_address(ip).is_loopback and ip not in out:
+                    out.append(ip)
+            except ValueError:
+                continue
+        return out
+
     def resolve_destinations(self, device: Device, source_ip: str) -> list[tuple[str, int]]:
         """EVERY receiver this device's traps go to.
 

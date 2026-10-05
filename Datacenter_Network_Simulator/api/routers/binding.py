@@ -228,6 +228,9 @@ def _orphan_ips(s) -> "dict[str, list[str]]":
         for ip in (getattr(d, "ip_address", ""), getattr(d, "mgmt_ip", "")):
             if ip:
                 claimed.add(ip)
+    # A trap VIP is claimed by the trap destinations, not by a device.
+    if getattr(s, "trap_engine", None) is not None:
+        claimed.update(s.trap_engine.receiver_addresses())
 
     out: "dict[str, list[str]]" = {}
     # apply_filter=False: an adapter DCIM_ADAPTER_FILTER hides is still an

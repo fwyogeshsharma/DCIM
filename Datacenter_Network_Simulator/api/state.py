@@ -381,6 +381,13 @@ class AppState:
                 if ip and ip not in seen:
                     ips.append(ip)
                     seen.add(ip)
+        # Trap receiver addresses (a pool's trap VIP): the host must carry them
+        # for a device sending from its own address to reach its collector.
+        if self.trap_engine is not None:
+            for ip in self.trap_engine.receiver_addresses():
+                if ip not in seen:
+                    ips.append(ip)
+                    seen.add(ip)
         return ips
 
     def reconcile_bound_ips(self) -> int:
