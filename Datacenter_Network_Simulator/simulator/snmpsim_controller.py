@@ -553,14 +553,27 @@ class SNMPSimController:
         args: List[str] = []
         v2c_eps = [ip for ip in device_ips if ip not in v3_agents and self._locally_bound(ip)]
         skipped = len([ip for ip in device_ips if ip not in v3_agents]) - len(v2c_eps)
-        # The v2c engine. snmpsim gives an engine with no --v3-user a default
+        # The v2c engines. snmpsim gives an engine with no --v3-user a default
         # MD5/DES user ("simulator"); a placeholder with random keys keeps
         # v2c-only devices from accepting that well-known credential.
-        args += ["--v3-engine-id=auto", f"--data-dir={self.datasets_dir}",
-                 f"--v3-user=v2c-only-{secrets.token_hex(4)}",
-                 f"--v3-auth-key={secrets.token_urlsafe(18)}", "--v3-auth-proto=SHA256",
-                 f"--v3-priv-key={secrets.token_urlsafe(18)}", "--v3-priv-proto=AES128"]
-        args += [f"--agent-udpv4-endpoint={ip}:{port}" for ip in v2c_eps]
+        def v2c_engine(eps: List[str]) -> List[str]:
+            return (["--v3-engine-id=auto", f"--data-dir={self.datasets_dir}",
+                     f"--v3-user=v2c-only-{secrets.token_hex(4)}",
+                     f"--v3-auth-key={secrets.token_urlsafe(18)}", "--v3-auth-proto=SHA256",
+                     f"--v3-priv-key={secrets.token_urlsafe(18)}", "--v3-priv-proto=AES128"]
+                    + [f"--agent-udpv4-endpoint={ip}:{port}" for ip in eps])
+
+        # The v2c agents are dealt across processes too. One snmpsim process
+        # serving all ~716 of them sat at ~98% of a core even with no v3 at all
+        # (2026-10-05) - the likely source of the network switches' long-standing
+        # walk timeouts. Every share reads the same dataset dir (v2c routes by
+        # community, the indexes are on disk, so nothing is copied); the
+        # primary keeps the first share and the readiness log line, the rest
+        # run as extra processes. ~300 agents per process; SNMPSIM_V2C_PROCESSES
+        # overrides.
+        k = int(os.environ.get("SNMPSIM_V2C_PROCESSES") or 0) or max(1, min(4, -(-len(v2c_eps) // 300)))
+        v2c_groups = [v2c_eps[i::k] for i in range(k)] if v2c_eps else [[]]
+        args += v2c_engine(v2c_groups[0])
         v3_served = 0
         mirrors: dict = {}
         blocks: List[List[str]] = []
@@ -604,7 +617,7 @@ class SNMPSimController:
             with os.fdopen(fd, "w") as fh:
                 fh.write("\n".join(lines) + "\n")
 
-        for old in root.glob("args-v3-*.txt"):
+        for old in list(root.glob("args-v3-*.txt")) + list(root.glob("args-v2c-*.txt")):
             old.unlink()
         n = int(os.environ.get("SNMPSIM_V3_PROCESSES") or 0) or \
             max(1, min(4, -(-len(blocks) // 60)))
@@ -614,11 +627,16 @@ class SNMPSimController:
             f = root / f"args-v3-{i}.txt"
             _write(f, mine)
             shard_files.append(str(f))
+        v3_processes = len(shard_files)
+        for i, group in enumerate(v2c_groups[1:], 1):
+            f = root / f"args-v2c-{i}.txt"
+            _write(f, v2c_engine(group))
+            shard_files.append(str(f))
         self._v3_shard_files = shard_files
         path = root / "args.txt"
         _write(path, args)
-        self._log(f"  SNMPv3:     {v3_served} device engine(s) in {len(shard_files)} process(es); "
-                  f"v2c engine on {len(v2c_eps)} address(es)"
+        self._log(f"  SNMPv3:     {v3_served} device engine(s) in {v3_processes} process(es); "
+                  f"v2c on {len(v2c_eps)} address(es) in {len(v2c_groups)} process(es)"
                   + (f", {skipped} skipped (not bound on this host)" if skipped else ""))
         return str(path)
 
@@ -627,6 +645,7 @@ class SNMPSimController:
         it is an error: they run at --log-level=error, so anything at all is."""
         self._shards = []
         for i, cmd in enumerate(self._v3_shard_cmds):
+            label = "v2c" if any("args-v2c-" in a for a in cmd) else "v3"
             try:
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -636,19 +655,19 @@ class SNMPSimController:
                     preexec_fn=None if sys.platform == "win32" else _setup_child_linux,
                 )
             except Exception as e:
-                self._log(f"ERROR starting SNMPv3 process {i}: {e}")
+                self._log(f"ERROR starting SNMP {label} process {i}: {e}")
                 continue
             _assign_job_object(proc.pid)
             self._shards.append(proc)
 
-            def _read(p=proc, n=i):
+            def _read(p=proc, n=i, lab=label):
                 for line in p.stdout:
                     line = line.rstrip()
                     if line and "Variation module" not in line:
-                        self._log(f"[snmpsim-v3-{n}] {line}")
+                        self._log(f"[snmpsim-{lab}-{n}] {line}")
                 p.wait()
                 if self._running:
-                    self._log(f"SNMPv3 process {n} ended unexpectedly (exit {p.returncode}).")
+                    self._log(f"SNMP {lab} process {n} ended unexpectedly (exit {p.returncode}).")
 
             threading.Thread(target=_read, daemon=True).start()
 
