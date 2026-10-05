@@ -16,7 +16,13 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 # per-PDU bars.  Five minutes: 80 PDUs, one SNMP GET each, ~40 s wall clock.
 # openDCIM backs off a device on its own via fac_Device.SNMPFailureCount, so an
 # unreachable PDU does not make the run grow without bound.
-*/5 * * * * www-data cd /var/www/opendcim && /usr/bin/php poll_pdu_stats.php >> /var/log/opendcim/poll.log 2>&1
+#
+# flock -n: a run still going when the next is due is skipped, not stacked. On
+# 2026-10-05 SNMP slowed while the host was swapping and three of these ran at
+# once, each serial-walking every PDU against the same single-threaded simulator
+# agent - more load on the very thing that was slow. Cron does not prevent
+# overlap by itself. /run/lock is world-writable, so www-data can hold the lock.
+*/5 * * * * www-data cd /var/www/opendcim && /usr/bin/flock -n /run/lock/opendcim-poll-pdu.lock /usr/bin/php poll_pdu_stats.php >> /var/log/opendcim/poll.log 2>&1
 
 # Rack environmental probes -> fac_SensorReadings -> the cabinet "Environmental
 # Sensors" panel and the datacenter average temperature/humidity.
@@ -35,4 +41,4 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 # interval. 19 rack probes, 1-2 GETs each -- a few seconds. The plant header
 # instruments are NOT polled: they have no fac_SensorTemplate row on purpose (see
 # SENSOR_PLANT_PREFIX in tools/export_to_opendcim.py).
-2-57/5 * * * * www-data cd /var/www/opendcim && /usr/bin/php poll_temperature_sensors.php >> /var/log/opendcim/poll.log 2>&1
+2-57/5 * * * * www-data cd /var/www/opendcim && /usr/bin/flock -n /run/lock/opendcim-poll-sensors.lock /usr/bin/php poll_temperature_sensors.php >> /var/log/opendcim/poll.log 2>&1
