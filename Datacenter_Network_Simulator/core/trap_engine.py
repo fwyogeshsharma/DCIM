@@ -135,6 +135,16 @@ def _external_slot(device: Device, trap_type: Optional[TrapType]) -> int:
     return _OWN_PROBE_SLOT.get(channel, 0)
 
 
+def _as_inform(pdu):
+    """The same notification as an InformRequest-PDU (RFC 3416 4.2.7): an
+    acknowledged notification carries exactly the TRAP's variable bindings."""
+    from pysnmp.proto.api import v2c as proto_v2c
+    inform = proto_v2c.InformRequestPDU()
+    proto_v2c.apiPDU.set_defaults(inform)
+    proto_v2c.apiPDU.set_varbinds(inform, proto_v2c.apiPDU.get_varbinds(pdu))
+    return inform
+
+
 def _trap_source_ip(device: Device, trap_type: Optional[TrapType] = None) -> str:
     """IP of the agent that conceptually sent this trap.
 
@@ -301,6 +311,11 @@ class TrapEngine(QObject):
         self._engine_lock: Optional[asyncio.Lock] = None
         self._engine_epoch = 0    # bumped by configure() to force a rebuild
         self._built_epoch  = -1
+        # SNMPv3 (core.snmp_v3): one engine per v3 device, because a v3 TRAP
+        # carries the SENDER's engine ID and is sent from the device's own
+        # address - ip -> {"sig", "engine", "dispatcher", "targets"}. Built on
+        # a device's first trap, rebuilt when its v3 settings change.
+        self._v3_engines: dict = {}
 
     # ── Configuration ─────────────────────────────────────────────────────────
 
@@ -554,6 +569,96 @@ class TrapEngine(QObject):
         self._snmp_engine = None
         self._dispatcher  = None
         self._targets     = {}
+        for ip in list(self._v3_engines):
+            self._drop_v3_engine(ip)
+
+    def _inform_done(self, snmp_engine, handle, error_indication, pdu, device_name):
+        """An INFORM's outcome. pysnmp calls back for every acknowledged
+        notification (and an unanswered one after its retries); a missing
+        acknowledgement is exactly what an operator chose INFORM to learn."""
+        if error_indication:
+            self.trap_error.emit(f"INFORM from {device_name} not acknowledged: {error_indication}")
+
+    def _drop_v3_engine(self, ip: str) -> None:
+        e = self._v3_engines.pop(ip, None)
+        if not e:
+            return
+        try:
+            e["dispatcher"].close_dispatcher()
+            e["engine"].unregister_transport_dispatcher()
+        except Exception:
+            pass
+
+    async def _targets_for(self, device, community: str) -> list:
+        """Where one notification goes and how: [(engine, target, inform)].
+
+        A device in an enabled v3 network (core.snmp_v3) sends authPriv v3
+        from its own engine and its own address - so the receiver can tell
+        which device it is without a community string. Everything else keeps
+        the shared v2c stack, unchanged."""
+        from core import snmp_v3
+        vendor = getattr(getattr(device, "vendor", None), "value", None) or str(getattr(device, "vendor", "") or "")
+        v3 = snmp_v3.agent_for(community, vendor)
+        dests = self.resolve_destinations(device, community)
+        if v3 is None:
+            return [(None, await self._ensure_target(community, ip, port), False)
+                    for ip, port in dests]
+        agent, notify = v3
+        return [await self._ensure_v3_target(agent, notify, ip, port) for ip, port in dests]
+
+    async def _ensure_v3_target(self, agent, notify: str, ip: str, port: int) -> tuple:
+        from pysnmp.entity.engine import SnmpEngine
+        from pysnmp.entity import config as snmp_config
+        from pysnmp.carrier.asyncio.dispatch import AsyncioDispatcher
+        from pysnmp.carrier.asyncio.dgram import udp as udp_mod
+        from pysnmp.proto.rfc1902 import OctetString
+
+        u = agent.users[0]
+        sig = (agent.engine_id, u.name, u.auth_proto, u.auth_key, u.priv_proto, u.priv_key, notify)
+        if self._engine_lock is None:
+            self._engine_lock = asyncio.Lock()
+        async with self._engine_lock:
+            if self._built_epoch != self._engine_epoch:
+                self._teardown_stack()
+                self._built_epoch = self._engine_epoch
+            e = self._v3_engines.get(agent.ip)
+            if e is not None and e["sig"] != sig:
+                self._drop_v3_engine(agent.ip)
+                e = None
+            if e is None:
+                engine = SnmpEngine(snmpEngineID=OctetString(hexValue=agent.engine_id))
+                dispatcher = AsyncioDispatcher(loop=asyncio.get_running_loop())
+                engine.register_transport_dispatcher(dispatcher)
+                # From the device's own address: that is what a receiver
+                # attributes a v3 notification by.
+                snmp_config.add_transport(
+                    engine, udp_mod.DOMAIN_NAME,
+                    udp_mod.UdpAsyncioTransport().open_client_mode((agent.ip, 0)))
+                auth = {"SHA": snmp_config.USM_AUTH_HMAC96_SHA,
+                        "SHA224": snmp_config.USM_AUTH_HMAC128_SHA224,
+                        "SHA256": snmp_config.USM_AUTH_HMAC192_SHA256,
+                        "SHA384": snmp_config.USM_AUTH_HMAC256_SHA384,
+                        "SHA512": snmp_config.USM_AUTH_HMAC384_SHA512,
+                        "MD5": snmp_config.USM_AUTH_HMAC96_MD5}[u.auth_proto]
+                priv = {"AES": snmp_config.USM_PRIV_CFB128_AES, "AES128": snmp_config.USM_PRIV_CFB128_AES,
+                        "AES192": snmp_config.USM_PRIV_CFB192_AES, "AES256": snmp_config.USM_PRIV_CFB256_AES,
+                        "DES": snmp_config.USM_PRIV_CBC56_DES}[u.priv_proto]
+                snmp_config.add_v3_user(engine, u.name, auth, u.auth_key, priv, u.priv_key)
+                snmp_config.add_target_parameters(engine, "v3p", u.name, "authPriv", 3)
+                e = {"sig": sig, "engine": engine, "dispatcher": dispatcher, "targets": {}}
+                self._v3_engines[agent.ip] = e
+            name = e["targets"].get((ip, port))
+            if name is None:
+                name = f"v3t{len(e['targets'])}"
+                inform = notify == "inform"
+                # An INFORM is acknowledged: give the receiver 3 s, twice. A
+                # TRAP is fire-and-forget, as for v2c.
+                snmp_config.add_target_address(
+                    e["engine"], name, udp_mod.DOMAIN_NAME, (ip, port), "v3p",
+                    tagList="trap-tag", timeout=300 if inform else 100,
+                    retryCount=2 if inform else 0)
+                e["targets"][(ip, port)] = name
+            return (e["engine"], name, notify == "inform")
 
     async def _ensure_target(self, community: str, ip: str, port: int) -> str:
         """Return the pysnmp target-address name for (`community`, `ip`, `port`),
@@ -631,8 +736,7 @@ class TrapEngine(QObject):
             # signal, reused rather than recomputed.
             community = (_trap_source_ip(device, trap_type)
                          or device.snmp_community)
-            targets = [await self._ensure_target(community, ip, port)
-                       for ip, port in self.resolve_destinations(device, community)]
+            targets = await self._targets_for(device, community)
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -654,9 +758,11 @@ class TrapEngine(QObject):
             )
             proto_v2c.apiPDU.set_varbinds(pdu, all_varbinds)
 
-            for target in targets:
+            for engine, target, inform in targets:
                 ntforg.NotificationOriginator().send_pdu(
-                    self._snmp_engine, target, None, b'', pdu,
+                    engine or self._snmp_engine, target, None, b'',
+                    _as_inform(pdu) if inform else pdu,
+                    *((self._inform_done, device.name) if inform else ()),
                 )
 
         except Exception as ex:
@@ -693,8 +799,7 @@ class TrapEngine(QObject):
 
             # Raw OIDs are rule-driven → always the OS/NOS agent, never BMC.
             community = _trap_source_ip(device, None) or device.snmp_community
-            targets = [await self._ensure_target(community, ip, port)
-                       for ip, port in self.resolve_destinations(device, community)]
+            targets = await self._targets_for(device, community)
 
             def _oid(s: str):
                 return univ.ObjectIdentifier(tuple(int(x) for x in s.split('.')))
@@ -732,9 +837,11 @@ class TrapEngine(QObject):
                 varbinds.append((_oid(vendor_oids.SYNTH_PDU_OUTLET_NAME),
                                  rfc1902.OctetString(outlet_label)))
             proto_v2c.apiPDU.set_varbinds(pdu, varbinds)
-            for target in targets:
+            for engine, target, inform in targets:
                 ntforg.NotificationOriginator().send_pdu(
-                    self._snmp_engine, target, None, b'', pdu,
+                    engine or self._snmp_engine, target, None, b'',
+                    _as_inform(pdu) if inform else pdu,
+                    *((self._inform_done, device.name) if inform else ()),
                 )
         except Exception as ex:
             self.trap_error.emit(f"Raw trap error ({device.name} / {oid}): {ex}")

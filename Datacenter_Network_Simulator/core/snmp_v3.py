@@ -124,8 +124,11 @@ def validate_network(n: Dict[str, Any]) -> Dict[str, Any]:
         raise V3ConfigError(f"{cidr}: auth_proto must be one of {', '.join(AUTH_PROTOCOLS)}")
     if priv not in PRIV_PROTOCOLS:
         raise V3ConfigError(f"{cidr}: priv_proto must be one of {', '.join(PRIV_PROTOCOLS)}")
+    notify = str(n.get("notify") or "trap").lower()
+    if notify not in ("trap", "inform"):
+        raise V3ConfigError(f"{cidr}: notify must be trap or inform")
     out = {"cidr": cidr, "site": str(n.get("site") or ""), "user": user,
-           "auth_proto": auth, "priv_proto": priv}
+           "auth_proto": auth, "priv_proto": priv, "notify": notify}
     for k in ("auth_key", "priv_key"):
         v = str(n.get(k) or "")
         if len(v) < 8:
@@ -192,3 +195,25 @@ def agents(devices, bind_ips) -> Dict[str, V3Agent]:
                         priv_proto=n["priv_proto"], priv_key=n["priv_key"])])
                     break
     return out
+
+
+def agent_for(ip: str, vendor: str) -> Optional[tuple]:
+    """(V3Agent, notify) for one sending address, or None if it is not in an
+    enabled v3 network - the trap engine's question, answered without the
+    topology. `notify` is "trap" (the agent is authoritative: its own engine
+    ID, the common case on PDU and UPS cards) or "inform" (the receiver is
+    authoritative and acknowledges, as cards that support it can be set)."""
+    cfg = load()
+    if not cfg["enabled"] or not ip:
+        return None
+    try:
+        addr = ipaddress.IPv4Address(ip)
+    except ValueError:
+        return None
+    for n in cfg["networks"]:
+        if addr in ipaddress.IPv4Network(n["cidr"]):
+            return (V3Agent(ip=ip, engine_id=engine_id(vendor, ip), users=[V3User(
+                name=n["user"], auth_proto=n["auth_proto"], auth_key=n["auth_key"],
+                priv_proto=n["priv_proto"], priv_key=n["priv_key"])]),
+                    n.get("notify", "trap"))
+    return None
