@@ -11,6 +11,8 @@ Dataset directory layout expected by snmpsim-lextudio:
 """
 from __future__ import annotations
 import os
+import secrets
+import socket
 import sys
 import subprocess
 import threading
@@ -129,6 +131,14 @@ class SNMPSimController:
         self._active_endpoints: List[str] = []
         self._job_handle = None   # Windows Job Object handle — kept open until stop()
         self._snmpsim_path: Optional[str] = None  # cached after first discovery
+        # SNMPv3 (core.snmp_v3): ip -> V3Agent for devices that also speak v3.
+        # A callable, so start() and every reload read the CURRENT topology and
+        # settings; None or {} keeps the original single wildcard v2c listener.
+        self._v3_provider: Optional[Callable[[], dict]] = None
+        self._v3_count = 0
+
+    def set_v3_provider(self, fn: Optional[Callable[[], dict]]):
+        self._v3_provider = fn
 
     # ------------------------------------------------------------------ #
     #  Callbacks                                                           #
@@ -390,11 +400,23 @@ class SNMPSimController:
             self._set_status("Error: no datasets directory")
             return False
 
-        cmd = self._build_command(snmpsim_path, device_ips, port)
+        v3_agents = {}
+        if self._v3_provider is not None:
+            try:
+                v3_agents = self._v3_provider() or {}
+            except Exception as exc:   # a broken v3 config must not take v2c down with it
+                self._log(f"WARNING: SNMPv3 agents not built ({exc}); serving v2c only")
+                v3_agents = {}
+        cmd = self._build_command(snmpsim_path, device_ips, port, v3_agents)
+        self._v3_count = len(v3_agents)
         self._log(f"Starting SNMPSim with {len(device_ips)} device(s) on port {port}")
         self._log(f"  Executable: {snmpsim_path}")
         self._log(f"  Data dir:   {self.datasets_dir}")
-        self._log(f"  Listening:  0.0.0.0:{port}  (community string routes each request to its device)")
+        if v3_agents:
+            self._log(f"  Listening:  one address per device; {len(v3_agents)} also speak SNMPv3 "
+                      f"(own engine each - start-up takes ~{max(5, len(v3_agents) // 4)} s longer)")
+        else:
+            self._log(f"  Listening:  0.0.0.0:{port}  (community string routes each request to its device)")
         self._log(f"  Devices:    {device_ips[0]} … {device_ips[-1]}  ({len(device_ips)} total)")
 
         try:
@@ -437,7 +459,8 @@ class SNMPSimController:
             self._set_status(f"Error: {e}")
             return False
 
-    def _build_command(self, snmpsim_path: str, device_ips: List[str], port: int) -> List[str]:
+    def _build_command(self, snmpsim_path: str, device_ips: List[str], port: int,
+                       v3_agents: Optional[dict] = None) -> List[str]:
         # Use a single wildcard endpoint instead of one flag per device IP.
         # Passing hundreds of --agent-udpv4-endpoint flags would exceed the
         # Windows 32 KB command-line limit (WinError 206).
@@ -456,11 +479,15 @@ class SNMPSimController:
         else:
             base_cmd = [snmpsim_path]
 
-        cmd = base_cmd + [
-            f"--data-dir={self.datasets_dir}",
-            "--log-level=info",
-            f"--agent-udpv4-endpoint=0.0.0.0:{port}",
-        ]
+        if v3_agents:
+            cmd = base_cmd + [f"--args-from-file={self._write_v3_args(device_ips, port, v3_agents)}",
+                              "--log-level=info"]
+        else:
+            cmd = base_cmd + [
+                f"--data-dir={self.datasets_dir}",
+                "--log-level=info",
+                f"--agent-udpv4-endpoint=0.0.0.0:{port}",
+            ]
 
         # When running as root on Linux, pass --process-user=root so snmpsim
         # satisfies its "must have a privilege-drop target" check without actually
@@ -471,6 +498,93 @@ class SNMPSimController:
             cmd += ["--process-user=root", "--process-group=root"]
 
         return cmd
+
+    @staticmethod
+    def _locally_bound(ip: str) -> bool:
+        """Is *ip* an address of this host? Binding port 0 asks the kernel
+        without touching the agent's port."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.bind((ip, 0))
+            return True
+        except OSError:
+            return False
+
+    def _write_v3_args(self, device_ips: List[str], port: int, v3_agents: dict) -> str:
+        """Lay out per-device engines for SNMPv3 and return the args file.
+
+        Why per-device engines: snmpsim picks a device's data for v3 by context
+        name, while a real agent is polled with the EMPTY context and has its
+        own engine ID. So each v3 device gets its own engine, bound to its own
+        address, over a directory holding `self.snmprec` (served to the empty
+        context) and `<ip>.snmprec` (v2c, community = IP - it still answers
+        v2c, as a card mid-migration does). Both are copies of the live
+        dataset that the generator rewrites alongside it on every tick
+        (core.snmprec_generator.set_v3_mirrors), so v3 serves live values too.
+
+        Why no wildcard: a v3 engine bound to 10.52.x.y:161 cannot coexist with
+        0.0.0.0:161 in one process - the specific bind silently fails and the
+        wildcard swallows every packet (tested). So the v2c engine binds every
+        other device address explicitly, skipping any the host does not have
+        yet (the wildcard never cared; an explicit bind would fail the start).
+
+        The args file holds passphrases: written 0600, in the dataset tree,
+        never logged.
+        """
+        root = Path(self.datasets_dir).parent / "snmp_v3"
+        root.mkdir(parents=True, exist_ok=True)
+        keep = set(v3_agents)
+        for d in root.iterdir():
+            if d.is_dir() and d.name not in keep:
+                shutil.rmtree(d, ignore_errors=True)
+        args: List[str] = []
+        v2c_eps = [ip for ip in device_ips if ip not in v3_agents and self._locally_bound(ip)]
+        skipped = len([ip for ip in device_ips if ip not in v3_agents]) - len(v2c_eps)
+        # The v2c engine. snmpsim gives an engine with no --v3-user a default
+        # MD5/DES user ("simulator"); a placeholder with random keys keeps
+        # v2c-only devices from accepting that well-known credential.
+        args += ["--v3-engine-id=auto", f"--data-dir={self.datasets_dir}",
+                 f"--v3-user=v2c-only-{secrets.token_hex(4)}",
+                 f"--v3-auth-key={secrets.token_urlsafe(18)}", "--v3-auth-proto=SHA256",
+                 f"--v3-priv-key={secrets.token_urlsafe(18)}", "--v3-priv-proto=AES128"]
+        args += [f"--agent-udpv4-endpoint={ip}:{port}" for ip in v2c_eps]
+        v3_served = 0
+        mirrors: dict = {}
+        for ip, agent in sorted(v3_agents.items()):
+            src = Path(self.datasets_dir) / f"{ip}.snmprec"
+            if not src.exists() or not self._locally_bound(ip):
+                continue
+            d = root / ip
+            d.mkdir(exist_ok=True)
+            copies = []
+            for name in ("self.snmprec", f"{ip}.snmprec"):
+                dst = d / name
+                if dst.is_symlink():
+                    dst.unlink()
+                # Real copies, kept current by the generator's mirror hook:
+                # snmpsim cannot serve a symlink whose target is outside its
+                # data dir, and a hard link would not survive the generator's
+                # atomic replace. snmpsim indexes these itself at start-up.
+                shutil.copy2(src, dst)
+                copies.append(str(dst))
+            mirrors[str(src.resolve())] = copies
+            args += [f"--v3-engine-id={agent.engine_id}", f"--data-dir={d}",
+                     f"--agent-udpv4-endpoint={ip}:{port}"]
+            for u in agent.users:
+                args += [f"--v3-user={u.name}",
+                         f"--v3-auth-key={u.auth_key}", f"--v3-auth-proto={u.auth_proto}",
+                         f"--v3-priv-key={u.priv_key}", f"--v3-priv-proto={u.priv_proto}"]
+            v3_served += 1
+        from core import snmprec_generator
+        snmprec_generator.set_v3_mirrors(mirrors)
+        path = root / "args.txt"
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as fh:
+            fh.write("\n".join(args) + "\n")
+        self._log(f"  SNMPv3:     {v3_served} device engine(s); v2c engine on "
+                  f"{len(v2c_eps)} address(es)"
+                  + (f", {skipped} skipped (not bound on this host)" if skipped else ""))
+        return str(path)
 
     # ------------------------------------------------------------------ #
     #  Stop                                                                #

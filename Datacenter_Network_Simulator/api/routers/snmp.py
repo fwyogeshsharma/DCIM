@@ -457,3 +457,58 @@ def get_job_status(job_id: str):
         started_at=job.started_at,
         finished_at=job.finished_at,
     )
+
+# --------------------------------------------------------------------------
+#  SNMPv3 (core.snmp_v3)
+# --------------------------------------------------------------------------
+
+from typing import Any, Dict, List  # noqa: E402
+
+from pydantic import BaseModel  # noqa: E402
+
+
+class SnmpV3Request(BaseModel):
+    enabled: bool
+    #: [{cidr, site, user, auth_proto, auth_key, priv_proto, priv_key}];
+    #: omitted keeps the stored networks (or creates the per-site BMS defaults
+    #: with fresh passphrases when enabling for the first time).
+    networks: Optional[List[Dict[str, Any]]] = None
+
+
+@router.get("/v3")
+def get_snmp_v3(reveal: bool = False):
+    """Which networks speak SNMPv3 and with what user. Passphrases are masked
+    unless `reveal=true`: that is the facilities team handing the poll
+    credential to the DCIM team, who enter it as a credential there."""
+    from core import snmp_v3
+    s = _state()
+    cfg = snmp_v3.load()
+    running = bool(s.snmpsim and s.snmpsim.is_running())
+    return {**(cfg if reveal else snmp_v3.redacted(cfg)),
+            "engines_running": getattr(s.snmpsim, "_v3_count", 0) if running else 0}
+
+
+@router.put("/v3")
+def put_snmp_v3(body: SnmpV3Request):
+    """Turn SNMPv3 on or off, or change its networks and users. Takes effect
+    when SNMP restarts: a reload is started now if SNMP is running, and every
+    agent is briefly unavailable during it (one engine per v3 device adds
+    about a quarter of a second each to start-up)."""
+    from core import snmp_v3
+    s = _state()
+    try:
+        cfg = snmp_v3.save(body.enabled, body.networks)
+    except snmp_v3.V3ConfigError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    job_id = None
+    if s.snmpsim and s.snmpsim.is_running():
+        job_id = s.create_job("reload_snmp_simulator")
+
+        def _run():
+            ok = s.reload_snmp(log_cb=lambda m: s.update_job(job_id, message=m))
+            s.update_job(job_id, status="completed" if ok else "failed",
+                         error=None if ok else "SNMP reload skipped or failed",
+                         finished_at=datetime.utcnow().isoformat())
+
+        s.submit_job(job_id, _run)
+    return {**snmp_v3.redacted(cfg), "reload_job": job_id}

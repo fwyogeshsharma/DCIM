@@ -232,6 +232,13 @@ def _run_headless():
     topology       = TopologyEngine()
     ip_manager     = IPManager()
     snmpsim        = SNMPSimController(snmp_dir)
+    # SNMPv3 agents (core.snmp_v3): read at every start/reload from the live
+    # topology and the persisted v3 settings; disabled by default, which keeps
+    # the single wildcard v2c listener exactly as before.
+    from core import snmp_v3 as _snmp_v3
+    from core.snmprec_generator import SNMPRecGenerator as _SnmpGen
+    snmpsim.set_v3_provider(
+        lambda: _snmp_v3.agents(topology.get_all_devices(), _SnmpGen.snmp_bind_ips))
     gnmi           = GNMIController(gnmi_dir)
     sflow          = SFlowController()
     bacnet         = BACnetController("datasets/bacnet")

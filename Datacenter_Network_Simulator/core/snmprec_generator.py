@@ -53,6 +53,27 @@ _write_locks_guard = threading.Lock()
 # otherwise each tick spams two INFO lines per device forever.
 _logged_rename_fallback = False
 
+# SNMPv3 mirrors (core.snmp_v3; simulator.snmpsim_controller._write_v3_args):
+# canonical dataset path -> the copies a device's own v3 engine serves. They
+# must be real files with their own pre-built index: snmpsim resolves a symlink
+# to its target and then cannot place it under its data dir (it crashes), and a
+# hard link is orphaned by the very first atomic replace below. So every write
+# that lands on a canonical path is repeated onto its mirrors.
+_V3_MIRRORS: Dict[str, List[str]] = {}
+_V3_MIRRORS_GUARD = threading.Lock()
+
+
+def set_v3_mirrors(mirrors: Dict[str, List[str]]) -> None:
+    """Replace the mirror map (the controller calls this on every start)."""
+    global _V3_MIRRORS
+    with _V3_MIRRORS_GUARD:
+        _V3_MIRRORS = {str(k): list(v) for k, v in mirrors.items()}
+
+
+def v3_mirrors_for(path: str) -> List[str]:
+    with _V3_MIRRORS_GUARD:
+        return list(_V3_MIRRORS.get(str(path), ()))
+
 
 def _get_write_lock(path: str) -> threading.Lock:
     with _write_locks_guard:
@@ -792,6 +813,7 @@ class SNMPRecGenerator:
                 self._reindex(tmp, canonical_path=str(filepath.resolve()),
                               target_mtime=mtime + 1)
                 _replace_with_retry(tmp, str(filepath))
+                self._mirror_v3(filepath)
             except OSError as e:
                 log.warning("[SNMPRecGen] patch_bmc_metrics failed for %s: %s",
                             filepath, e)
@@ -1450,6 +1472,7 @@ class SNMPRecGenerator:
 
                 # Index is fresh; now atomically expose the new snmprec.
                 _replace_with_retry(tmp_snmprec, str(filepath))
+                self._mirror_v3(filepath)
             except OSError as e:
                 log.warning("[SNMPRecGen] patch_metrics write failed for %s: %s", filepath, e)
                 if tmp_snmprec:
@@ -1537,6 +1560,7 @@ class SNMPRecGenerator:
                 mtime = int(os.stat(tmp).st_mtime)
                 self._reindex(tmp, canonical_path=str(filepath.resolve()), target_mtime=mtime + 1)
                 _replace_with_retry(tmp, str(filepath))
+                self._mirror_v3(filepath)
             except OSError as e:
                 log.warning("[SNMPRecGen] patch_lldp write failed for %s: %s", filepath, e)
                 if tmp:
@@ -3148,6 +3172,36 @@ class SNMPRecGenerator:
         p = os.path.splitdrive(p)[1].replace(os.sep, "_")
         return os.path.join(cache_dir, p)
 
+    def _mirror_v3(self, filepath) -> None:
+        """Repeat a dataset write onto the copies its v3 engine serves (see
+        set_v3_mirrors) the same way the canonical file was written: a temp
+        file beside the target, its index pre-built, then an atomic replace -
+        so snmpsim never rebuilds an index inside its request thread and never
+        sees a half-written file. A no-op for every device not on v3."""
+        mirrors = v3_mirrors_for(str(Path(filepath).resolve()))
+        if not mirrors:
+            return
+        import shutil as _shutil
+        import tempfile as _tempfile
+        for dst in mirrors:
+            tmp = None
+            try:
+                with _tempfile.NamedTemporaryFile(
+                        "wb", dir=os.path.dirname(dst), suffix=".snmprec.tmp",
+                        delete=False) as f, open(filepath, "rb") as src:
+                    _shutil.copyfileobj(src, f)
+                    tmp = f.name
+                self._reindex(tmp, canonical_path=dst,
+                              target_mtime=int(os.stat(tmp).st_mtime) + 1)
+                _replace_with_retry(tmp, dst)
+            except OSError as e:
+                log.warning("[SNMPRecGen] v3 mirror %s -> %s failed: %s", filepath, dst, e)
+                if tmp:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
+
     def _reindex(self, snmprec_path: str, canonical_path: str = None,
                  target_mtime: int = None) -> None:
         """
@@ -3312,6 +3366,7 @@ class SNMPRecGenerator:
             target_mtime = int(os.stat(tmp).st_mtime) + 1
             self._reindex(tmp, canonical_path=filepath, target_mtime=target_mtime)
             _replace_with_retry(tmp, filepath)
+            self._mirror_v3(filepath)
         except Exception:
             if tmp:
                 try:
