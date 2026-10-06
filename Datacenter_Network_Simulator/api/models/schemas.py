@@ -123,6 +123,14 @@ class SnmpStatusResponse(BaseModel):
     rule_engine_enabled: bool
     autonomous_faults: bool = False
     active_job_id: Optional[str] = None
+    # Each snmpsim process's sockets checked against what it was told to serve
+    # (SNMPSimController.binding_report). bind_verified False: the OS would not
+    # say (not Linux), and active_endpoints is only what was intended.
+    bind_verified: bool = False
+    endpoints_expected: int = 0
+    endpoints_unbound: int = 0
+    unbound_sample: List[str] = []
+    processes_down: List[str] = []
 
 
 # ── gNMI Simulator ────────────────────────────────────────────────────────────

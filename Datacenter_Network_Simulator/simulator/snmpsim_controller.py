@@ -10,12 +10,15 @@ Dataset directory layout expected by snmpsim-lextudio:
         <device_ip>.snmprec         # e.g. datasets/snmp/192.168.1.10.snmprec
 """
 from __future__ import annotations
+import logging
 import os
 import secrets
 import socket
+import struct
 import sys
 import subprocess
 import threading
+import time
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -112,6 +115,72 @@ def _assign_job_object(pid: int):
         return None
 
 
+
+_logger = logging.getLogger(__name__)
+
+
+def _endpoints_in_cmd(cmd: List[str]) -> set:
+    """The UDP endpoints one snmpsim command was told to serve: its
+    --agent-udpv4-endpoint arguments, inline or in its --args-from-file."""
+    eps: set = set()
+    flag = "--agent-udpv4-endpoint="
+    for a in cmd:
+        if a.startswith(flag):
+            eps.add(a[len(flag):])
+        elif a.startswith("--args-from-file="):
+            try:
+                with open(a.split("=", 1)[1]) as fh:
+                    eps.update(line.strip()[len(flag):] for line in fh
+                               if line.strip().startswith(flag))
+            except OSError:
+                pass
+    return eps
+
+
+def _udp_endpoints_by_pid(pids: List[int]) -> Optional[dict]:
+    """{pid: {"ip:port", ...}} - the IPv4 UDP sockets each process HOLDS, the
+    mapping `ss -lnup` shows: /proc/net/udp gives each socket's inode and local
+    address, /proc/<pid>/fd links name the inodes a process owns. A dead pid
+    maps to an empty set. None where this cannot be read (not Linux, or no
+    permission on another user's fds) - then nothing can be verified.
+    """
+    if not sys.platform.startswith("linux"):
+        return None
+    by_inode: dict = {}
+    try:
+        with open("/proc/net/udp") as fh:
+            next(fh, None)
+            for line in fh:
+                cols = line.split()
+                if len(cols) < 10:
+                    continue
+                hip, hport = cols[1].split(":")
+                ip = socket.inet_ntoa(struct.pack("<I", int(hip, 16)))
+                by_inode[cols[9]] = f"{ip}:{int(hport, 16)}"
+    except OSError:
+        return None
+    out: dict = {}
+    for pid in pids:
+        held: set = set()
+        try:
+            fds = os.listdir(f"/proc/{pid}/fd")
+        except FileNotFoundError:
+            out[pid] = held
+            continue
+        except PermissionError:
+            return None
+        for fd in fds:
+            try:
+                link = os.readlink(f"/proc/{pid}/fd/{fd}")
+            except OSError:
+                continue
+            if link.startswith("socket:["):
+                addr = by_inode.get(link[8:-1])
+                if addr:
+                    held.add(addr)
+        out[pid] = held
+    return out
+
 class SNMPSimController:
     """Start, stop, and monitor the snmpsim process."""
 
@@ -140,6 +209,11 @@ class SNMPSimController:
         # _write_v3_args): commands built per start, processes kept to stop.
         self._v3_shard_cmds: List[List[str]] = []
         self._shards: List[subprocess.Popen] = []
+        # Every snmpsim process with the endpoints it was told to serve, for
+        # binding_report(): (label, process, endpoints).
+        self._procs: List[tuple] = []
+        self._report_cache: tuple = (0.0, None)
+        self._started_at = 0.0
 
     def set_v3_provider(self, fn: Optional[Callable[[], dict]]):
         self._v3_provider = fn
@@ -174,6 +248,10 @@ class SNMPSimController:
         if self._process is None:
             return False
         return self._process.poll() is None
+
+    def has_orphans(self) -> bool:
+        """Shard processes still alive though the primary is not."""
+        return not self.is_running() and any(p.poll() is None for p in self._shards)
 
     @staticmethod
     def _udp_port_bound(port: int) -> Optional[bool]:
@@ -250,6 +328,92 @@ class SNMPSimController:
             return False            # hasn't announced a listener yet
         return self._port_is_bound()
 
+    def binding_report(self) -> dict:
+        """What each snmpsim process holds against what it was told to serve.
+
+        snmpsim logs "Listening at UDP/IPv4 endpoint ..." when it REGISTERS an
+        endpoint; pysnmp's open_server_mode only schedules the bind
+        (asyncio.ensure_future), and an EADDRINUSE lands in a future nobody
+        reads. So a process can log "Listening" for every endpoint, keep
+        running, and hold no socket - which is what a restart did on
+        2026-10-06 while orphaned shards still had the addresses: 178 v3
+        agents dark, status ready with 894 endpoints. Checked here against the
+        OS, per process, the way `ss -lnup` would show it.
+
+        verifiable is False where the OS will not say (not Linux, or no
+        permission); then the counts are only what was intended.
+        """
+        now = time.monotonic()
+        at, cached = self._report_cache
+        if cached is not None and now - at < 5.0:
+            return cached
+        procs = list(self._procs)
+        expected = sum(len(eps) for _, _, eps in procs)
+        rep = {"verifiable": False, "expected": expected, "bound": 0, "unbound": 0,
+               "unbound_sample": [], "processes": len(procs), "processes_down": [],
+               "bound_set": set()}
+        by_pid = _udp_endpoints_by_pid([p.pid for _, p, _ in procs]) if procs else None
+        if by_pid is not None:
+            unbound: List[str] = []
+            for label, p, eps in procs:
+                alive = p.poll() is None
+                if not alive:
+                    rep["processes_down"].append(label)
+                held = by_pid.get(p.pid, set()) if alive else set()
+                missing = eps - held
+                if missing and alive:
+                    # /proc/net/udp is read in page-sized chunks while the
+                    # table changes - every poll opens an ephemeral socket - and
+                    # an entry can be skipped (seen live: one of 894 "unbound"
+                    # that `ss`, over netlink, showed held). Unbound means
+                    # missing from two reads, not one.
+                    again = _udp_endpoints_by_pid([p.pid]) or {}
+                    held = held | again.get(p.pid, set())
+                    missing = eps - held
+                rep["bound_set"] |= eps & held
+                unbound.extend(sorted(missing))
+            rep.update(verifiable=True, bound=len(rep["bound_set"]), unbound=len(unbound),
+                       unbound_sample=unbound[:10])
+        self._report_cache = (now, rep)
+        return rep
+
+    def _start_bind_watch(self) -> None:
+        """Re-check the binds every 10 s while running and say so - as an
+        ERROR in the log - whenever endpoints go unserved or a process dies,
+        and again when it recovers. Quiet through start-up: engines bind only
+        after snmpsim has indexed their data, ~0.25 s per v3 engine."""
+        grace = 60.0 + 0.3 * self._v3_count
+        procs = self._procs
+
+        def watch():
+            last = None
+            while self._running and self._procs is procs:
+                time.sleep(10)
+                if not self._running or self._procs is not procs:
+                    return
+                if time.monotonic() - self._started_at < grace:
+                    continue
+                rep = self.binding_report()
+                if not rep["verifiable"]:
+                    return
+                state = (rep["unbound"], tuple(rep["processes_down"]))
+                if state == last:
+                    continue
+                if rep["unbound"] or rep["processes_down"]:
+                    msg = (f"SNMP agents not served: {rep['unbound']} of {rep['expected']} "
+                           f"endpoint(s) unbound, process(es) down: "
+                           f"{', '.join(rep['processes_down']) or 'none'}; "
+                           f"e.g. {', '.join(rep['unbound_sample'][:5]) or '-'}. "
+                           "Usually another process holds the addresses - stop and "
+                           "start SNMP.")
+                    self._log("ERROR: " + msg)
+                    _logger.error(msg)
+                elif last is not None:
+                    _logger.info("SNMP agents all served again: %d endpoint(s).", rep["expected"])
+                last = state
+
+        threading.Thread(target=watch, daemon=True, name="snmpsim-bind-watch").start()
+
     def get_pid(self) -> Optional[int]:
         return self._process.pid if self._process else None
 
@@ -274,7 +438,13 @@ class SNMPSimController:
         """
         if not self.is_ready():
             return []
-        return list(self._active_endpoints)
+        rep = self.binding_report()
+        if not rep["verifiable"]:
+            return list(self._active_endpoints)
+        bound = rep["bound_set"]
+        if self._port is not None and f"0.0.0.0:{self._port}" in bound:
+            return list(self._active_endpoints)       # one wildcard listener
+        return [e for e in self._active_endpoints if e in bound]
 
     # ------------------------------------------------------------------ #
     #  Executable discovery                                                #
@@ -379,6 +549,13 @@ class SNMPSimController:
         if self.is_running():
             self._log("SNMPSim is already running.")
             return True
+        # A primary that died leaves its shards running and holding their
+        # addresses. A new shard then cannot bind them - snmpsim stays up with
+        # no sockets and says nothing - and once the orphans go, those devices
+        # answer nobody (2026-10-06: 178 v3 agents dark after a restart).
+        if self.has_orphans():
+            self._log("Stopping SNMP processes left behind by the last run.")
+            self.stop()
 
         if not device_ips:
             self._log("ERROR: No device IPs supplied — nothing to simulate.")
@@ -456,8 +633,12 @@ class SNMPSimController:
             # the OS will kill snmpsim too, releasing its .snmprec file handles.
             self._job_handle = _assign_job_object(self._process.pid)
             self._set_status("Starting…")
+            self._started_at = time.monotonic()
+            self._report_cache = (0.0, None)
+            self._procs = [("primary", self._process, _endpoints_in_cmd(cmd))]
             self._start_monitor()
             self._start_shards(env, frozen)
+            self._start_bind_watch()
             return True
         except Exception as e:
             self._log(f"ERROR starting SNMPSim: {e}")
@@ -659,6 +840,7 @@ class SNMPSimController:
                 continue
             _assign_job_object(proc.pid)
             self._shards.append(proc)
+            self._procs.append((f"{label}-{i}", proc, _endpoints_in_cmd(cmd)))
 
             def _read(p=proc, n=i, lab=label):
                 for line in p.stdout:
@@ -667,7 +849,9 @@ class SNMPSimController:
                         self._log(f"[snmpsim-{lab}-{n}] {line}")
                 p.wait()
                 if self._running:
-                    self._log(f"SNMP {lab} process {n} ended unexpectedly (exit {p.returncode}).")
+                    msg = f"SNMP {lab} process {n} ended unexpectedly (exit {p.returncode})."
+                    self._log(msg)
+                    _logger.error("%s Its agents answer nothing until SNMP is restarted.", msg)
 
             threading.Thread(target=_read, daemon=True).start()
 
@@ -705,6 +889,8 @@ class SNMPSimController:
         self._port = None
         self._bound_cache = (0.0, False)
         self._active_endpoints = []
+        self._procs = []
+        self._report_cache = (0.0, None)
         if self._job_handle:
             try:
                 if sys.platform == "win32":

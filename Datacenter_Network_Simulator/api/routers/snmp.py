@@ -291,6 +291,9 @@ def stop_snmp_simulator():
     if s.snmpsim is None:
         raise HTTPException(status_code=503, detail="SNMP simulator not initialized")
     if not s.snmpsim.is_running():
+        if s.snmpsim.has_orphans():
+            s.snmpsim.stop()
+            return OkResponse(message="SNMP simulator had stopped; its remaining processes are now stopped too")
         return OkResponse(message="SNMP simulator was not running")
     if s.state_store:
         s.state_store.disable_snmp_sync()
@@ -366,7 +369,13 @@ async def get_snmp_status():
                 active_job = job_id
                 break
 
+    binds = snmpsim.binding_report() if snmpsim and snmpsim.is_running() else None
     return SnmpStatusResponse(
+        bind_verified=bool(binds and binds["verifiable"]),
+        endpoints_expected=binds["expected"] if binds else 0,
+        endpoints_unbound=binds["unbound"] if binds else 0,
+        unbound_sample=binds["unbound_sample"] if binds else [],
+        processes_down=binds["processes_down"] if binds else [],
         running=snmpsim.is_running() if snmpsim else False,
         ready=snmpsim.is_ready() if snmpsim else False,
         pid=snmpsim.get_pid() if snmpsim else None,
