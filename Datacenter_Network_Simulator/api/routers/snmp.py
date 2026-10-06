@@ -478,7 +478,9 @@ from pydantic import BaseModel  # noqa: E402
 
 class SnmpV3Request(BaseModel):
     enabled: bool
-    #: [{cidr, site, user, auth_proto, auth_key, priv_proto, priv_key}];
+    #: [{cidr, site, user, auth_proto, auth_key, priv_proto, priv_key,
+    #:   notify?, device_types?}] - device_types narrows a network to those
+    #:   types (e.g. the network gear on an IT-OOB subnet, not its BMCs);
     #: omitted keeps the stored networks (or creates the per-site BMS defaults
     #: with fresh passphrases when enabling for the first time).
     networks: Optional[List[Dict[str, Any]]] = None

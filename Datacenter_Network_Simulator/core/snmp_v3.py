@@ -5,8 +5,12 @@ How real estates do it, which this models:
 - A site migrates to v3 by device class, not all at once. Facility gear on the
   BMS network (PDU, UPS, ATS and CRAH cards) and network kit usually go first
   under security baselines; server BMCs and OS agents often stay on v2c, read-only
-  on an isolated management network, for years. So v3 here is scoped by network
-  (CIDR), and a device in scope keeps answering v2c too - a card mid-migration.
+  on an isolated management network, for years - and some cannot move at all (the
+  Microsoft SNMP service is v1/v2c only). So v3 here is scoped by network (CIDR),
+  optionally narrowed to device types: on the IT-OOB network the switches,
+  routers, firewalls and load balancers move while the BMCs beside them on the
+  same subnet stay v2c. A device in scope keeps answering v2c too - a card
+  mid-migration.
 - Every agent has its OWN engine ID (RFC 3411 SnmpEngineID). Pollers discover it
   and USM localises keys to it, so a passphrase stolen from one PDU's traffic is
   not a key to its neighbour. Format 1 (IPv4): the vendor's IANA enterprise number
@@ -140,6 +144,17 @@ def validate_network(n: Dict[str, Any]) -> Dict[str, Any]:
         raise V3ConfigError(f"{cidr}: notify must be trap or inform")
     out = {"cidr": cidr, "site": str(n.get("site") or ""), "user": user,
            "auth_proto": auth, "priv_proto": priv, "notify": notify}
+    # Only these device types speak v3 here; absent or empty means every SNMP
+    # agent in the network. Checked against the real type names, so a typo
+    # cannot quietly leave a whole class on v2c.
+    types = n.get("device_types") or []
+    if types:
+        from core.device_manager import DeviceType
+        known = {t.value for t in DeviceType}
+        bad = [t for t in types if str(t) not in known]
+        if bad:
+            raise V3ConfigError(f"{cidr}: unknown device type(s) {', '.join(map(str, bad))}")
+        out["device_types"] = sorted({str(t) for t in types})
     for k in ("auth_key", "priv_key"):
         v = str(n.get(k) or "")
         if len(v) < 8:
@@ -181,6 +196,19 @@ def redacted(cfg: Dict[str, Any]) -> Dict[str, Any]:
                           for k, v in n.items()} for n in cfg["networks"]]}
 
 
+def _type_of(device) -> str:
+    t = getattr(device, "device_type", None)
+    return str(getattr(t, "value", t) or "")
+
+
+def _in_scope(n: Dict[str, Any], device_type: Optional[str]) -> bool:
+    """Does network entry `n` cover a device of this type? A network with no
+    device_types covers every type; one with a list covers only those - and a
+    device whose type is unknown, not any of them."""
+    types = n.get("device_types")
+    return not types or (device_type or "") in types
+
+
 def agents(devices, bind_ips) -> Dict[str, V3Agent]:
     """ip -> V3Agent for every SNMP address inside an enabled v3 network.
 
@@ -201,6 +229,8 @@ def agents(devices, bind_ips) -> Dict[str, V3Agent]:
                 continue
             for net, n in nets:
                 if addr in net:
+                    if not _in_scope(n, _type_of(d)):
+                        break       # networks never overlap: no other entry covers it
                     out[ip] = V3Agent(ip=ip, engine_id=engine_id(vendor, ip), users=[V3User(
                         name=n["user"], auth_proto=n["auth_proto"], auth_key=n["auth_key"],
                         priv_proto=n["priv_proto"], priv_key=n["priv_key"])])
@@ -208,7 +238,7 @@ def agents(devices, bind_ips) -> Dict[str, V3Agent]:
     return out
 
 
-def agent_for(ip: str, vendor: str) -> Optional[tuple]:
+def agent_for(ip: str, vendor: str, device_type: Optional[str] = None) -> Optional[tuple]:
     """(V3Agent, notify) for one sending address, or None if it is not in an
     enabled v3 network - the trap engine's question, answered without the
     topology. `notify` is "trap" (the agent is authoritative: its own engine
@@ -223,6 +253,8 @@ def agent_for(ip: str, vendor: str) -> Optional[tuple]:
         return None
     for n in cfg["networks"]:
         if addr in ipaddress.IPv4Network(n["cidr"]):
+            if not _in_scope(n, device_type):
+                return None
             return (V3Agent(ip=ip, engine_id=engine_id(vendor, ip), users=[V3User(
                 name=n["user"], auth_proto=n["auth_proto"], auth_key=n["auth_key"],
                 priv_proto=n["priv_proto"], priv_key=n["priv_key"])]),

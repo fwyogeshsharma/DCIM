@@ -617,7 +617,8 @@ class TrapEngine(QObject):
         the shared v2c stack, unchanged."""
         from core import snmp_v3
         vendor = getattr(getattr(device, "vendor", None), "value", None) or str(getattr(device, "vendor", "") or "")
-        v3 = snmp_v3.agent_for(community, vendor)
+        dtype = getattr(getattr(device, "device_type", None), "value", None) or             str(getattr(device, "device_type", "") or "")
+        v3 = snmp_v3.agent_for(community, vendor, dtype)
         dests = self.resolve_destinations(device, community)
         if v3 is None:
             return [(None, await self._ensure_target(community, ip, port), False)
