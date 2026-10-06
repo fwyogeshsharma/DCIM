@@ -42,9 +42,14 @@ PRIV_PROTOCOLS = ("AES", "AES128", "AES192", "AES256", "DES")
 
 #: IANA private enterprise numbers for the vendors whose cards speak SNMP here.
 #: Only numbers known to be right; anything else is an embedded net-snmp (8072).
+#: Checked against IANA's enterprise-numbers registry, 2026-10-06. A vendor's
+#: number here and its sysObjectID arc (core.device_manager.VENDOR_SYSOID) are the
+#: same registration, and tests/test_snmp_v3_identity.py holds them together.
 ENTERPRISE = {
-    "APC by Schneider Electric": 318,
-    "Schneider Electric": 318,
+    "APC by Schneider Electric": 318,     # American Power Conversion Corp.
+    # Schneider Electric's own number. It was 318, which is APC's: the ION9000
+    # meter's engine ID said APC while its sysObjectID (3833) said Schneider.
+    "Schneider Electric": 3833,
     "Vertiv (Liebert)": 476,
     "Eaton": 534,
     "Raritan": 13742,
@@ -61,6 +66,12 @@ ENTERPRISE = {
     "F5 Networks": 3375,
     "Huawei Technologies": 2011,
     "Extreme Networks": 1916,
+    "CoolIT Systems": 30518,              # CoolIT Systems Inc.
+    "Loytec": 42036,                      # LOYTEC electronics GmbH
+    "Moxa": 8691,                         # Moxa Technologies Co., Ltd.
+    # Not here, because IANA has no number for them: ASCO Power Technologies,
+    # Verdigris Technologies. Caterpillar Inc. holds 19209, but a CAT EMCP reaches
+    # a network through a gateway, and that gateway's agent is what answers.
 }
 NET_SNMP = 8072
 

@@ -192,8 +192,10 @@ def test_a_probe_publishes_only_the_channels_it_has():
 KNOWN_UNASSIGNED_SYSOID = {
     "ASCO 7000 Series 4000A",
     "ASCO 7000 Paralleling Switchgear",
-    "CoolIT CHx80",
-    "LOYTEC LINX-151",
+    # CoolIT (30518) and LOYTEC (42036) were here until their PENs were sourced
+    # from IANA's registry, 2026-10-06. Verdigris joined then: its "57628" was
+    # Oka Skog AB's, and Verdigris has no PEN.
+    "Verdigris EV2-42",
     # Not plant gear, and not found by looking for it - this test found it. A CAT
     # EMCP reaches a network through a gateway whose PEN could not be sourced;
     # F5's (3375) and Palo Alto's (25461) were not in doubt and are now set.

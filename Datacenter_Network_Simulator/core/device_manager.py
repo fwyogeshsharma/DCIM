@@ -353,7 +353,17 @@ VENDOR_SYSOID = {
     Vendor.VERTIV:            "1.3.6.1.4.1.476.1.42.2.10.2.1.1",
     Vendor.RARITAN:           "1.3.6.1.4.1.13742.6",
     Vendor.SERVER_TECHNOLOGY: "1.3.6.1.4.1.1718.3.1",
-    Vendor.VERDIGRIS:         "1.3.6.1.4.1.57628.1",   # Verdigris Technologies
+    # Verdigris is deliberately absent. It had "1.3.6.1.4.1.57628.1", and IANA's
+    # registry (checked 2026-10-06) gives 57628 to Oka Skog AB, a Swedish forestry
+    # company - a guessed arc, the thing this table must never hold. Verdigris has
+    # no PEN there, so the EV2 is declared unassigned (tests/test_device_identity).
+    #
+    # IANA-registered, registrant at the vendor's own domain (2026-10-06):
+    # CoolIT Systems Inc. 30518 (coolitsystems.com), LOYTEC electronics GmbH 42036
+    # (loytec.com). The enterprise root alone: no product sub-arc is sourced, and
+    # the root is generic but true - as for Schneider's 3833 and Moxa's 8691.
+    Vendor.COOLIT:            "1.3.6.1.4.1.30518",
+    Vendor.LOYTEC:            "1.3.6.1.4.1.42036",
     # Two arcs that are not in doubt: F5's MIBs hang off 3375 and PAN-OS's off
     # 25461. Both were falling through to "1.3.6.1.4.1.0.0", which is not an
     # assignable OID at all - a discovery tool matching on it learns nothing and
@@ -708,11 +718,11 @@ MODEL_SYSOID = {
     # device as unidentifiable. The root is generic but true.
     "Schneider PowerLogic ION9000": "1.3.6.1.4.1.3833",
     # Moxa Inc., IANA PEN 8691 - the arc Moxa's own MIBs hang off (8691.7 NPort,
-    # 8691.10 EDS). The other three vendors here keep the bogus "1.3.6.1.4.1.0.0"
-    # fallback deliberately: enterprise 0 is not assignable, so it identifies
-    # nothing, but a GUESSED PEN is worse - vendor tooling matches on this leaf and
-    # would go and read the wrong MIB. Sourcing ASCO's, LOYTEC's and CoolIT's is a
-    # datasheet job, not a judgement call.
+    # 8691.10 EDS). ASCO keeps the bogus "1.3.6.1.4.1.0.0" fallback deliberately:
+    # enterprise 0 is not assignable, so it identifies nothing, but a GUESSED PEN is
+    # worse - vendor tooling matches on this leaf and would go and read the wrong
+    # MIB. IANA's 33818 "asco" is an individual (netzverwaltung.net), not ASCO Power
+    # Technologies. LOYTEC's and CoolIT's are now sourced (VENDOR_SYSOID).
     "Moxa MGate MB3480": "1.3.6.1.4.1.8691",
     # Eaton switchgear / MCC / panelboard.
     #
