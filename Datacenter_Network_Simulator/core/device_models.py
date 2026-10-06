@@ -805,6 +805,43 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
 }
 
 
+def vendor_of_model(model_name: str):
+    """The Vendor that makes *model_name*, from this registry; None if unknown.
+
+    A part number has one maker. A topology that pairs "Supermicro SYS-221H-TNR
+    LCC" with vendor Lenovo describes a box nobody sells - and the BMC then
+    announces a Lenovo XClarity controller on a Supermicro board."""
+    want = (model_name or "").strip()
+    if not want:
+        return None
+    for (_dtype, vendor), models in DEVICE_MODELS.items():
+        if any(m.name == want for m in models):
+            return vendor
+    return None
+
+
+def follow_model_vendor(device: dict):
+    """Make a topology device dict's vendor the one its model belongs to, and
+    rename its BMC port to that vendor's controller (iLO/XCC -> IPMI...).
+
+    The port's LABEL only: its index, and so the management edge that lands on it,
+    stays. Returns (old_vendor, new_vendor) when it changed something, else None.
+    """
+    from core.device_manager import BMC_PORT_NAME
+
+    new = vendor_of_model(device.get("model_name") or "")
+    if new is None or device.get("vendor") == new.value:
+        return None
+    old = device.get("vendor")
+    device["vendor"] = new.value
+    bmc_names = {n.lower() for n in BMC_PORT_NAME.values()}
+    for itf in device.get("interfaces") or []:
+        if (itf.get("name") or "").strip().lower() in bmc_names and new in BMC_PORT_NAME:
+            itf["name"] = BMC_PORT_NAME[new]
+            break
+    return (old, new.value)
+
+
 def is_liquid_cooled(model_name: str) -> bool:
     """True when *model_name* is a SKU that ships with direct-to-chip cold plates.
 

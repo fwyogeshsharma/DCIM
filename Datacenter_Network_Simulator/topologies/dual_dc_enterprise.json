@@ -20151,7 +20151,7 @@
       "device": {
         "name": "SRV01-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.20",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -20205,7 +20205,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -20532,7 +20532,7 @@
       "device": {
         "name": "SRV04-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.35",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -20614,7 +20614,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -20687,7 +20687,7 @@
       "device": {
         "name": "SRV05-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.40",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -20769,7 +20769,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -21124,7 +21124,7 @@
       "device": {
         "name": "SRV08-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.55",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -21178,7 +21178,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -21660,7 +21660,7 @@
       "device": {
         "name": "SRV12-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.75",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -21742,7 +21742,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -21815,7 +21815,7 @@
       "device": {
         "name": "SRV13-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.80",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -21869,7 +21869,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -22351,7 +22351,7 @@
       "device": {
         "name": "SRV17-DC1-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.100",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -22433,7 +22433,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -22788,7 +22788,7 @@
       "device": {
         "name": "SRV03-DC1-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.31",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -22870,7 +22870,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -23324,7 +23324,7 @@
       "device": {
         "name": "SRV07-DC1-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.51",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -23378,7 +23378,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -23451,7 +23451,7 @@
       "device": {
         "name": "SRV08-DC1-HA-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.56",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -23505,7 +23505,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -23860,7 +23860,7 @@
       "device": {
         "name": "SRV11-DC1-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.71",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -23942,7 +23942,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -24015,7 +24015,7 @@
       "device": {
         "name": "SRV12-DC1-HA-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.11.76",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -24097,7 +24097,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -59766,7 +59766,7 @@
       "device": {
         "name": "SRV02-DC2-HA-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.23",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -59848,7 +59848,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -59921,7 +59921,7 @@
       "device": {
         "name": "SRV03-DC2-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.27",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -59975,7 +59975,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -60330,7 +60330,7 @@
       "device": {
         "name": "SRV06-DC2-HA-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.39",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -60384,7 +60384,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -60457,7 +60457,7 @@
       "device": {
         "name": "SRV07-DC2-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.43",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -60539,7 +60539,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -60894,7 +60894,7 @@
       "device": {
         "name": "SRV10-DC2-HA-R2-02",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.55",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -60976,7 +60976,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -61585,7 +61585,7 @@
       "device": {
         "name": "SRV15-DC2-HA-R2-02",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.75",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -61639,7 +61639,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -61994,7 +61994,7 @@
       "device": {
         "name": "SRV03-DC2-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.28",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -62076,7 +62076,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -62149,7 +62149,7 @@
       "device": {
         "name": "SRV04-DC2-HA-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.32",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -62231,7 +62231,7 @@
           },
           {
             "index": 5,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -62558,7 +62558,7 @@
       "device": {
         "name": "SRV07-DC2-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.44",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -62612,7 +62612,7 @@
           },
           {
             "index": 3,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -63094,7 +63094,7 @@
       "device": {
         "name": "SRV11-DC2-HA-R2-03",
         "device_type": "server",
-        "vendor": "Hewlett Packard Enterprise",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.60",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -63176,7 +63176,7 @@
           },
           {
             "index": 5,
-            "name": "iLO",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,
@@ -63249,7 +63249,7 @@
       "device": {
         "name": "SRV12-DC2-HA-R2-03",
         "device_type": "server",
-        "vendor": "Lenovo",
+        "vendor": "Supermicro",
         "ip_address": "10.50.21.64",
         "snmp_port": 161,
         "gnmi_port": 57400,
@@ -63303,7 +63303,7 @@
           },
           {
             "index": 3,
-            "name": "XCC",
+            "name": "IPMI",
             "speed": 1000000000,
             "oper_status": 1,
             "in_octets": 0,

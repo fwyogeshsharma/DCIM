@@ -59,7 +59,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core.device_manager import (  # noqa: E402
     DeviceType, cdu_manifold_ports, cdu_serves_own_rack_only, nameplate_power_w,
 )
-from core.device_models import MODEL_U_HEIGHT, is_liquid_cooled  # noqa: E402
+from core.device_models import MODEL_U_HEIGHT, follow_model_vendor, is_liquid_cooled  # noqa: E402
 
 #: Air part -> the liquid part that replaces it, same rack units. Vendor is kept
 #: where that vendor sells one; Lenovo, IBM and the 2U HPE lines have no
@@ -180,6 +180,10 @@ def main(argv: list[str]) -> int:
                 continue
             d["model_name"] = new
             d["power_draw_w"] = nameplate_power_w(DeviceType.SERVER, new)
+            # The vendor follows the part, as the docstring says. Missing until
+            # 2026-10-06: 23 Hall A servers kept vendor HPE/Lenovo on a Supermicro
+            # LCC model, and their BMCs announced iLO/XCC on a Supermicro board.
+            follow_model_vendor(d)
             liquid.append(d)
             converted.append((d, old, new, cdu["id"]))
 
