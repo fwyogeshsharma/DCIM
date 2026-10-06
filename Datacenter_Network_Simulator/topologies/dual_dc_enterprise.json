@@ -179637,28 +179637,28 @@
     {
       "src": "1d31a3b3",
       "dst": "mbgwdc101",
-      "src_iface": 0,
+      "src_iface": 3,
       "dst_iface": 0,
       "layer": "management"
     },
     {
       "src": "f8b995ba",
       "dst": "mbgwdc201",
-      "src_iface": 0,
+      "src_iface": 3,
       "dst_iface": 0,
       "layer": "management"
     },
     {
       "src": "1d31a3b3",
       "dst": "brtrdc101",
-      "src_iface": 0,
+      "src_iface": 4,
       "dst_iface": 0,
       "layer": "management"
     },
     {
       "src": "f8b995ba",
       "dst": "brtrdc201",
-      "src_iface": 0,
+      "src_iface": 4,
       "dst_iface": 0,
       "layer": "management"
     },

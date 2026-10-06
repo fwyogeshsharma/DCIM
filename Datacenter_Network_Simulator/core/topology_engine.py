@@ -4,8 +4,11 @@ Topology Engine - Manages the network topology using NetworkX.
 from __future__ import annotations
 import threading
 import networkx as nx
+import logging
 from typing import List, Tuple, Optional, Dict, Any
 from core.device_manager import Device, DeviceType, feed_side
+
+log = logging.getLogger(__name__)
 
 
 class TopologyEngine:
@@ -74,13 +77,39 @@ class TopologyEngine:
     # Neither has an ifIndex, so neither gets an iface — see add_link.
     ETHERNET_LAYERS = ("production", "management")
 
+    def _used_ifaces(self, device_id: str) -> set:
+        """Iface indices on *device_id* that already carry an Ethernet cable.
+
+        Read from the EDGES, as _used_power_terminations is for cords, never from
+        Interface.connected_to_device: that cache goes stale the moment anything
+        re-cords, and trusting it put three management cables on port 0 of
+        OOBM1-DC1-CP and OOBM1-DC2-CP (an energy monitor, a Modbus gateway and a
+        BACnet router). One port takes one cable. src_node/dst_node, never the
+        (u, v) networkx reports - the graph is undirected.
+        """
+        used: set = set()
+        if not self.graph.has_node(device_id):
+            return used
+        for peer in self.graph[device_id]:
+            for _key, d in self.graph[device_id][peer].items():
+                if d.get("layer") not in self.ETHERNET_LAYERS:
+                    continue
+                if d.get("src_node") == device_id and d.get("src_iface") is not None:
+                    used.add(d["src_iface"])
+                if d.get("dst_node") == device_id and d.get("dst_iface") is not None:
+                    used.add(d["dst_iface"])
+        return used
+
     @staticmethod
-    def _next_free_iface(device) -> int:
-        """Return index of the first interface not yet connected to any device."""
-        for i, iface in enumerate(device.interfaces):
-            if iface.connected_to_device is None:
+    def _next_free_iface(device, used: set) -> Optional[int]:
+        """The first interface with no cable on it, or None when every port is
+        taken - a full switch refuses a cable rather than doubling one up (it
+        used to "reuse the last" port, which is how a port gains a second cable).
+        """
+        for i, _iface in enumerate(device.interfaces):
+            if i not in used:
                 return i
-        return len(device.interfaces) - 1  # all occupied — reuse last
+        return None
 
     @staticmethod
     def _power_ends(src_dev, dst_dev):
@@ -298,10 +327,28 @@ class TopologyEngine:
                 # Honour an explicitly-chosen port (the manual link builder passes
                 # them); fall back to the next free port when not given — the
                 # long-standing auto behaviour every other caller relies on.
+                for end, dev, iface in (("src", src_dev, src_iface), ("dst", dst_dev, dst_iface)):
+                    if dev is None:
+                        continue
+                    used = self._used_ifaces(dev.id)
+                    if iface is None:
+                        iface = self._next_free_iface(dev, used)
+                        if iface is None:
+                            log.warning("no free port on %s for a %s link", dev.name, layer)
+                            return False
+                    elif iface in used:
+                        # The same rule as an occupied outlet: refused, not doubled.
+                        log.warning("port %s on %s already carries a cable; %s link "
+                                    "%s -> %s refused", iface, dev.name, layer, src_id, dst_id)
+                        return False
+                    if end == "src":
+                        src_iface = iface
+                    else:
+                        dst_iface = iface
                 if src_iface is None:
-                    src_iface = self._next_free_iface(src_dev) if src_dev else 0
+                    src_iface = 0
                 if dst_iface is None:
-                    dst_iface = self._next_free_iface(dst_dev) if dst_dev else 0
+                    dst_iface = 0
             self.graph.add_edge(src_id, dst_id,
                                 key=edge_key,
                                 src_iface=src_iface,
