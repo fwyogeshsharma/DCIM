@@ -1801,6 +1801,13 @@ class Device:
     cold_aisle: str = ""                # cold-aisle id this rack fronts (e.g. CA1)
     hot_aisle: str = ""                 # hot-aisle id behind this rack (e.g. HA1)
     sub_floor: bool = False             # device sits in the raised-floor plenum
+    # How the device is physically held - rack / zero_u / rack_front / rack_rear /
+    # floor / wall / pipe / panel / underfloor. Blank = derived from the type and
+    # rack_unit (core/equipment_geometry.effective_mount). Asset data, like floor_x.
+    mounting: str = ""
+    # Compass direction the FRONT of a free-standing unit faces, degrees clockwise
+    # from N (-y). None = follow rack_facing (rack gear) or unknown.
+    rotation_deg: Optional[float] = None
 
     # Dual-homing (MLAG/vPC) forward-compat — see core/rack_capacity.py.
     # Single-homed today; these only mark a leaf rack as ready for a future 2nd
@@ -2330,6 +2337,16 @@ class Device:
         # the catalog lives here, so the lookup happens here. 0 means "not a
         # cooling SKU, or model not in the catalog".
         d["rated_cooling_w"] = cooling_capacity_w(self.model_name)
+        # Physical geometry for a DCIM's asset import (footprint, effective mount,
+        # height above the floor, which way the front faces, and the body's height
+        # in U). Derived here for the same reason as the ratings: the catalogs live
+        # in this repo. Recomputed on every export and dropped again on load, so a
+        # saved topology never carries a stale copy.
+        from core.equipment_geometry import geometry_fields
+        from core.rack_capacity import device_u_height
+        d.update(geometry_fields(
+            self, device_u_height(self.device_type, self.model_name)
+            if self.rack_unit else None))
         d["interface_groups"] = [
             {"iface_type": (g["iface_type"].value
                             if isinstance(g["iface_type"], InterfaceType)

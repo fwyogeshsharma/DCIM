@@ -84950,11 +84950,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.52,
+        "floor_y": 4.5,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -85042,11 +85044,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.1,
-        "floor_y": 0.6,
+        "floor_x": 2.33,
+        "floor_y": 5.35,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -85134,11 +85138,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.3,
-        "floor_y": 0.6,
+        "floor_x": 5.98,
+        "floor_y": 5.35,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -85438,11 +85444,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.52,
+        "floor_y": 4.5,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -85530,11 +85538,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.1,
-        "floor_y": 0.6,
+        "floor_x": 2.33,
+        "floor_y": 5.35,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -85622,11 +85632,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 3.3,
-        "floor_y": 0.6,
+        "floor_x": 5.98,
+        "floor_y": 5.35,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -86561,7 +86573,8 @@
         "floor_x": 1.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -86636,7 +86649,8 @@
         "floor_x": 2.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -86711,7 +86725,8 @@
         "floor_x": 3.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -86786,7 +86801,8 @@
         "floor_x": 4.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -86859,10 +86875,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "ca5e5b84",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 2.27,
+        "floor_y": 0.61,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -86935,10 +86953,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "1032af3d",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 5.6,
+        "floor_y": 10.08,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "panel"
       }
     },
     {
@@ -87013,7 +87033,8 @@
         "floor_x": 1.1571,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -87088,7 +87109,8 @@
         "floor_x": 2.0714,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -87163,7 +87185,8 @@
         "floor_x": 2.9857,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -87238,7 +87261,8 @@
         "floor_x": 3.9,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -87311,10 +87335,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "d622ff64",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 2.27,
+        "floor_y": 0.61,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -87387,10 +87413,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "5a0db7bd",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 5.6,
+        "floor_y": 10.08,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "panel"
       }
     },
     {
@@ -87440,11 +87468,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 15.35,
+        "floor_y": 6.0,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "floor"
       }
     },
     {
@@ -87517,10 +87547,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "6284bfa0",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 14.8,
+        "floor_y": 6.0,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "panel"
       }
     },
     {
@@ -87570,11 +87602,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 15.35,
+        "floor_y": 6.0,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "floor"
       }
     },
     {
@@ -87647,10 +87681,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "3dcdcb2a",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 14.8,
+        "floor_y": 6.0,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "panel"
       }
     },
     {
@@ -88474,8 +88510,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "outlets": [],
         "psus": [
           {
@@ -88490,7 +88526,10 @@
             "inlet": "C14",
             "capacity_w": 1100
           }
-        ]
+        ],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -88562,10 +88601,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.48,
+        "floor_y": 8.28,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88637,10 +88678,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 6.53,
+        "floor_y": 8.28,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88690,14 +88733,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 1.5,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 1,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88747,14 +88792,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.7,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 2,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88804,14 +88851,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 3.9,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 3,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88861,13 +88910,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 8.6,
+        "floor_y": 12.3,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 5,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88917,13 +88968,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 9.8,
+        "floor_y": 12.3,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 6,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -88995,10 +89048,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.88,
+        "floor_y": 2.62,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -89070,10 +89125,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 5.64,
+        "floor_y": 2.62,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -89123,13 +89180,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 5.1,
+        "floor_y": 13.9,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 20,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "pipe"
       }
     },
     {
@@ -89179,13 +89238,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 11.0,
+        "floor_y": 13.9,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 21,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "pipe"
       }
     },
     {
@@ -89235,14 +89296,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 1.5,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 1,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -89292,14 +89354,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 2.7,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 2,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -89349,14 +89412,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 3.9,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 3,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -90180,8 +90244,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "outlets": [],
         "psus": [
           {
@@ -90196,7 +90260,10 @@
             "inlet": "C14",
             "capacity_w": 1100
           }
-        ]
+        ],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -90268,10 +90335,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.48,
+        "floor_y": 8.28,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90343,10 +90412,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 6.53,
+        "floor_y": 8.28,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90396,14 +90467,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 1.5,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 1,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90453,14 +90526,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.7,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 2,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90510,14 +90585,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 3.9,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 3,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90567,13 +90644,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 8.6,
+        "floor_y": 12.3,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 5,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90623,13 +90702,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 9.8,
+        "floor_y": 12.3,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 6,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90701,10 +90782,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.88,
+        "floor_y": 2.62,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90776,10 +90859,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 5.64,
+        "floor_y": 2.62,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -90829,13 +90914,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 5.1,
+        "floor_y": 13.9,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 20,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "pipe"
       }
     },
     {
@@ -90885,13 +90972,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 11.0,
+        "floor_y": 13.9,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 21,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "pipe"
       }
     },
     {
@@ -90941,14 +91030,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 1.5,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 1,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -90998,14 +91088,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 2.7,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 2,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -91055,14 +91146,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 3.9,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 3,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -91134,10 +91226,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 10.58,
+        "floor_y": 8.28,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -91187,14 +91281,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 5.1,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 4,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -91266,10 +91362,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 10.58,
+        "floor_y": 8.28,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -91319,14 +91417,16 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 5.1,
+        "floor_y": 12.3,
         "rated_power_w": null,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 4,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -91922,14 +92022,15 @@
         "airflow": 1.53,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 8.6,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 4,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -91979,14 +92080,15 @@
         "airflow": 1.53,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 9.8,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 5,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -92036,14 +92138,15 @@
         "airflow": 1.53,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 12.2,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 6,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -92093,14 +92196,15 @@
         "airflow": 1.53,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 8.6,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 4,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -92150,14 +92254,15 @@
         "airflow": 1.53,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 9.8,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 5,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -92207,14 +92312,15 @@
         "airflow": 1.53,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
-        "mounting": "rack_front",
+        "floor_x": 12.2,
+        "floor_y": 13.9,
+        "mounting": "pipe",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 6,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 180
       }
     },
     {
@@ -92289,7 +92395,8 @@
         "floor_x": 1.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -92364,7 +92471,8 @@
         "floor_x": 2.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -92439,7 +92547,8 @@
         "floor_x": 3.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -92514,7 +92623,8 @@
         "floor_x": 4.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -92862,7 +92972,8 @@
         "floor_x": 1.1571,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -92937,7 +93048,8 @@
         "floor_x": 2.0714,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -93012,7 +93124,8 @@
         "floor_x": 2.9857,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -93087,7 +93200,8 @@
         "floor_x": 3.9,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -93432,11 +93546,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 0.6,
+        "floor_x": 6.66,
+        "floor_y": 4.5,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -93508,11 +93624,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 0.6,
+        "floor_x": 6.66,
+        "floor_y": 4.5,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -93600,8 +93718,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "rated_power_w": null,
         "outlets": [
           {
@@ -93773,7 +93891,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -93861,8 +93982,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "rated_power_w": null,
         "outlets": [
           {
@@ -94034,7 +94155,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -105889,8 +106013,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "rated_power_w": null,
         "outlets": [
           {
@@ -106062,7 +106186,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -106150,8 +106277,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "rated_power_w": null,
         "outlets": [
           {
@@ -106323,7 +106450,10 @@
             "rated_a": 16.0
           }
         ],
-        "psus": []
+        "psus": [],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -118257,7 +118387,8 @@
         "floor_x": 5.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118332,7 +118463,8 @@
         "floor_x": 6.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118407,7 +118539,8 @@
         "floor_x": 7.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118482,7 +118615,8 @@
         "floor_x": 5.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118557,7 +118691,8 @@
         "floor_x": 6.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118632,7 +118767,8 @@
         "floor_x": 7.2,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118707,7 +118843,8 @@
         "floor_x": 4.8143,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118782,7 +118919,8 @@
         "floor_x": 5.7286,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118857,7 +118995,8 @@
         "floor_x": 6.6429,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -118932,7 +119071,8 @@
         "floor_x": 4.8143,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -119007,7 +119147,8 @@
         "floor_x": 5.7286,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -119082,7 +119223,8 @@
         "floor_x": 6.6429,
         "floor_y": 11.4,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0
       }
     },
     {
@@ -141367,14 +141509,16 @@
         "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.0,
+        "floor_y": 2.52,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -141443,14 +141587,16 @@
         "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
-        "floor_x": 0.9,
-        "floor_y": 0.6,
+        "floor_x": 2.8,
+        "floor_y": 1.76,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -141519,14 +141665,16 @@
         "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
-        "floor_x": 1.5,
-        "floor_y": 0.6,
+        "floor_x": 5.0,
+        "floor_y": 10.84,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -141595,14 +141743,16 @@
         "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
-        "floor_x": 1.5,
-        "floor_y": 0.6,
+        "floor_x": 5.16,
+        "floor_y": 1.76,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -141671,14 +141821,16 @@
         "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 0,
-        "floor_x": 2.7,
-        "floor_y": 0.6,
+        "floor_x": 7.16,
+        "floor_y": 1.76,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -141731,14 +141883,16 @@
         "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.27,
+        "floor_y": 0.36,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -141791,14 +141945,16 @@
         "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
-        "floor_x": 0.9,
-        "floor_y": 0.6,
+        "floor_x": 5.81,
+        "floor_y": 0.36,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -141851,14 +142007,16 @@
         "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.0,
+        "floor_y": 2.52,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -141927,14 +142085,16 @@
         "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
-        "floor_x": 0.9,
-        "floor_y": 0.6,
+        "floor_x": 2.8,
+        "floor_y": 1.76,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142003,14 +142163,16 @@
         "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
-        "floor_x": 1.5,
-        "floor_y": 0.6,
+        "floor_x": 5.0,
+        "floor_y": 10.84,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 0,
+        "mounting": "floor"
       }
     },
     {
@@ -142079,14 +142241,16 @@
         "rack_row": 1,
         "rack_num": 3,
         "rack_unit": 0,
-        "floor_x": 1.5,
-        "floor_y": 0.6,
+        "floor_x": 5.16,
+        "floor_y": 1.76,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142155,14 +142319,16 @@
         "rack_row": 1,
         "rack_num": 5,
         "rack_unit": 0,
-        "floor_x": 2.7,
-        "floor_y": 0.6,
+        "floor_x": 7.16,
+        "floor_y": 1.76,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142215,14 +142381,16 @@
         "rack_row": 1,
         "rack_num": 1,
         "rack_unit": 0,
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 2.27,
+        "floor_y": 0.36,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142275,14 +142443,16 @@
         "rack_row": 1,
         "rack_num": 2,
         "rack_unit": 0,
-        "floor_x": 0.9,
-        "floor_y": 0.6,
+        "floor_x": 5.81,
+        "floor_y": 0.36,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "floor": "G",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142355,13 +142525,15 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "8d72a7df",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 3.4,
+        "floor_y": 2.52,
         "rack_facing": "S",
         "cold_aisle": "CA1",
         "hot_aisle": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -142434,13 +142606,15 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "2efc3807",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 5.81,
+        "floor_y": 0.61,
         "rack_facing": "S",
         "cold_aisle": "CA1",
         "hot_aisle": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -142513,13 +142687,15 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "c2c4f44b",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 3.4,
+        "floor_y": 2.52,
         "rack_facing": "S",
         "cold_aisle": "CA1",
         "hot_aisle": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -142592,13 +142768,15 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "209ad80c",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 5.81,
+        "floor_y": 0.61,
         "rack_facing": "S",
         "cold_aisle": "CA1",
         "hot_aisle": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -142648,13 +142826,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 11.0,
+        "floor_y": 12.3,
         "outlets": [],
         "psus": [],
         "mstp_net": 2001,
         "mstp_mac": 7,
-        "mstp_router_ip": "10.52.14.15"
+        "mstp_router_ip": "10.52.14.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142726,10 +142906,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 8.4,
+        "floor_y": 2.62,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142779,13 +142961,15 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 11.0,
+        "floor_y": 12.3,
         "outlets": [],
         "psus": [],
         "mstp_net": 2002,
         "mstp_mac": 7,
-        "mstp_router_ip": "10.52.24.15"
+        "mstp_router_ip": "10.52.24.15",
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142857,10 +143041,12 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 8.4,
+        "floor_y": 2.62,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 180,
+        "mounting": "floor"
       }
     },
     {
@@ -142910,11 +143096,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 15.35,
+        "floor_y": 7.0,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "floor"
       }
     },
     {
@@ -142987,10 +143175,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "df0ecde8",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 14.8,
+        "floor_y": 7.0,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "panel"
       }
     },
     {
@@ -143040,11 +143230,13 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 15.35,
+        "floor_y": 7.0,
         "rated_power_w": null,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "floor"
       }
     },
     {
@@ -143117,10 +143309,12 @@
         "sys_contact": "",
         "sys_location_override": "",
         "monitored_panel": "931fda08",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 14.8,
+        "floor_y": 7.0,
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "rotation_deg": 270,
+        "mounting": "panel"
       }
     },
     {
@@ -143175,12 +143369,14 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143235,12 +143431,14 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 8.1,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143295,12 +143493,14 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143355,12 +143555,14 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 8.1,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143415,12 +143617,14 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143475,12 +143679,14 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 7.5,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143535,12 +143741,14 @@
         "rack_num": 8,
         "rack_unit": 0,
         "floor_x": 0.3,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -143595,12 +143803,14 @@
         "rack_num": 9,
         "rack_unit": 0,
         "floor_x": 7.5,
-        "floor_y": 11.4,
+        "floor_y": 12.225,
         "country": "USA",
         "datacenter_city": "New York",
         "datacenter": "DC2",
         "outlets": [],
-        "psus": []
+        "psus": [],
+        "mounting": "wall",
+        "rotation_deg": 0
       }
     },
     {
@@ -145725,8 +145935,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "outlets": [],
         "psus": [
           {
@@ -145741,7 +145951,10 @@
             "inlet": "C14",
             "capacity_w": 1100
           }
-        ]
+        ],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -146181,8 +146394,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 7.4,
+        "floor_y": 3.2,
         "outlets": [],
         "psus": [
           {
@@ -146197,7 +146410,10 @@
             "inlet": "C14",
             "capacity_w": 1100
           }
-        ]
+        ],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "N"
       }
     },
     {
@@ -147169,8 +147385,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 5.1,
-        "floor_y": 0.6,
+        "floor_x": 15.2,
+        "floor_y": 1.8,
         "outlets": [],
         "psus": [
           {
@@ -147185,7 +147401,10 @@
             "inlet": "C14",
             "capacity_w": 1100
           }
-        ]
+        ],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "S"
       }
     },
     {
@@ -147625,8 +147844,8 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.9,
-        "floor_y": 3.0,
+        "floor_x": 7.4,
+        "floor_y": 3.2,
         "outlets": [],
         "psus": [
           {
@@ -147641,7 +147860,10 @@
             "inlet": "C14",
             "capacity_w": 1100
           }
-        ]
+        ],
+        "rotation_deg": null,
+        "mounting": "",
+        "rack_facing": "N"
       }
     },
     {
@@ -155186,7 +155408,11 @@
         "rack_num": 1,
         "power_draw_w": 15,
         "rated_power_w": 25,
-        "id": "mbgwdc101"
+        "id": "mbgwdc101",
+        "floor_x": 13.0,
+        "floor_y": 0.05,
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -155252,7 +155478,11 @@
         "rack_num": 1,
         "power_draw_w": 15,
         "rated_power_w": 25,
-        "id": "mbgwdc201"
+        "id": "mbgwdc201",
+        "floor_x": 13.0,
+        "floor_y": 0.05,
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -155317,7 +155547,11 @@
         "rack_num": 1,
         "power_draw_w": 12,
         "rated_power_w": 20,
-        "id": "brtrdc101"
+        "id": "brtrdc101",
+        "floor_x": 13.4,
+        "floor_y": 0.05,
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -155382,7 +155616,11 @@
         "rack_num": 1,
         "power_draw_w": 12,
         "rated_power_w": 20,
-        "id": "brtrdc201"
+        "id": "brtrdc201",
+        "floor_x": 13.4,
+        "floor_y": 0.05,
+        "rotation_deg": 180,
+        "mounting": "panel"
       }
     },
     {
@@ -155550,7 +155788,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 1.5,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -155609,7 +155847,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.7,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -155668,7 +155906,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.7,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -155708,7 +155946,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 6,
@@ -155767,7 +156005,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 40,
@@ -155826,7 +156064,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 3,
         "rack_unit": 24,
@@ -155845,7 +156083,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 1.5,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -155885,7 +156123,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 5,
         "rack_unit": 6,
@@ -155904,7 +156142,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.7,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -155944,7 +156182,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC1",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 5,
         "rack_unit": 40,
@@ -155963,7 +156201,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.7,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -156140,7 +156378,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 1.5,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -156199,7 +156437,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.1,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -156258,7 +156496,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.1,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -156298,7 +156536,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC2",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 6,
@@ -156357,7 +156595,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC2",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 1,
         "rack_unit": 40,
@@ -156416,7 +156654,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC2",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 3,
         "rack_unit": 24,
@@ -156435,7 +156673,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 1.5,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -156475,7 +156713,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC2",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 4,
         "rack_unit": 6,
@@ -156494,7 +156732,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.1,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -156534,7 +156772,7 @@
         "datacenter_city": "Chicago",
         "datacenter": "DC2",
         "room": "Server Hall B",
-        "floor": "1",
+        "floor": "2",
         "rack_row": 2,
         "rack_num": 4,
         "rack_unit": 40,
@@ -156553,7 +156791,7 @@
         "airflow": 0.79,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
+        "floor_x": 2.1,
         "floor_y": 4.2,
         "rack_facing": "N",
         "cold_aisle": "CA1",
@@ -157320,14 +157558,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 0.05,
+        "floor_y": 9.0,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 7,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157377,14 +157616,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.1,
-        "floor_y": 0.6,
+        "floor_x": 0.05,
+        "floor_y": 3.7,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 8,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157434,14 +157674,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 0.6,
+        "floor_x": 0.05,
+        "floor_y": 9.0,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 7,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157491,14 +157732,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 2.1,
-        "floor_y": 0.6,
+        "floor_x": 0.05,
+        "floor_y": 3.7,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 8,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157548,14 +157790,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 0.05,
+        "floor_y": 7.5,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 9,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157605,14 +157848,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 0.05,
+        "floor_y": 2.0,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 10,
-        "modbus_gateway_ip": "10.52.14.19"
+        "modbus_gateway_ip": "10.52.14.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157662,14 +157906,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 0.05,
+        "floor_y": 7.5,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 9,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 90
       }
     },
     {
@@ -157719,14 +157964,15 @@
         "airflow": 0.0,
         "sys_contact": "",
         "sys_location_override": "",
-        "floor_x": 0.3,
-        "floor_y": 3.0,
+        "floor_x": 0.05,
+        "floor_y": 2.0,
         "mounting": "wall",
         "outlets": [],
         "psus": [],
         "modbus_role": "rtu_slave",
         "modbus_unit_id": 10,
-        "modbus_gateway_ip": "10.52.24.19"
+        "modbus_gateway_ip": "10.52.24.19",
+        "rotation_deg": 90
       }
     }
   ],
@@ -180647,55 +180893,79 @@
         "room": "Central Plant",
         "class": "facility",
         "containment": "none",
-        "width_m": 5.4,
-        "depth_m": 4.8,
+        "width_m": 16.0,
+        "depth_m": 15.0,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 9,
-        "aisles": []
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 11.4,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC1/Generator Room": {
         "datacenter": "DC1",
         "room": "Generator Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 1.8,
-        "depth_m": 4.8,
+        "width_m": 10.0,
+        "depth_m": 12.6,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 3,
-        "aisles": []
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 9.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC1/Mechanical Room": {
         "datacenter": "DC1",
         "room": "Mechanical Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 1.2,
-        "depth_m": 4.8,
+        "width_m": 8.0,
+        "depth_m": 4.0,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 2,
-        "aisles": []
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 0.0,
+          "y": 6.0
+        },
+        "rotation_deg": 0
       },
       "DC1/Roof": {
         "datacenter": "DC1",
         "room": "Roof",
         "class": "facility",
         "containment": "none",
-        "width_m": 0.6,
-        "depth_m": 2.4,
+        "width_m": 12.0,
+        "depth_m": 6.0,
         "rows": [
           1
         ],
         "racks_per_row": 1,
-        "aisles": []
+        "aisles": [],
+        "level": "Roof",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC1/Server Hall A": {
         "datacenter": "DC1",
@@ -180763,7 +181033,13 @@
             "y": 10.2,
             "width": 1.2
           }
-        ]
+        ],
+        "level": "1",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC1/Server Hall B": {
         "width_m": 8.4,
@@ -180831,76 +181107,112 @@
         "datacenter": "DC1",
         "room": "Server Hall B",
         "class": "white_space",
-        "containment": "cold_aisle"
+        "containment": "cold_aisle",
+        "level": "2",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC1/UPS Room": {
         "datacenter": "DC1",
         "room": "UPS Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 3.6,
-        "depth_m": 4.8,
+        "width_m": 9.0,
+        "depth_m": 6.0,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 6,
-        "aisles": []
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Central Plant": {
         "datacenter": "DC2",
         "room": "Central Plant",
         "class": "facility",
         "containment": "none",
-        "width_m": 5.4,
-        "depth_m": 4.8,
+        "width_m": 16.0,
+        "depth_m": 15.0,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 9,
-        "aisles": []
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 11.4,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Generator Room": {
         "datacenter": "DC2",
         "room": "Generator Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 1.8,
-        "depth_m": 4.8,
+        "width_m": 10.0,
+        "depth_m": 12.6,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 3,
-        "aisles": []
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 9.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Mechanical Room": {
         "datacenter": "DC2",
         "room": "Mechanical Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 1.2,
-        "depth_m": 4.8,
+        "width_m": 8.0,
+        "depth_m": 4.0,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 2,
-        "aisles": []
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 0.0,
+          "y": 6.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Roof": {
         "datacenter": "DC2",
         "room": "Roof",
         "class": "facility",
         "containment": "none",
-        "width_m": 0.6,
-        "depth_m": 2.4,
+        "width_m": 12.0,
+        "depth_m": 6.0,
         "rows": [
           1
         ],
         "racks_per_row": 1,
-        "aisles": []
+        "aisles": [],
+        "level": "Roof",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Server Hall A": {
         "datacenter": "DC2",
@@ -180968,7 +181280,13 @@
             "y": 10.2,
             "width": 1.2
           }
-        ]
+        ],
+        "level": "1",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Server Hall B": {
         "width_m": 8.4,
@@ -181036,21 +181354,33 @@
         "datacenter": "DC2",
         "room": "Server Hall B",
         "class": "white_space",
-        "containment": "cold_aisle"
+        "containment": "cold_aisle",
+        "level": "2",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/UPS Room": {
         "datacenter": "DC2",
         "room": "UPS Room",
         "class": "facility",
         "containment": "none",
-        "width_m": 3.6,
-        "depth_m": 4.8,
+        "width_m": 9.0,
+        "depth_m": 6.0,
         "rows": [
           1,
           2
         ],
         "racks_per_row": 6,
-        "aisles": []
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC1/Network Room": {
         "datacenter": "DC1",
@@ -181064,7 +181394,13 @@
           2
         ],
         "racks_per_row": 4,
-        "aisles": []
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 8.4,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       },
       "DC2/Network Room": {
         "datacenter": "DC2",
@@ -181078,7 +181414,23 @@
           2
         ],
         "racks_per_row": 4,
-        "aisles": []
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 8.4,
+          "y": 0.0
+        },
+        "rotation_deg": 0
+      }
+    },
+    "buildings": {
+      "DC1": {
+        "name": "DC1 Building",
+        "floor_to_floor_m": 5.0
+      },
+      "DC2": {
+        "name": "DC2 Building",
+        "floor_to_floor_m": 5.0
       }
     }
   },

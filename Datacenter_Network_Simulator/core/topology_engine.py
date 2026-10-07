@@ -578,7 +578,11 @@ class TopologyEngine:
 
         out: Dict[str, Any] = {"nodes": nodes, "edges": edges}
         if self.floorplan:
-            out["floorplan"] = self.floorplan
+            # Every room placed in its building, levels derived - including a hall
+            # the fleet opened at runtime, which has no curated placement.
+            from core.equipment_geometry import complete_building
+            out["floorplan"] = complete_building(
+                self.floorplan, (n["device"] for n in nodes if n["device"]))
         return out
 
     def from_dict(self, data: Dict[str, Any]):

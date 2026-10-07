@@ -177,7 +177,7 @@ const FLOORPLAN_EMBEDDED = """
 TAIL = r""";
 /* ===================== data indexing (rebuilt on live refresh) ===================== */
 let FLOORPLAN = FLOORPLAN_EMBEDDED;
-let FP, ROOMS, RACKS, DEVS, FOOT, devByRack = {}, rackById = {}, racksByRoom = {}, DCs = [];
+let FP, ROOMS, RACKS, DEVS, FOOT, devByRack = {}, rackById = {}, racksByRoom = {}, freeByRoom = {}, DCs = [];
 const TYPE = {
   router:['router','#ff66b3'], firewall:['firewall','#ef4444'], load_balancer:['LB','#fb923c'],
   switch:['switch','#3b82f6'], server:['server','#4f9dff'], oob_switch:['OOB','#7aa2ff'],
@@ -203,13 +203,17 @@ function applyFloorplan(data){
   FLOORPLAN = data || FLOORPLAN_EMBEDDED;
   FP = FLOORPLAN.floorplan; ROOMS = FP.rooms; RACKS = FLOORPLAN.racks || []; DEVS = FLOORPLAN.devices || [];
   FOOT = FP.rack_footprint || {width:0.6, depth:1.2};
-  devByRack = {};
-  for(const d of DEVS){ (devByRack[d.rack_id]=devByRack[d.rack_id]||[]).push(d); }
+  devByRack = {}; freeByRoom = {};
+  // Rack gear hangs off its rack; everything else (gensets, chillers, CRAHs, wall
+  // and pipe instruments) stands at its own floor_x/floor_y with a real footprint.
+  for(const d of DEVS){
+    if(d.rack_id){ (devByRack[d.rack_id]=devByRack[d.rack_id]||[]).push(d); }
+    else if(d.floor_x!=null && d.room){ const k=d.datacenter+' / '+d.room; (freeByRoom[k]=freeByRoom[k]||[]).push(d); } }
   for(const k in devByRack){ devByRack[k].sort((a,b)=>(b.rack_unit||0)-(a.rack_unit||0)); }
   rackById = {}; for(const r of RACKS) rackById[r.rack_id]=r;
   racksByRoom = {};
   for(const r of RACKS){ (racksByRoom[roomKey(r)]=racksByRoom[roomKey(r)]||[]).push(r); }
-  DCs = [...new Set(RACKS.map(r=>r.datacenter))].sort();
+  DCs = [...new Set(RACKS.map(r=>r.datacenter).concat(DEVS.map(d=>d.datacenter).filter(Boolean)))].sort();
 }
 // Empty plan — shown until the user uploads/loads one (live=1 host embeds drive
 // the structure from the API, so don't flash the baked-in snapshot there).
@@ -221,7 +225,10 @@ applyFloorplan(_LIVE_EMBED ? EMPTY_FP : FLOORPLAN_EMBEDDED);
 const S = { dc:null, room:null, view:'2d', heat:false, metric:'power', sel:null, selDev:null, cut:false };
 const $ = s=>document.querySelector(s);
 
-function roomsFor(dc){ return [...new Set(RACKS.filter(r=>r.datacenter===dc).map(r=>r.room))]; }
+// Rooms with racks first (as before), then rooms that hold only free-standing plant.
+function roomsFor(dc){ const out=[...new Set(RACKS.filter(r=>r.datacenter===dc).map(r=>r.room))];
+  for(const k of Object.keys(ROOMS||{})){ const g=ROOMS[k]; if(g.datacenter===dc && !out.includes(g.room)) out.push(g.room); }
+  return out; }
 
 function fillSelect(el, items, val){ el.innerHTML=''; for(const it of items){
   const o=document.createElement('option'); o.value=it; o.textContent=it; el.appendChild(o);} if(val) el.value=val; }
@@ -454,15 +461,35 @@ function draw2D(){
     hit2d.push({x:px,y:py,w:fw,h:fd,r});
   }
 
+  // free-standing equipment at its true footprint + facing, and point instruments
+  // (wall/pipe/panel) as small diamonds. Drawn after racks, before sensor markers.
+  hitDev=[];
+  for(const d of (freeByRoom[S.dc+' / '+S.room]||[])){ const f=d.footprint_m, cx=X(d.floor_x), cy=Y(d.floor_y);
+    const sel=S.selDev===d.id;
+    if(f){ const q=Math.round(((d.facing_deg||0)%360)/90)%2, w=(q?f.depth:f.width)*sc, h=(q?f.width:f.depth)*sc;
+      const px=cx-w/2, py=cy-h/2;
+      ctx.fillStyle=heatOn?'#555':tcolor(d.device_type); ctx.fillRect(px,py,w,h);
+      ctx.strokeStyle=sel?'#fff':'#0b0e13'; ctx.lineWidth=sel?2:1; ctx.strokeRect(px,py,w,h);
+      if(d.facing_deg!=null){ const a=Math.round((((d.facing_deg%360)+360)%360)/90)%4;
+        ctx.strokeStyle='#cfe3ff'; ctx.lineWidth=2; ctx.beginPath();
+        if(a===0){ ctx.moveTo(px,py); ctx.lineTo(px+w,py); } else if(a===1){ ctx.moveTo(px+w,py); ctx.lineTo(px+w,py+h); }
+        else if(a===2){ ctx.moveTo(px,py+h); ctx.lineTo(px+w,py+h); } else { ctx.moveTo(px,py); ctx.lineTo(px,py+h); }
+        ctx.stroke(); }
+      if(w>24&&h>12){ ctx.fillStyle='#0b0e13dd'; ctx.font='bold 9px sans-serif'; ctx.fillText((d.name||'').split('-')[0], px+3, py+11); }
+      hitDev.push({x:px,y:py,w,h,d,r:null});
+    } else { const s=Math.max(4,0.12*sc);
+      ctx.fillStyle=tcolor(d.device_type); ctx.beginPath(); ctx.moveTo(cx,cy-s); ctx.lineTo(cx+s,cy); ctx.lineTo(cx,cy+s); ctx.lineTo(cx-s,cy); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle=sel?'#fff':'#0b0e13'; ctx.lineWidth=1; ctx.stroke();
+      hitDev.push({x:cx-s-2,y:cy-s-2,w:2*s+4,h:2*s+4,d,r:null}); } }
+
   // sensor markers — always drawn on top of the rack map. 2D otherwise only
   // paints rack squares, so zero-U sensors would never be visible. Underfloor
   // (plenum) probes get a cyan ring + "UF"; cold-aisle reference probes green.
-  hitDev=[];
   for(const r of racks){ const cx=X(r.floor_x), cy=Y(r.floor_y);
     const ds=devByRack[r.rack_id]||[];
     const plant=ds.some(d=>d.device_type==='chiller');           // plant probes line the CHW header
     const sens=ds.filter(d=>d.device_type==='sensor');
-    sens.forEach((d,i)=>{ const uf=d.mounting==='underfloor';
+    sens.forEach((d,i)=>{ const uf=(d.mount||d.mounting)==='underfloor';
       let mx,my;
       if(plant){ mx=X(r.floor_x+0.55+i*0.45); my=Y(r.floor_y+3.35); }
       else { const ang=i*2.39, rad=(sens.length>1? 7:0);
@@ -600,7 +627,7 @@ function makeRack(r,ds,m){ const grp=new THREE.Group(); const W=FOOT.width,D=FOO
     if(t==='pdu'){ const side=/-B$/.test(d.name)?1:-1;          // A left, B right vertical 0U strip
       const pg=makePDU(d); pg.position.set(side*(W/2-0.045), RACK_H*0.5+0.06, -D/2+0.13);
       grp.add(pg); continue; }
-    if(t==='sensor'){ const uf=d.mounting==='underfloor';
+    if(t==='sensor'){ const uf=(d.mount||d.mounting)==='underfloor';
       const col=uf?0x38e0c8:tcolor('sensor'); let sb;
       if(uf){                                                    // glowing puck down in the raised-floor plenum void
         sb=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.03,16),
@@ -766,6 +793,27 @@ function makePlant(r,ds){ const grp=new THREE.Group();
       mat3(tcolor('oob_switch'),{emissive:emi(tcolor('oob_switch'),0.3)})); ob.userData.device=d; });
   return grp; }
 
+// Free-standing unit at its datasheet footprint. Reuses the detailed meshes above,
+// scaled to the real width/depth/height (they were drawn at token sizes for the old
+// rack-cell layout); kinds without a mesh get a dead-front cabinet. keepY: the
+// CRAH mesh carries its plenum airflow below the floor, so only plan size is fitted.
+function makeFree(d,f){ const t=d.device_type; let g, keepY=false;
+  if(t==='generator') g=makeGenerator(null,[d]); else if(t==='ups') g=makeUPS(null,[d]);
+  else if(t==='chiller') g=makeChiller(d); else if(t==='pump') g=makePump(d);
+  else if(t==='cooling_tower') g=makeCoolingTower(d); else if(t==='rpp') g=makeRPP(null,[d]);
+  else if(t==='crah'){ g=makeCRAH(null,[d]); keepY=true; }
+  else { g=new THREE.Group(); const c=tcolor(t);
+    box3(g,1,1,1,0,0.5,0, mat3(0x5d6470,{metalness:0.5,roughness:0.5}));
+    box3(g,0.9,0.85,0.02,0,0.5,0.51, mat3(0x232a35));
+    box3(g,0.3,0.05,0.02,0,0.88,0.525, mat3(c,{emissive:emi(c,0.45)})); }
+  g.traverse(o=>{ o.userData.device=d; });
+  const bb=new THREE.Box3().setFromObject(g), sz=new THREE.Vector3(), ctr=new THREE.Vector3(); bb.getSize(sz); bb.getCenter(ctr);
+  const w=new THREE.Group(); g.position.set(-ctr.x, keepY?0:-bb.min.y, -ctr.z); w.add(g);
+  w.scale.set(f.width/(sz.x||1), keepY?1:f.height/(sz.y||1), f.depth/(sz.z||1));
+  return w; }
+// compass facing (deg clockwise from N = -z) -> rotation.y for a mesh whose front is +z (S)
+function yawFor(deg){ return Math.PI - (deg||0)*Math.PI/180; }
+
 // Recursively remove + dispose a group's children. Geometries are always fresh
 // per build so they are disposed unconditionally; materials/textures tagged
 // ._keep (the shared _frontCache/_panelCache/darkMat caches) are left intact.
@@ -869,6 +917,15 @@ function draw3D(){
     if(r.rack_facing==='N') grp.rotation.y=Math.PI;             // face intake (front) toward the cold aisle
     grp.traverse(o=>{ o.userData.rack=r; }); root.add(grp); three.pick.push(grp); }
 
+  // free-standing equipment + point instruments at their own coordinates
+  for(const d of (freeByRoom[S.dc+' / '+S.room]||[])){ const f=d.footprint_m; let grp;
+    if(f) grp=makeFree(d,f);
+    else { grp=new THREE.Group(); const c=tcolor(d.device_type);
+      const b=box3(grp,0.12,0.12,0.06,0,0,0, mat3(c,{emissive:emi(c,0.45)})); b.userData.device=d; }
+    grp.position.set(d.floor_x-cx, f? FLR : FLR+(d.mount_height_m||1.2), d.floor_y-cz);
+    if(d.facing_deg!=null) grp.rotation.y=yawFor(d.facing_deg);
+    root.add(grp); three.pick.push(grp); }
+
   if(!three.posed){ const span=Math.max(g.width_m,g.depth_m); three.span=span; three.homeY=FLR+0.7;
     cam.position.set(span*0.72, span*0.8+3.5, span*1.05); ctr.target.set(0,FLR+0.7,0); three.posed=true; }
   drawHLegend(m, racks);
@@ -904,7 +961,7 @@ function focusRack(r){ if(!three || three.cx==null) return;
 // local Y (height in the rack group) of a device's mesh -- mirrors makeRack() placement.
 function devY(d){ const t=d.device_type;
   if(t==='pdu') return RACK_H*0.5+0.06;                          // full-height 0U strip
-  if(t==='sensor') return d.mounting==='underfloor' ? -RF*0.5 : 0.25;
+  if(t==='sensor') return (d.mount||d.mounting)==='underfloor' ? -RF*0.5 : 0.25;
   const u=DEV_U[t]||1, base=d.rack_unit||0;
   if(base<1) return RACK_H*0.5;                                  // zero-U / unplaced -> mid rack
   const hh=u*U_M*0.9; return 0.06+(base-1)*U_M+hh/2; }
@@ -916,6 +973,7 @@ function focusDevice(d,r){ if(!three || three.cx==null) return;
   let wp=null;
   for(const grp of (three.pick||[])){ grp.traverse(o=>{ if(!wp && o.userData.device===d && o.geometry){
     wp=new THREE.Vector3(); o.getWorldPosition(wp); } }); if(wp) break; }
+  if(!wp && !r) return;
   const tgt = wp || new THREE.Vector3(r.floor_x-three.cx, FLR+devY(d), r.floor_y-three.cz);
   const sideZ = (three.cam.position.z >= tgt.z) ? 1 : -1;
   const pos=new THREE.Vector3(tgt.x+0.15, tgt.y+0.45, tgt.z + sideZ*1.25);
@@ -996,8 +1054,12 @@ function selectRack(r){ S.sel=r.rack_id; S.selDev=null; render(); const d=$('#de
   if(S.view==='3d') focusRack(r);
 }
 function selectDevice(d, r){ S.sel=r?r.rack_id:null; S.selDev=d.id; render(); $('#main').classList.add('detail');
-  const slot=(d.rack_unit&&d.rack_unit>0)?('U'+d.rack_unit):'zero-U';
-  const loc=r?`${r.datacenter} / ${r.room} &middot; Row ${r.row}, Rack ${r.rack_num}`:'';
+  const slot=(d.rack_unit&&d.rack_unit>0)?('U'+d.rack_unit):(r?'zero-U':(d.mount||'-'));
+  const f=d.footprint_m;
+  const loc=r?`${r.datacenter} / ${r.room} &middot; Row ${r.row}, Rack ${r.rack_num}`
+    :`${d.datacenter||''} / ${d.room||''} &middot; ${d.mount||'-'} at <code>(${d.floor_x}, ${d.floor_y}) m</code>`
+     +(f?`<br>footprint <b>${f.width} x ${f.depth} x ${f.height} m</b> <span style="color:var(--muted)">(${f.basis})</span>`:'')
+     +(d.mount_height_m!=null&&!f?` &middot; ${d.mount_height_m} m up`:'');
   let html=`<header><h3>${d.name||d.id}</h3><button class="close" onclick="closeDetail()">x</button></header>`+
     `<div class="meta">`+
     `<span class="sw" style="display:inline-block;vertical-align:middle;background:${tcolor(d.device_type)}"></span> `+
@@ -1009,7 +1071,7 @@ function selectDevice(d, r){ S.sel=r?r.rack_id:null; S.selDev=d.id; render(); $(
     `</div>`+
     (r?`<div class="ru" style="cursor:pointer" onclick="showRack('${r.rack_id}')"><span class="nm">&#8617; Rack ${r.rack_num} — full elevation</span></div>`:'');
   $('#detail').innerHTML=html;
-  if(S.view==='3d'&&r) focusDevice(d,r);
+  if(S.view==='3d') focusDevice(d,r);
 }
 function showRack(id){ const r=rackById[id]; if(r) selectRack(r); }
 function showDev(rackId, devId){ const r=rackById[rackId]; const dv=(devByRack[rackId]||[]).find(x=>x.id===devId); if(dv) selectDevice(dv,r); }
@@ -1017,7 +1079,8 @@ function closeDetail(){ S.sel=null; S.selDev=null; $('#main').classList.remove('
 
 /* ===================== sidebar (inventory, layout.md) ===================== */
 function buildSidebar(){ const racks=racksByRoom[S.dc+' / '+S.room]||[];
-  const ids=new Set(racks.flatMap(r=>r.device_ids)); const ds=DEVS.filter(d=>ids.has(d.id));
+  const ids=new Set(racks.flatMap(r=>r.device_ids));
+  const ds=DEVS.filter(d=>ids.has(d.id)).concat(freeByRoom[S.dc+' / '+S.room]||[]);
   const cnt={}; for(const d of ds) cnt[d.device_type]=(cnt[d.device_type]||0)+1;
   const totKW=racks.reduce((a,r)=>a+rackKW(r),0).toFixed(1);
   let h=`<h2>Room</h2><div class="legrow"><b>${ds.length}</b>&nbsp;devices in&nbsp;<b>${racks.length}</b>&nbsp;racks</div>`+
@@ -1118,7 +1181,9 @@ def main(argv):
         "devices": [
             {k: d.get(k) for k in ("id", "name", "device_type", "model",
                                    "rack_id", "rack_unit", "power_draw_w",
-                                   "feed_a", "feed_b", "vendor", "mounting")}
+                                   "feed_a", "feed_b", "vendor", "mount",
+                                   "datacenter", "room", "floor_x", "floor_y",
+                                   "facing_deg", "footprint_m", "mount_height_m")}
             for d in data["devices"]
         ],
     }

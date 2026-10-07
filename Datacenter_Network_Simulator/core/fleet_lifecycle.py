@@ -1624,6 +1624,10 @@ class FleetLifecycleEngine:
         ext = self._hall_extent(rk) or {}
         width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
         back_y = round(geo.row_y(n_rows), 4)             # CRAH back wall
+        # A panelboard hangs ON the wall, not out in the CRAH line: the hall's
+        # back wall is its depth (core/equipment_geometry footprint depth 0.15 m).
+        if ext.get("depth_m"):
+            back_y = round(float(ext["depth_m"]) - 0.075, 4)
         # CRAHs will take rack_num 200..200+target-1 (see _ensure_hall_crahs); the
         # panels stand in the end bays just past them.
         target = self._hall_crah_target(rk)
@@ -2653,6 +2657,10 @@ class FleetLifecycleEngine:
                 hot_aisle=hot if hot is not None else getattr(tmpl, "hot_aisle", ""),
                 cold_aisle=cold if cold is not None else getattr(tmpl, "cold_aisle", ""),
                 rack_facing=facing if facing is not None else getattr(tmpl, "rack_facing", ""),
+                # How it is held and which way a free-standing unit faces travel with
+                # the template, like the aisle fields (core/equipment_geometry).
+                mounting=getattr(tmpl, "mounting", "") or "",
+                rotation_deg=getattr(tmpl, "rotation_deg", None),
                 # No sys_location_override: let Device.sys_location compute the
                 # full country/city/DC/floor/room/rack string so fleet-added
                 # devices match the format of curated peers.

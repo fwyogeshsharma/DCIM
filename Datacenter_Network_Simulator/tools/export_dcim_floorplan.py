@@ -38,6 +38,9 @@ from core.rack_capacity import (  # noqa: E402
     leaf_port_roles, device_u_height, SERVER_U_HEIGHT,
     FIRST_SERVER_UNIT, LAST_SERVER_UNIT, RACK_POWER_BUDGET_W_DEFAULT,
 )
+from core.equipment_geometry import (  # noqa: E402
+    RACK_MOUNTS, complete_building, effective_mount, geometry_fields,
+)
 
 
 def rack_id(dc: str, room: str, floor: str, row, num) -> str:
@@ -161,9 +164,14 @@ def build(topology: dict) -> "OrderedDict":
         floor = str(dev.get("floor"))
         row = disp_row(dc, room, floor, dev.get("rack_row"))
         num = dev.get("rack_num")
-        rid = rack_id(dc, room, floor, row, num)
+        # Only rack gear forms a rack. A chiller, a genset or a wall probe used to be
+        # filed under whatever rack_row/rack_num it carried, so twenty plant devices
+        # collapsed into one "rack" whose position was whichever of them came first.
+        # They stand on their own coordinates now and reference no rack.
+        in_rack = effective_mount(dev) in RACK_MOUNTS
+        rid = rack_id(dc, room, floor, row, num) if in_rack else None
 
-        if rid not in racks:
+        if in_rack and rid not in racks:
             racks[rid] = {
                 "rack_id": rid,
                 "datacenter": dc,
@@ -180,7 +188,11 @@ def build(topology: dict) -> "OrderedDict":
                 "hot_aisle": dev.get("hot_aisle") or None,
                 "device_ids": [],
             }
-        racks[rid]["device_ids"].append(dev.get("id", n["id"]))
+        if in_rack:
+            racks[rid]["device_ids"].append(dev.get("id", n["id"]))
+        u_h = (device_u_height(dev.get("device_type"), dev.get("model_name") or "")
+               if dev.get("rack_unit") else None)
+        geo = geometry_fields(dev, u_h)
 
         devices.append({
             "id": dev.get("id", n["id"]),
@@ -188,6 +200,10 @@ def build(topology: dict) -> "OrderedDict":
             "device_type": dev.get("device_type"),
             "vendor": dev.get("vendor"),
             "model": dev.get("model_name") or None,
+            # Location for everything, rack or not: a genset has no rack to say it.
+            "datacenter": dc,
+            "room": room,
+            "floor": floor,
             # binding key: which rack + RU. This is what a DCIM resolves from the
             # device-side hint (Redfish Location.Placement / SNMP sysLocation).
             "rack_id": rid,
@@ -196,9 +212,15 @@ def build(topology: dict) -> "OrderedDict":
             # only the BOTTOM of the device: a 2U server at U39 fills U39 AND U40, and
             # a DCIM told only "U39" would draw it 1U tall and leave U40 bookable.
             # Per-SKU (core/device_models.MODEL_U_HEIGHT) — a DL360 is 1U, a DL560 4U.
-            "u_height": (device_u_height(dev.get("device_type"),
-                                         dev.get("model_name") or "")
-                         if dev.get("rack_unit") else None),
+            "u_height": u_h,
+            # Physical geometry (core/equipment_geometry.py). Rack gear takes its x/y
+            # from its rack; everything else stands at its own floor_x/floor_y.
+            "mount": geo["mount"],
+            "floor_x": None if in_rack else dev.get("floor_x"),
+            "floor_y": None if in_rack else dev.get("floor_y"),
+            "facing_deg": geo["facing_deg"],
+            "footprint_m": geo["footprint_m"],
+            "mount_height_m": geo["mount_height_m"],
             # power topology: which PDU feeds (A/B) this device draws from.
             "power_draw_w": dev.get("power_draw_w"),
             # From the cords, not Device.power_source_a/b — see feeds_of().
@@ -272,7 +294,7 @@ def build(topology: dict) -> "OrderedDict":
             r["reserved_units"] = []
 
     out = OrderedDict()
-    out["schema"] = "dcim-floorplan/1.0"
+    out["schema"] = "dcim-floorplan/1.1"
     out["description"] = (
         "DCIM asset / floor-plan export. Physical placement DB intended to be "
         "imported by a DCIM and joined to live device telemetry by device "
@@ -293,13 +315,16 @@ def build(topology: dict) -> "OrderedDict":
         "rack_pitch": fp.get("rack_pitch"),
         "row_pitch": fp.get("row_pitch"),
         "aisle_width": fp.get("aisle_width"),
-        "rooms": fp.get("rooms", {}),
     }
+    # Rooms placed in their buildings (level + origin), levels and outline derived.
+    _placed = complete_building(fp, (n["device"] for n in nodes)) if fp else {}
+    out["floorplan"]["rooms"] = _placed.get("rooms", {})
+    out["floorplan"]["buildings"] = _placed.get("buildings", {})
     out["racks"] = list(racks.values())
     out["devices"] = devices
 
     out["summary"] = {
-        "datacenters": sorted({r["datacenter"] for r in racks.values()}),
+        "datacenters": sorted({d.get("datacenter") for d in (n["device"] for n in nodes) if d.get("datacenter")}),
         "rooms": len(out["floorplan"]["rooms"]),
         "racks": len(racks),
         "devices": len(devices),
