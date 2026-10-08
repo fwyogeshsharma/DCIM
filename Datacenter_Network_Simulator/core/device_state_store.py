@@ -23,15 +23,18 @@ Tick behaviour (every `tick_interval` seconds, random-walk):
 """
 from __future__ import annotations
 
+import json
 import logging
 import math
+import os
 import random
 import threading
 import time
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
 from core.psychrometrics import dew_point_c
+from core import air_model as _air
 from core.device_manager import DeviceType, cooling_capacity_w, fan_rpm_range
 
 if TYPE_CHECKING:
@@ -47,6 +50,21 @@ log = logging.getLogger(__name__)
 # equipment pulls in. ~22 °C sits in the middle of the ASHRAE TC9.9 recommended
 # envelope (18–27 °C). Override-friendly single source of truth.
 _SUPPLY_SETPOINT_C = 22.0
+
+# Rack geometry for the spatial air model: U1's bottom edge above the floor, one
+# EIA-310 unit, and the cabinet's height - the figures the platform's viewer
+# draws racks with, so a reading's height here is the height it is drawn at.
+_RACK_BASE_M = 0.1
+_U_M = 0.04445
+_CABINET_H_M = _RACK_BASE_M + 42 * _U_M
+#: Where a rack PDU's probe is taken to hang: mid-strip.
+_MID_STRIP_M = _RACK_BASE_M + 21 * _U_M
+
+
+def _u_height_m(rack_unit) -> float:
+    """Centre height (m) of the device in U *rack_unit*."""
+    u = min(max(int(rack_unit or 0), 0), 42)
+    return _RACK_BASE_M + (max(u, 1) - 0.5) * _U_M
 
 # Airflow a CRAH loses to a clogged filter, as a fraction of its design flow.
 # Must match the Filter_Dirty derate applied in core/bacnet_plant_generator.py:
@@ -664,6 +682,19 @@ class DeviceStateStore:
         # are refreshed by the power-flow pass and read by the air model, which
         # sizes CRAH duty and room temperature from the same two numbers.
         self._room_it_w: Dict[tuple, float] = {}
+        # S2 spatial air model (docs/S2_SPATIAL_THERMAL_MODEL.md). `uniform` is
+        # the room-wide model this store has always run and stays the default
+        # until the shadow comparison answers Q1; `spatial` publishes per-rack
+        # air; `shadow` computes both, publishes uniform, logs the difference.
+        _mode = os.environ.get("DCIM_SIM_AIR_MODEL", "uniform").strip().lower()
+        self._air_mode = _mode if _mode in ("uniform", "spatial", "shadow") else "uniform"
+        self._rack_air_in: Dict[tuple, dict] = {}     # (dc, room) -> {rack key: inputs}
+        self._air_rooms: Dict[tuple, Any] = {}        # (dc, room) -> RoomAir, this tick
+        self._air_tick = -1
+        self._room_w_g_kg: Dict[tuple, float] = {}    # (dc, room) -> humidity ratio
+        self._room_w_tick: Dict[tuple, int] = {}       # (dc, room) -> tick it was walked
+        self._air_shadow: Dict[tuple, list] = {}      # (dc, room) -> [(uniform, spatial)]
+        self._air_nogeo: Dict[tuple, int] = {}        # (dc, room) -> racks with no coordinate
         self._plant_model_by_name: Dict[str, str] = {}
         self._plant_duty: Dict[str, float] = {}     # DC → running-plant duty fraction
         self._cool_loss_frac: Dict[str, float] = {} # DC → cooling-loss fraction 0..1
@@ -3353,6 +3384,9 @@ class DeviceStateStore:
             # electrical ratio it used before is a plant-level quantity that says
             # nothing about how hot this particular hall is.
             it_live_room: Dict[tuple, float] = _dd(float)
+            # Per-rack heat / exhaust / geometry for the spatial air model; only
+            # gathered when it runs, so the uniform path is untouched.
+            rack_air: Dict[tuple, dict] = _dd(dict)
             crah_room: Dict[str, tuple] = {}                 # CRAH name → (dc, room)
             dc_city: Dict[str, str] = {}
             plant_dc: Dict[str, list] = _dd(list)       # DC → [(name, nameplate_w, type)]
@@ -3395,6 +3429,8 @@ class DeviceStateStore:
                     _air_w = (w * _DTC_AIR_FRACTION
                               if d.name in _liquid_names else w)
                     it_live_room[(_dc, getattr(d, "room", "") or "")] += _air_w
+                    if self._air_mode != "uniform":
+                        self._note_rack_air(rack_air, d, _dc, _air_w)
                     _inl = getattr(d, "inlet_temp", None)
                     if _inl is not None:
                         inlet_sum_dc[_dc] += float(_inl)
@@ -3521,6 +3557,8 @@ class DeviceStateStore:
             self._plant_model_by_name = dict(plant_model)
             self._room_inlet_c = {rk: inlet_sum_room[rk] / n
                                   for rk, n in inlet_n_room.items() if n}
+            if self._air_mode != "uniform":
+                self._rack_air_in = {rk: dict(v) for rk, v in rack_air.items()}
             self._room_outlet_c = {rk: outlet_sum_room[rk] / n
                                    for rk, n in outlet_n_room.items() if n}
             for _dc, units in plant_dc.items():
@@ -5799,8 +5837,16 @@ class DeviceStateStore:
                 # air at the unit's inlet, and with the fan off it still reads that
                 # air by convection - air which is getting hotter precisely because
                 # this unit stopped.
-                if ret_air is not None:
-                    pts["Return_Air_Temp"] = round(ret_air, 1)
+                _ret = ret_air
+                if self._air_mode != "uniform":
+                    _sp = self._air_return(rk, name)
+                    if _sp is not None:
+                        if self._air_mode == "spatial":
+                            _ret = _sp
+                        elif ret_air is not None:
+                            self._air_shadow.setdefault(rk, []).append(("return", ret_air, _sp))
+                if _ret is not None:
+                    pts["Return_Air_Temp"] = round(_ret, 1)
                 # A DISCHARGE is something only a running unit has. No fan means no
                 # air over the coil, and the stop interlock shuts the CHW valve, so
                 # publishing setpoint discharge here described a machine that was
@@ -6119,6 +6165,167 @@ class DeviceStateStore:
         # would charge the room twice for one shortfall. See the discharge-air block
         # in _compute_chw_loop; these two are one change.
         return base
+
+    # ── S2 spatial air model ───────────────────────────────────────────────
+    def _note_rack_air(self, acc: dict, d: "Device", dc: str, air_w: float) -> None:
+        """Add one IT device to its rack's spatial-model inputs (this tick)."""
+        if getattr(d, "rack_row", None) is None or getattr(d, "rack_num", None) is None:
+            return
+        rk = (dc, getattr(d, "room", "") or "")
+        racks = acc.setdefault(rk, {})
+        key = (d.rack_row, d.rack_num)
+        r = racks.get(key)
+        if r is None:
+            r = racks[key] = {"heat": 0.0, "out": 0.0, "n_out": 0, "x": None, "y": None,
+                              "facing": "", "hot": "", "num": int(d.rack_num or 0)}
+        r["heat"] += air_w
+        _out = getattr(d, "outlet_temp", None)
+        if _out:
+            r["out"] += float(_out)
+            r["n_out"] += 1
+        if r["x"] is None and getattr(d, "floor_x", None) is not None:
+            r["x"], r["y"] = float(d.floor_x), float(d.floor_y or 0.0)
+            r["facing"] = getattr(d, "rack_facing", "") or ""
+            r["hot"] = getattr(d, "hot_aisle", "") or ""
+
+    def _room_containment(self, rk: tuple) -> str:
+        fp = getattr(self._topology, "floorplan", None) or {}
+        room = (fp.get("rooms") or {}).get(f"{rk[0]}/{rk[1]}") or {}
+        c = str(room.get("containment") or "none").lower()
+        return c if c in _air.RECIRC else "none"
+
+    def _room_air(self, rk: tuple):
+        """The spatial model's answer for room *rk*, solved once per tick."""
+        if self._air_tick != self._tick_count:
+            self._flush_air_shadow()
+            self._air_rooms, self._air_tick = {}, self._tick_count
+        if rk in self._air_rooms:
+            return self._air_rooms[rk]
+        room = None
+        try:
+            room = self._solve_room_air(rk)
+        except Exception:
+            log.exception("[StateStore] spatial air model failed for %s", rk)
+        self._air_rooms[rk] = room
+        return room
+
+    def _solve_room_air(self, rk: tuple):
+        rows = self._rack_air_in.get(rk) or {}
+        names = (self._cooling_context()["crah_by_room"] or {}).get(rk) or ()
+        if not rows or not names:
+            return None
+        by_name = {d.name: d for d in self._dm.get_all_devices()} if self._dm else {}
+        units = []
+        for n in names:
+            d = by_name.get(n)
+            if d is None or getattr(d, "floor_x", None) is None:
+                continue
+            pv = _plant_state_cache.get(n) or {}
+            sa = pv.get("Supply_Air_Temp")
+            supply = float(sa) if sa is not None else self._supply_air_c.get(
+                rk[0], _SUPPLY_SETPOINT_C + self._chw_pen.get(rk[0], 0.0))
+            fan = pv.get("Fan_Speed")
+            units.append(_air.Unit(
+                id=n, x=float(d.floor_x), y=float(d.floor_y or 0.0),
+                delivered=self._crah_delivered_frac(n), supply_c=supply,
+                capacity_w=float(cooling_capacity_w((self._plant_model_by_name or {}).get(n, "")) or 0.0),
+                fan_frac=(float(fan) / 100.0) if fan is not None else 1.0))
+        if not units:
+            return None
+        nums_by_row: Dict[Any, list] = {}
+        for (row, num), r in rows.items():
+            if r["x"] is not None:
+                nums_by_row.setdefault(row, []).append(num)
+        racks, nogeo = [], 0
+        for (row, num), r in rows.items():
+            if r["x"] is None:
+                nogeo += 1
+                continue
+            front = -1.0 if r["facing"] == "N" else 1.0
+            nums = nums_by_row.get(row) or [num]
+            racks.append(_air.Rack(
+                id=f"{row}/{num}", cold_x=r["x"], cold_y=r["y"] + front * 0.6,
+                hot_aisle=r["hot"] or f"row{row}", position=r["num"],
+                row_end=num in (min(nums), max(nums)), heat_w=r["heat"],
+                exhaust_c=(r["out"] / r["n_out"]) if r["n_out"] else None,
+                height_m=_CABINET_H_M))
+        if nogeo != self._air_nogeo.get(rk):
+            self._air_nogeo[rk] = nogeo
+            if nogeo:
+                log.warning("[StateStore] %s: %d rack(s) with no floor coordinate keep the "
+                            "room-wide air", rk, nogeo)
+        if not racks:
+            return None
+        return _air.solve_room(racks, units, self._room_containment(rk))
+
+    def _air_inlet(self, device: "Device", z_m: float, uniform_c: float) -> float:
+        """Inlet air for *device* at height *z_m*. Uniform mode never solves the
+        spatial model; shadow solves it, records the pair and returns uniform."""
+        if self._air_mode == "uniform":
+            return uniform_c
+        rk = (device.datacenter, device.room or "")
+        room = self._room_air(rk)
+        ra = room.racks.get(f"{device.rack_row}/{device.rack_num}") if room else None
+        sp = ra.inlet_at(z_m, _CABINET_H_M) if ra else None
+        if sp is None:
+            return uniform_c
+        if self._air_mode == "shadow":
+            self._air_shadow.setdefault(rk, []).append(("inlet", uniform_c, sp))
+            return uniform_c
+        return sp
+
+    def _air_return(self, rk: tuple, crah_name: str) -> Optional[float]:
+        room = self._room_air(rk)
+        return room.returns.get(crah_name) if room else None
+
+    def _air_rh(self, device: "Device", t_c: Optional[float]) -> Optional[float]:
+        """RH at *t_c* from the room's one humidity ratio, walked once per tick."""
+        if t_c is None:
+            return None
+        rk = (device.datacenter, device.room or "")
+        w = self._room_w_g_kg.get(rk)
+        if self._room_w_tick.get(rk) != self._tick_count:
+            mean_sup = self._room_supply_temp(device)
+            w = _air.step_room_ratio(w if w is not None else _air.humidity_ratio(mean_sup, 45.0),
+                                     mean_sup, random.uniform(-0.04, 0.04))
+            self._room_w_g_kg[rk] = w
+            self._room_w_tick[rk] = self._tick_count
+        return _air.rh_from_ratio(float(t_c), w)
+
+    _AIR_SHADOW_PATH = os.path.join("logs", "air_model_shadow.jsonl")
+
+    def _flush_air_shadow(self) -> None:
+        """One line per room per tick in shadow mode: uniform vs spatial."""
+        if not self._air_shadow:
+            return
+        rows = []
+        for rk, pairs in self._air_shadow.items():
+            inl = [(u, s) for k, u, s in pairs if k == "inlet"]
+            ret = [(u, s) for k, u, s in pairs if k == "return"]
+            if not inl and not ret:
+                continue
+
+            def stats(xs):
+                xs = sorted(xs)
+                return {"mean": round(sum(xs) / len(xs), 2), "max": round(xs[-1], 2),
+                        "p90": round(xs[min(len(xs) - 1, int(0.9 * len(xs)))], 2)} if xs else None
+            rows.append({"t": round(time.time(), 1), "tick": self._air_tick,
+                         "dc": rk[0], "room": rk[1],
+                         "inlet_uniform": stats([u for u, _ in inl]),
+                         "inlet_spatial": stats([s for _, s in inl]),
+                         "return_uniform": stats([u for u, _ in ret]),
+                         "return_spatial": stats([s for _, s in ret]),
+                         "n_inlets": len(inl)})
+        self._air_shadow = {}
+        if not rows:
+            return
+        try:
+            os.makedirs(os.path.dirname(self._AIR_SHADOW_PATH), exist_ok=True)
+            with open(self._AIR_SHADOW_PATH, "a", encoding="utf-8") as f:
+                for r in rows:
+                    f.write(json.dumps(r) + "\n")
+        except OSError:
+            log.exception("[StateStore] air shadow log write failed")
 
     def _compute_leak_heat(self) -> None:
         """Refresh server→intensity heat map from leaking CDUs. Intensity scales
@@ -6726,7 +6933,10 @@ class DeviceStateStore:
         if mf["inlet_temp"] and device.device_type not in (DeviceType.SENSOR, DeviceType.RPP):
             base = self._room_supply_temp(device)   # CRAH supply air + DC CHW penalty (cascade)
             grad = min(max(device.rack_unit, 0), 42) / 42.0 * 3.0   # 0 at floor .. +3 °C at top
-            t = base + grad + random.uniform(-0.2, 0.2)             # small per-sensor noise
+            # S2: the spatial model's air at this U replaces base + grad when it
+            # runs (containment-aware, so no fixed 3 K in a contained aisle).
+            t = self._air_inlet(device, _u_height_m(device.rack_unit), base + grad) \
+                + random.uniform(-0.2, 0.2)                          # small per-sensor noise
             # ceiling well above the ASHRAE envelope so a real cooling failure can
             # push inlets into the alarm range instead of pinning at 32 °C.
             device.inlet_temp = round(max(15.0, min(45.0, t)), 1)
@@ -6825,17 +7035,24 @@ class DeviceStateStore:
             if mf["sensor_ambient_temp"]:
                 _base = self._room_supply_temp(device)
                 _grad = min(max(device.rack_unit, 0), 42) / 42.0 * 3.0
+                _z = (getattr(device, "mount_height_m", None)
+                      or _u_height_m(device.rack_unit))
                 device.inlet_temp = round(max(15.0, min(45.0,
-                    _base + _grad + random.uniform(-0.3, 0.3))), 1)
+                    self._air_inlet(device, _z, _base + _grad)
+                    + random.uniform(-0.3, 0.3))), 1)
                 device.inlet_temp = self._num_limit("sensor_ambient_temp", device.inlet_temp)
 
             # Relative humidity is actively controlled by the CRAC humidifier/
             # dehumidifier, so it mean-reverts toward a ~50% setpoint inside the
             # ASHRAE TC9.9 recommended band rather than drifting freely.
             if mf["humidity"]:
-                device.humidity = round(max(35.0, min(65.0,
-                    device.humidity + (50.0 - device.humidity) * 0.05
-                    + random.uniform(-0.8, 0.8))), 1)
+                _rh = self._air_rh(device, device.inlet_temp) if self._air_mode == "spatial" else None
+                if _rh is not None:
+                    device.humidity = round(_rh, 1)
+                else:
+                    device.humidity = round(max(35.0, min(65.0,
+                        device.humidity + (50.0 - device.humidity) * 0.05
+                        + random.uniform(-0.8, 0.8))), 1)
                 device.humidity = self._num_limit("humidity", device.humidity)
             if mf["dewpoint"]:
                 # Magnus-Tetens, not the (100-RH)/5 rule of thumb this used to
@@ -7798,14 +8015,21 @@ class DeviceStateStore:
             # under 300 inlet alarms.
             if mf["pdu_temperature"]:
                 _base = self._room_supply_temp(device)
-                t = _base + 1.5 + random.uniform(-0.3, 0.3)
+                t = self._air_inlet(device, _MID_STRIP_M, _base + 1.5) + random.uniform(-0.3, 0.3)
                 st["pdu_temperature"] = round(self._num_limit("pdu_temperature",
                                                               max(15.0, min(45.0, t))), 1)
 
             # RH mean-reverts to the controlled ~50% setpoint (see sensor humidity).
+            # Spatial air model: the probe reads the room's one humidity ratio at
+            # its own temperature, so it agrees with every other probe's dew point.
             if mf["pdu_humidity"]:
-                h = st.get("pdu_humidity", 45.0)
-                h = max(35.0, min(65.0, h + (50.0 - h) * 0.05 + random.uniform(-0.8, 0.8)))
+                _rh = (self._air_rh(device, st.get("pdu_temperature"))
+                       if self._air_mode == "spatial" and mf["pdu_temperature"] else None)
+                if _rh is not None:
+                    h = _rh
+                else:
+                    h = st.get("pdu_humidity", 45.0)
+                    h = max(35.0, min(65.0, h + (50.0 - h) * 0.05 + random.uniform(-0.8, 0.8)))
                 st["pdu_humidity"] = round(self._num_limit("pdu_humidity", h), 1)
 
             # Energy accumulator: integrate real kW × tick interval.

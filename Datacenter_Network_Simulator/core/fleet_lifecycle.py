@@ -96,11 +96,8 @@ def _is_rack_room(room: Optional[str]) -> bool:
 # (as snmpsim does) — until then this ceiling stands.
 MAX_TOTAL_SERVERS_HARD_CAP = 5000
 
-# Metres reserved at each end of the CRAH back wall for a mechanical power panel
-# (MPP). The CRAH lineup is inset by this, so the two MPPs stand in the end bays
-# flanking the CRAHs they feed. Shared with tools/seed_hall_crahs +
-# tools/add_hall_mech_panels + tools/inset_crah_wall (keep them in step).
-CRAH_END_RESERVE = 0.7
+# CRAHs stand at the aisle ends (core/hall_geometry.crah_positions); the hall's
+# two mechanical power panels stay on the back wall's end bays (_ensure_hall_mpps).
 
 # Rack geometry (shared contract — see core/rack_capacity.py):
 #   U42 = ToR-A (leaf)   U41 = reserved for future MLAG peer leaf (empty)
@@ -1028,7 +1025,7 @@ class FleetLifecycleEngine:
                           row if row is not None else self._row_label(rk, "oobm"), num,
                           unit if unit is not None else int(getattr(tmpl, "rack_unit", 1) or 1),
                           prefix="oobm", floor=floor, room=room,
-                          fx=fx if fx is not None else geo.rack_x(num),
+                          fx=fx if fx is not None else geo.rack_x(num, self._x0(rk)),
                           fy=fy if fy is not None else getattr(tmpl, "floor_y", None))
         if new is None:
             return None
@@ -1243,6 +1240,11 @@ class FleetLifecycleEngine:
             return None
         return (fp.get("rooms") or {}).get(f"{dc}/{room}")
 
+    def _x0(self, rk: tuple) -> float:
+        """The hall's grid origin - first rack centre - from its floor-plan room.
+        Server halls carry their CRAH end zones in it (hall_geometry.HALL_X0)."""
+        return geo.room_x0(self._hall_extent(rk))
+
     def _hall_has_local_spine(self, rk: tuple) -> bool:
         """True if a spine switch physically lives in hall *rk* (a network hall /
         pod), False for a compute ANNEX that shares the DC's spines in another
@@ -1269,7 +1271,7 @@ class FleetLifecycleEngine:
         # back to the stored value when the hall carries no width.
         w = ext.get("width_m") if ext else None
         stored = (ext.get("racks_per_row") if ext else None) or 0
-        rpr = max(stored, geo.racks_for_width(w) if w else 0) or None
+        rpr = max(stored, geo.racks_for_width(w, geo.room_x0(ext)) if w else 0) or None
         if ext and rpr and rows:
             rpr = max(1, int(rpr))
             if not self._hall_has_local_spine(rk):        # compute annex
@@ -1297,7 +1299,7 @@ class FleetLifecycleEngine:
                    else geo.row_y(first_row + vrow), 4)
         if n_rows is not None and fy >= geo.row_y(n_rows) - 1e-6:
             return None                                # would hit the CRAH back row
-        fx = geo.rack_x(num)
+        fx = geo.rack_x(num, self._x0(rk))
         i = max(1, int(round((fy - geo.row_y(1)) / geo.ROW_PITCH)) + 1)
         hot, cold, facing = geo.row_aisles(i)
         return fx, fy, hot, cold, facing
@@ -1440,7 +1442,7 @@ class FleetLifecycleEngine:
                 hot, cold, facing = geo.row_aisles(i)
                 if rack_row is None:                 # new row behind curated compute
                     rack_row = self._row_label(rk, ("y", self._yk(fy)))
-                return rack_row, num, (geo.rack_x(num), round(fy, 4), hot, cold, facing)
+                return rack_row, num, (geo.rack_x(num, self._x0(rk)), round(fy, 4), hot, cold, facing)
         return None
 
     def _fill_hall_grid(self, summ: DaySummary, dc: Optional[str] = None,
@@ -1500,22 +1502,14 @@ class FleetLifecycleEngine:
 
     def _crah_perimeter_positions(self, ext: dict, rpr: int, n_rows: int,
                                   target: int) -> list:
-        """(fx, fy) for *target* CRAHs lined along the hall's BACK wall (behind
-        the last IT row), evenly spread across the width — the curated Hall A
-        layout. The front wall can't hold CRAHs (Row 1 sits there in a network
-        hall, and a unit off the front wall pokes past it); the long side walls
-        are blocked by full-width rack rows. Halls are wide enough that all
-        `target` units fit one back wall. Kept in lock-step with
-        tools/seed_hall_crahs.perimeter_positions()."""
-        width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
-        back_y = round(geo.row_y(n_rows), 4)            # back wall, from geometry
-        # Inset the lineup by CRAH_END_RESERVE at each end so the two mechanical
-        # power panels (MPP) can stand in the wall's end bays, flanking the CRAHs
-        # they feed. Kept in lock-step with tools/seed_hall_crahs.perimeter_positions.
-        end = CRAH_END_RESERVE
-        usable = max(1.0, width - 2 * end)
-        return [(round(end + usable * (j + 0.5) / target, 4), back_y)
-                for j in range(target)]
+        """(fx, fy, rotation_deg) for *target* CRAHs at the hall's AISLE ENDS
+        (docs/S2_SPATIAL_THERMAL_MODEL.md D-1, option A): split across the two end
+        walls the rows point at, facing in. Kept in lock-step with
+        tools/seed_hall_crahs.perimeter_positions, which calls the same
+        hall_geometry.crah_positions."""
+        width = float(ext.get("width_m") or geo.hall_width(rpr, geo.HALL_X0))
+        depth = float(ext.get("depth_m") or (geo.row_y(n_rows) + geo.RACK_D / 2 + 0.6))
+        return geo.crah_positions(width, depth, target)
 
     def _ensure_hall_crahs(self, rk: tuple, infra: Optional[dict] = None) -> list:
         """Install the hall's FULL CRAH complement (top up to _hall_crah_target),
@@ -1543,10 +1537,8 @@ class FleetLifecycleEngine:
             return existing
         rpr, _cr, _first, n_rows = self._hall_grid(rk)
         ext = self._hall_extent(rk) or {}
-        # Distribute the complement across the two free END walls (front + back),
-        # matching tools/seed_hall_crahs.py — the long side walls are blocked by
-        # full-width rack rows, so front+back is the realizable perimeter and it
-        # halves per-wall density vs. lining one wall.
+        # At the aisle ends (hall_geometry.crah_positions), the larger half on the
+        # x = 0 wall. Matches tools/seed_hall_crahs.py.
         positions = self._crah_perimeter_positions(ext, rpr, n_rows, target)
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
@@ -1568,12 +1560,13 @@ class FleetLifecycleEngine:
         unit = int(getattr(tmpls[0], "rack_unit", 1) or 1)
         added = list(existing)
         for i in range(len(existing), target):
-            cx, cy = positions[i]
+            cx, cy, rot = positions[i]
             c = self._clone(tmpls[i % len(tmpls)], dc, self._row_label(rk, "crah"),
                             200 + i, unit, prefix="crah", floor=floor, room=room,
                             fx=cx, fy=cy)
             if c is None:
                 continue
+            c.rotation_deg = rot
             try:
                 if chw_supply is not None:
                     self.s.topology.add_link(chw_supply.id, c.id, layer="cooling")
@@ -1622,7 +1615,7 @@ class FleetLifecycleEngine:
             return []
         rpr, _cr, _first, n_rows = self._hall_grid(rk)
         ext = self._hall_extent(rk) or {}
-        width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
+        width_m = float(ext.get("width_m") or geo.hall_width(rpr, geo.room_x0(ext)))
         back_y = round(geo.row_y(n_rows), 4)             # CRAH back wall
         # A panelboard hangs ON the wall, not out in the CRAH line: the hall's
         # back wall is its depth (core/equipment_geometry footprint depth 0.15 m).
@@ -1693,7 +1686,7 @@ class FleetLifecycleEngine:
             self._register_hall_extent(dc, room, back_rows=2)
         rpr, comp_rows, first_row, n_rows = self._hall_grid(rk)
         ext = self._hall_extent(rk) or {}
-        width_m = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
+        width_m = float(ext.get("width_m") or geo.hall_width(rpr, geo.room_x0(ext)))
         chw_supply = infra.get("chw_supply")
         chw_return = infra.get("chw_return")
         new_infra = dict(infra)
@@ -1728,7 +1721,7 @@ class FleetLifecycleEngine:
         new_spines, new_oob = [], None
         col = 1
         for p in range(0, len(spines), 2):
-            fx = geo.rack_x(min(col, rpr))
+            fx = geo.rack_x(min(col, rpr), self._x0(rk))
             for j, tmpl in enumerate(spines[p:p + 2]):
                 c = self._clone_fabric_node(tmpl, rk, "sp", num=100 + col,
                                             fx=fx, fy=front_y, unit=42 - j)
@@ -1739,7 +1732,7 @@ class FleetLifecycleEngine:
                 new_spines.append(c)
             col += 1
         if infra.get("oob") is not None:                     # OOB in its own rack
-            fx = geo.rack_x(min(col, rpr))
+            fx = geo.rack_x(min(col, rpr), self._x0(rk))
             c = self._clone_fabric_node(infra["oob"], rk, "oob", num=100 + col,
                                         fx=fx, fy=front_y)
             if c is not None:
@@ -1841,7 +1834,8 @@ class FleetLifecycleEngine:
         if not isinstance(fp, dict):
             return
         n_rows = max(1, self.cfg.compute_rows_per_room) + max(1, back_rows)
-        ext = geo.hall_extent(n_rows, max(1, self.cfg.max_racks_per_row) + side_lanes)
+        ext = geo.hall_extent(n_rows, max(1, self.cfg.max_racks_per_row) + side_lanes,
+                              x0=geo.HALL_X0)
         ext.update({"datacenter": dc, "room": room,
                     "class": "white_space", "containment": "cold_aisle"})
         fp.setdefault("rooms", {})[f"{dc}/{room}"] = ext
@@ -1897,7 +1891,7 @@ class FleetLifecycleEngine:
         rpp = self._clone(tmpl, dc, self._row_label(rk, "rpp"),
                           num, PDU_UNIT,
                           prefix=f"rpp{side.lower()}", floor=floor, room=room,
-                          fx=geo.rack_x(num), fy=y)
+                          fx=geo.rack_x(num, self._x0(rk)), fy=y)
         if rpp is None:
             return None
         if ups is not None:

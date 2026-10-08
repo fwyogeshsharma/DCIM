@@ -42,7 +42,6 @@ from core.cooling_model import CRAH_COOL_KW, crah_count_for  # noqa: E402,F401
 
 DESIGN_RACK_KW = 12.0    # FleetLifecycle._DESIGN_RACK_KW
 RPP_POLES      = 42      # FleetLifecycle._RPP_POLES
-END_RESERVE    = 0.7     # FleetLifecycle.CRAH_END_RESERVE — MPP bay at each wall end
 
 
 def hall_grid(ext: dict, has_local_spine: bool):
@@ -62,20 +61,13 @@ def hall_grid(ext: dict, has_local_spine: bool):
 
 
 def perimeter_positions(ext: dict, rpr: int, n_rows: int, target: int) -> list:
-    """(floor_x, floor_y) for *target* CRAHs lined along the hall's BACK wall
-    (behind the last IT row), evenly spread across the width — the curated
-    Hall A layout. The front wall can't hold CRAHs (in a network hall Row 1 sits
-    there, and a unit centered off the front wall pokes past it); the long side
-    walls are blocked by full-width rack rows. The halls are wide enough (7.8–
-    8.4 m) that all `target` units fit one back wall at ~1.1–1.2 m pitch."""
-    width = float(ext.get("width_m") or (rpr * geo.RACK_PITCH + 2 * geo.rack_x(1)))
-    by = round(geo.row_y(n_rows), 4)                           # back wall, from geometry
-    # Inset the lineup by END_RESERVE at each end so the two mechanical power panels
-    # (MPP) stand in the wall's end bays, flanking the CRAHs. Lock-step with
-    # core.fleet_lifecycle._crah_perimeter_positions (CRAH_END_RESERVE).
-    end = END_RESERVE
-    usable = max(1.0, width - 2 * end)
-    return [(round(end + usable * (j + 0.5) / target, 4), by) for j in range(target)]
+    """(floor_x, floor_y, rotation_deg) for *target* CRAHs at the hall's AISLE
+    ENDS - the two walls the rows point at, facing in (docs/S2_SPATIAL_THERMAL_MODEL.md
+    D-1, option A). Delegates to core.hall_geometry.crah_positions, which the fleet
+    engine's _crah_perimeter_positions also calls, so the two cannot drift."""
+    width = float(ext.get("width_m") or geo.hall_width(rpr, geo.HALL_X0))
+    depth = float(ext.get("depth_m") or (geo.row_y(n_rows) + geo.RACK_D / 2 + 0.6))
+    return geo.crah_positions(width, depth, target)
 
 
 def next_free_mgmt(seed_ip: str, used: set) -> str:
@@ -191,7 +183,8 @@ def main(path: str) -> int:
         # and re-laying only `target` positions would index past the end of the list.
         positions = perimeter_positions(ext, rpr, n_rows, max(target, len(existing)))
         for i, n in enumerate(existing):
-            n["device"]["floor_x"], n["device"]["floor_y"] = positions[i]
+            (n["device"]["floor_x"], n["device"]["floor_y"],
+             n["device"]["rotation_deg"]) = positions[i]
             n["device"]["rack_num"] = i + 1
 
         if len(existing) >= target:
@@ -229,7 +222,7 @@ def main(path: str) -> int:
             dev["name"] = nm
             dev["mgmt_ip"] = mgmt
             dev["snmp_community"] = mgmt          # snmpsim routes by community == IP
-            dev["floor_x"], dev["floor_y"] = positions[i]
+            dev["floor_x"], dev["floor_y"], dev["rotation_deg"] = positions[i]
             dev["rack_num"] = i + 1
             # Fresh L2 identity so the new unit is not a MAC/interface clone.
             for iface in dev.get("interfaces", []):

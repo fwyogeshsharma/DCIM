@@ -30,11 +30,10 @@ device identity, name, address, rack_row/rack_num or telemetry changes:
      DC1/DC2 Server Hall B probes were on floor '1' while the hall is on '2', and
      the rack-3 / rack-5 probes sat at rack 1's x.)
 
-Deliberately NOT changed: the white-space halls. Their CRAH lines put seven 1.75 m
-Liebert PCW units on 1.0 m centres, which physically overlap; fixing that means
-re-gridding the halls, and that belongs with the spatial thermal model (doc 27,
-Phase S2), not with an export change. ``python tools/layout_buildings.py --check``
-reports it.
+Deliberately NOT changed here: the white-space halls. Their CRAHs were re-placed
+at the aisle ends by tools/regrid_halls_aisle_end_crahs.py (S2 decision D-1,
+option A); run that first. ``python tools/layout_buildings.py --check`` reports
+any overlap left.
 
 The Central Plant CT basin probe (CTB) physically sits in the tower basin on the
 roof; it stays in Central Plant because its room is part of its name.
@@ -66,8 +65,11 @@ BUILDING = {
     "Mechanical Room": ("G",    0.0,  6.0, 8.0,  4.0),
     "Generator Room":  ("G",    9.0,  0.0, 10.0, 12.6),
     "Server Hall A":   ("1",    0.0,  0.0, None, None),
-    "Network Room":    ("1",    8.4,  0.0, None, None),
-    "Central Plant":   ("1",   11.4,  0.0, 16.0, 15.0),
+    # Server Hall A is 12.2 m wide since its CRAHs moved to the aisle ends
+    # (tools/regrid_halls_aisle_end_crahs.py), so the rooms beside it on level 1
+    # start where it ends.
+    "Network Room":    ("1",   12.2,  0.0, None, None),
+    "Central Plant":   ("1",   15.2,  0.0, 16.0, 15.0),
     "Server Hall B":   ("2",    0.0,  0.0, None, None),
     "Roof":            ("Roof", 0.0,  0.0, 12.0, 6.0),
 }

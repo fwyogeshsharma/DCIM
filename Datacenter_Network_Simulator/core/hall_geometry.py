@@ -33,10 +33,32 @@ RACK_D = 1.2          # m, rack footprint depth
 _X0 = 0.3             # first rack centre (half a rack off the wall)
 _Y0 = 1.8             # first row centre
 
+# Server halls stand their CRAHs at the AISLE ENDS (docs/S2_SPATIAL_THERMAL_MODEL.md,
+# decision D-1, option A): units on the two walls the rows point at, lined up with
+# the aisles, so hot-aisle air has a short path back to a return. Each end wall
+# gives up a zone for the unit's depth (Liebert PCW large frame 0.89 m) plus about
+# a metre of service clearance in front of it, so a server hall's racks start that
+# far further in. The grid origin is per ROOM (`grid_x0_m` on the floor-plan room);
+# rooms without one - the network room - keep the plain half-rack margin.
+CRAH_DEPTH_M = 0.89
+CRAH_WIDTH_M = 1.75
+CRAH_END_ZONE_M = 1.9
+HALL_X0 = round(_X0 + CRAH_END_ZONE_M, 4)   # 2.2 m: first rack centre in a server hall
 
-def rack_x(num: int) -> float:
-    """Local x of rack number *num* (1-based) in its row."""
-    return round(_X0 + RACK_PITCH * (num - 1), 4)
+
+def room_x0(room: dict | None) -> float:
+    """The grid origin (first rack centre, m) a floor-plan room declares."""
+    try:
+        v = (room or {}).get("grid_x0_m")
+        return float(v) if v is not None else _X0
+    except (TypeError, ValueError):
+        return _X0
+
+
+def rack_x(num: int, x0: float = _X0) -> float:
+    """Local x of rack number *num* (1-based) in its row, from the room's grid
+    origin *x0* (see room_x0)."""
+    return round(x0 + RACK_PITCH * (num - 1), 4)
 
 
 def row_y(i: int) -> float:
@@ -94,7 +116,7 @@ def aisles_for_rows(n_rows: int) -> list[dict]:
     return out
 
 
-def racks_for_width(width_m: float) -> int:
+def racks_for_width(width_m: float, x0: float = _X0) -> int:
     """How many racks physically fit across a row of a *width_m*-wide hall — the
     inverse of hall_extent's width formula (width = racks_per_row·RACK_PITCH +
     2·margin). This is the SINGLE SOURCE OF TRUTH for row capacity: a separately
@@ -103,15 +125,45 @@ def racks_for_width(width_m: float) -> int:
     strip), so callers should derive capacity from the physical width instead."""
     if not width_m or width_m <= 0:
         return 0
-    return max(1, int(round((float(width_m) - 2 * _X0) / RACK_PITCH)))
+    return max(1, int(round((float(width_m) - 2 * x0) / RACK_PITCH)))
 
 
-def hall_extent(n_rows: int, racks_per_row: int) -> dict:
+def hall_width(racks_per_row: int, x0: float = _X0) -> float:
+    """Room width that holds *racks_per_row* racks with margins of *x0* each side
+    measured to the first/last rack centre less half a rack (the inverse of
+    racks_for_width)."""
+    return round(racks_per_row * RACK_PITCH + 2 * x0, 4)
+
+
+def crah_positions(width_m: float, depth_m: float, target: int) -> list:
+    """(floor_x, floor_y, rotation_deg) for *target* CRAHs at the AISLE ENDS:
+    the larger half on the x = 0 wall facing east (90), the rest on the far wall
+    facing west (270), each set spread evenly along the wall. A unit stands with
+    its back to the wall, so its centre is half its depth in; rotated, its 1.75 m
+    width runs along the wall (y)."""
+    if target <= 0:
+        return []
+    west = (target + 1) // 2
+    east = target - west
+    half = round(CRAH_DEPTH_M / 2, 4)
+    out = []
+    for k in range(west):
+        out.append((half, round(depth_m * (k + 0.5) / west, 4), 90.0))
+    for k in range(east):
+        out.append((round(width_m - half, 4), round(depth_m * (k + 0.5) / east, 4), 270.0))
+    return out
+
+
+def hall_extent(n_rows: int, racks_per_row: int, x0: float = _X0) -> dict:
     """Room width_m/depth_m + rows/racks_per_row/aisles for an *n_rows* ×
-    *racks_per_row* hall, sized to the grid plus the standard wall margins."""
-    width_m = round(racks_per_row * RACK_PITCH + 2 * _X0, 4)        # racks + margins
+    *racks_per_row* hall, sized to the grid plus the wall margins (*x0* each
+    side; a server hall passes HALL_X0 for its CRAH end zones)."""
+    width_m = hall_width(racks_per_row, x0)                          # racks + margins
     depth_m = round(row_y(n_rows) + RACK_D / 2 + 0.6, 4)            # last row + back margin
-    return {"width_m": width_m, "depth_m": depth_m,
+    ext = {"width_m": width_m, "depth_m": depth_m,
             "rows": list(range(1, n_rows + 1)),
             "racks_per_row": racks_per_row,
             "aisles": aisles_for_rows(n_rows)}
+    if x0 != _X0:
+        ext["grid_x0_m"] = x0
+    return ext
