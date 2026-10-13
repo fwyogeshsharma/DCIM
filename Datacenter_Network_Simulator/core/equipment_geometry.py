@@ -30,6 +30,33 @@ RACK_BASE_M = 0.10       # U1's bottom edge above the floor (plinth/castors)
 RACK_HEIGHT_M = 2.0      # a 42U cabinet stands ~2.0 m
 FLOOR_TO_FLOOR_M = 5.0   # slab to slab: 0.6 m raised floor + ~3 m clear + ceiling plenum
 
+# A room whose "level" is this stands in the compound, not in the building: a
+# generator yard, a substation, a cooling yard. It has an origin in the same
+# plan frame as the building's rooms (so the building's corner is the datum) and
+# no walls, slab or floor-to-floor of its own (dcim-platform docs/27 §8c).
+OUTDOOR_LEVEL = "Site"
+
+# Indoor fabric added south of every level's rooms (docs/27 §8b.3): a corridor
+# joining the rooms, a stair-and-lift core at the east end on every level, and
+# on the ground floor a lobby at the entrance and a loading dock beside it.
+CORRIDOR_M = 2.4
+SERVICE_BAND_M = 3.6
+CORE_W_M = 3.0
+LOBBY_W_M = 6.0
+DOCK_W_M = 6.0
+DOOR_W_M = 1.2
+#: Rooms whose door the BMS watches (a contact and a held-open alarm). Drawn
+#: as a monitored door; every other opening is drawing only.
+MONITORED_DOOR_ROOMS = ("Server Hall", "Network Room", "UPS Room", "Meet-Me Room")
+
+# The fenced compound around the building (docs/27 §8c.3): utility side west,
+# generator side east, the road and gate south, plant water north. Margins are
+# clear distances from the building's outline.
+SITE_WEST_M, SITE_EAST_M, SITE_SOUTH_M, SITE_NORTH_M = 18.0, 22.0, 14.0, 10.0
+#: An outdoor room's name decides which kind of zone it is drawn as.
+_OUTDOOR_KIND = (("generator", "generator_yard"), ("substation", "substation"),
+                 ("cooling", "cooling_yard"), ("fuel", "fuel_tank"), ("water", "water_tank"))
+
 # Default centre heights for things that are not in a rack. Wall T/RH
 # transmitters go at ~1.5 m (ASHRAE TC9.9 room-air reference practice); pipe
 # instruments and valve actuators sit on headers run at about chest height in a
@@ -204,7 +231,13 @@ def _level_rank(name: str) -> tuple:
         return (0, int(s))
     if s.lower() == "roof":
         return (2, 0)
+    if s.lower() == OUTDOOR_LEVEL.lower():
+        return (-1, 0)
     return (1, s)
+
+
+def is_outdoor(level) -> bool:
+    return str(level or "").strip().lower() == OUTDOOR_LEVEL.lower()
 
 
 def _room_level(key: str, room: dict, floors: dict) -> str:
@@ -259,14 +292,17 @@ def complete_building(floorplan: dict, devices: Iterable[Any]) -> dict:
         b["floor_to_floor_m"] = f2f
 
         # Auto-place rooms without an origin to the +x side of what is already on
-        # their level - deterministic, never overlapping a placed room.
+        # their level - deterministic, never overlapping a placed room. Outdoor
+        # rooms are not on a level of the building; one without a curated
+        # origin is set down east of everything indoors.
+        indoor = [k for k in keys if not is_outdoor(rooms[k]["level"])]
         reach: dict = defaultdict(float)
-        for k in keys:
+        for k in indoor:
             r = rooms[k]
             if isinstance(r.get("origin"), dict):
                 w, _ = _plan_extent(r)
                 reach[r["level"]] = max(reach[r["level"]], float(r["origin"].get("x", 0)) + w)
-        for k in keys:
+        for k in indoor:
             r = rooms[k]
             if not isinstance(r.get("origin"), dict):
                 r["origin"] = {"x": round(reach[r["level"]], 3), "y": 0.0}
@@ -274,8 +310,16 @@ def complete_building(floorplan: dict, devices: Iterable[Any]) -> dict:
                 r["placement"] = "auto"
                 w, _ = _plan_extent(r)
                 reach[r["level"]] += w
+        east = max(reach.values(), default=0.0) + 4.0
+        for k in keys:
+            r = rooms[k]
+            if is_outdoor(r["level"]) and not isinstance(r.get("origin"), dict):
+                r["origin"] = {"x": round(east, 3), "y": 0.0}
+                r.setdefault("rotation_deg", 0)
+                r["placement"] = "auto"
+                east += _plan_extent(r)[0] + 2.0
 
-        names = sorted({rooms[k]["level"] for k in keys}, key=_level_rank)
+        names = sorted({rooms[k]["level"] for k in indoor}, key=_level_rank)
         top = max([_level_rank(n)[1] for n in names if _level_rank(n)[0] == 0] or [0])
         levels = []
         for n in names:
@@ -284,7 +328,7 @@ def complete_building(floorplan: dict, devices: Iterable[Any]) -> dict:
         b["levels"] = levels
 
         xs, ys = [], []
-        for k in keys:
+        for k in indoor:
             r = rooms[k]
             if _level_rank(r["level"])[0] == 2:
                 continue                      # the roof sits ON the building, not beside it
@@ -299,4 +343,144 @@ def complete_building(floorplan: dict, devices: Iterable[Any]) -> dict:
 
     out["rooms"] = rooms
     out["buildings"] = buildings
+    return out
+
+
+# ── the site: fabric and compound (docs/27 §8b.3, §8c.3) ─────────────────────
+
+def _rect(x: float, y: float, w: float, d: float) -> list:
+    r = lambda v: round(float(v), 2)  # noqa: E731
+    return [[r(x), r(y)], [r(x + w), r(y)], [r(x + w), r(y + d)], [r(x), r(y + d)]]
+
+
+def _space(sid: str, level, kind: str, name: str, poly: list, **attrs) -> dict:
+    out = {"id": sid, "level": level, "kind": kind, "name": name, "polygon_m": poly}
+    if attrs:
+        out["attrs"] = attrs
+    return out
+
+
+def _outdoor_kind(room_name: str) -> str:
+    low = (room_name or "").lower()
+    for token, kind in _OUTDOOR_KIND:
+        if token in low:
+            return kind
+    return "yard"
+
+
+def complete_site(floorplan: dict, devices: Iterable[Any]) -> dict:
+    """``complete_building`` plus the drawing around it: per datacenter, the
+    indoor ``fabric`` (corridor, core, lobby, dock, door openings) and the
+    ``compound`` (fenced outline and outdoor zones). The building's outline
+    grows by the service strip the fabric adds along its south side.
+
+    Everything here is derived from the rooms, so a hall the fleet opens at
+    runtime gets a corridor and a door like the curated ones, and nothing is
+    stored that could disagree with the rooms. Fabric and zones carry no
+    state and are never coloured by it; a yard that holds equipment is also an
+    outdoor ROOM (level "Site"), and that room is what carries the alarms.
+    Pure: the input is never modified."""
+    out = complete_building(floorplan, devices)
+    if not out or not out.get("rooms"):
+        return out
+    rooms = out["rooms"]
+    buildings = {dc: dict(b) for dc, b in (out.get("buildings") or {}).items()}
+    fabric: dict = {}
+    compound: dict = {}
+    for dc, b in sorted(buildings.items()):
+        if not b.get("outline_m"):
+            continue
+        keys = [k for k, r in rooms.items() if (r.get("datacenter") or k.split("/", 1)[0]) == dc]
+        (x0, y0), (x1, y1) = b["outline_m"][0], b["outline_m"][2]
+        W, D = x1 - x0, y1 - y0
+        levels = [lv["name"] for lv in b.get("levels") or [] if _level_rank(lv["name"])[0] != 2]
+        ground = levels[0] if levels else "G"
+
+        fab: list = []
+        for lv in levels:
+            fab.append(_space(f"{dc}/{lv}/corridor", lv, "corridor", "Corridor",
+                              _rect(x0, y1, W - CORE_W_M, CORRIDOR_M)))
+            fab.append(_space(f"{dc}/{lv}/core", lv, "core", "Stair and lift core",
+                              _rect(x1 - CORE_W_M, y1, CORE_W_M, CORRIDOR_M + SERVICE_BAND_M)))
+            if lv == ground:
+                fab.append(_space(f"{dc}/{lv}/lobby", lv, "lobby", "Lobby",
+                                  _rect(x0, y1 + CORRIDOR_M, LOBBY_W_M, SERVICE_BAND_M)))
+                fab.append(_space(f"{dc}/{lv}/dock", lv, "dock", "Loading dock",
+                                  _rect(x0 + LOBBY_W_M, y1 + CORRIDOR_M, DOCK_W_M, SERVICE_BAND_M)))
+                south = y1 + CORRIDOR_M + SERVICE_BAND_M
+                fab.append(_space(f"{dc}/{lv}/entrance", lv, "entrance", "Entrance",
+                                  _rect(x0 + LOBBY_W_M / 2 - DOOR_W_M, south - 0.2, DOOR_W_M * 2, 0.2),
+                                  external=True))
+                fab.append(_space(f"{dc}/{lv}/dock-door", lv, "door", "Dock door",
+                                  _rect(x0 + LOBBY_W_M + DOCK_W_M / 2 - 1.5, south - 0.2, 3.0, 0.2),
+                                  external=True, monitored=False))
+            # One opening per room: on its south wall where the room meets the
+            # corridor, else on its west wall as an external door. Drawing only,
+            # unless the BMS watches that room's door.
+            for k in keys:
+                r = rooms[k]
+                if r["level"] != lv or not isinstance(r.get("origin"), dict):
+                    continue
+                w, d = _plan_extent(r)
+                ox, oy = float(r["origin"]["x"]), float(r["origin"]["y"])
+                name = r.get("room") or k.split("/", 1)[1]
+                monitored = any(name.startswith(m) for m in MONITORED_DOOR_ROOMS)
+                if abs((oy + d) - y1) < 1e-6:
+                    poly = _rect(ox + w / 2 - DOOR_W_M / 2, oy + d - 0.1, DOOR_W_M, 0.2)
+                    external = False
+                elif abs(ox - x0) < 1e-6:
+                    poly = _rect(ox - 0.1, oy + d / 2 - DOOR_W_M / 2, 0.2, DOOR_W_M)
+                    external = True
+                else:
+                    poly = _rect(ox + w - 0.1, oy + d / 2 - DOOR_W_M / 2, 0.2, DOOR_W_M)
+                    external = False
+                fab.append(_space(f"{k}/door", lv, "door", f"{name} door", poly,
+                                  room=k, monitored=monitored, external=external))
+        fabric[dc] = fab
+
+        # The service strip is part of the building.
+        bd = y1 + CORRIDOR_M + SERVICE_BAND_M
+        b["outline_m"] = [[x0, y0], [x1, y0], [x1, round(bd, 3)], [x0, round(bd, 3)]]
+        b["extent_m"] = {"width": round(W, 3), "depth": round(bd - y0, 3)}
+
+        # The compound: fence, road and gate south, substation west, generator
+        # yard and fuel east, plant water north, two telecom entrances.
+        sx0, sx1 = x0 - SITE_WEST_M, x1 + SITE_EAST_M
+        sy0, sy1 = y0 - SITE_NORTH_M, bd + SITE_SOUTH_M
+        xm = x0 + W / 2
+        zones: list = []
+        zones.append(_space(f"{dc}/fence", OUTDOOR_LEVEL, "fence", "Fence", _rect(sx0, sy0, sx1 - sx0, sy1 - sy0)))
+        zones.append(_space(f"{dc}/apron", OUTDOOR_LEVEL, "apron", "Loading apron", _rect(x0, bd, W, 4.0)))
+        zones.append(_space(f"{dc}/road", OUTDOOR_LEVEL, "road", "Service road", _rect(sx0, bd + 4.0, sx1 - sx0, 3.0)))
+        zones.append(_space(f"{dc}/parking", OUTDOOR_LEVEL, "parking", "Car park", _rect(sx0 + 2.0, bd + 7.5, 14.0, 3.5)))
+        zones.append(_space(f"{dc}/gate", OUTDOOR_LEVEL, "gate", "Gate", _rect(xm - 2.0, sy1 - 1.0, 4.0, 1.0)))
+        zones.append(_space(f"{dc}/guardhouse", OUTDOOR_LEVEL, "guardhouse", "Guardhouse", _rect(xm + 3.0, sy1 - 4.0, 3.0, 3.0)))
+        zones.append(_space(f"{dc}/substation", OUTDOOR_LEVEL, "substation", "Utility substation",
+                            _rect(x0 - 16.0, y0 + 2.0, 10.0, max(8.0, D - 4.0))))
+        zones.append(_space(f"{dc}/water-tank", OUTDOOR_LEVEL, "water_tank", "Makeup water tank", _rect(xm - 2.0, y0 - 6.0, 4.0, 4.0)))
+        zones.append(_space(f"{dc}/fire-pump-house", OUTDOOR_LEVEL, "fire_pump_house", "Fire pump house", _rect(xm + 4.0, y0 - 5.0, 4.0, 3.0)))
+        zones.append(_space(f"{dc}/telecom-west", OUTDOOR_LEVEL, "telecom_entrance", "Telecom entrance A", _rect(sx0, y0 + D - 1.3, SITE_WEST_M, 0.6)))
+        zones.append(_space(f"{dc}/telecom-east", OUTDOOR_LEVEL, "telecom_entrance", "Telecom entrance B", _rect(x1, y0 + 0.7, SITE_EAST_M, 0.6)))
+        # Outdoor rooms are zones that carry equipment; the fuel tank stands
+        # beside whichever yard holds the generators.
+        gen_east = None
+        for k in keys:
+            r = rooms[k]
+            if not is_outdoor(r["level"]) or not isinstance(r.get("origin"), dict):
+                continue
+            w, d = _plan_extent(r)
+            ox, oy = float(r["origin"]["x"]), float(r["origin"]["y"])
+            kind = _outdoor_kind(r.get("room") or k)
+            zones.append(_space(f"{k}", OUTDOOR_LEVEL, kind, r.get("room") or k, _rect(ox, oy, w, d), room=k))
+            if kind == "generator_yard":
+                gen_east = max(gen_east or 0.0, ox + w)
+        if gen_east is not None:
+            zones.append(_space(f"{dc}/fuel-tank", OUTDOOR_LEVEL, "fuel_tank", "Bulk fuel tank", _rect(gen_east + 1.0, y0 + 2.0, 3.0, 8.0)))
+        compound[dc] = {"outline_m": _rect(sx0, sy0, sx1 - sx0, sy1 - sy0),
+                        "extent_m": {"width": round(sx1 - sx0, 3), "depth": round(sy1 - sy0, 3)},
+                        "zones": zones}
+
+    out["buildings"] = buildings
+    out["fabric"] = fabric
+    out["compound"] = compound
     return out

@@ -16,8 +16,8 @@ import pytest
 
 from core.device_manager import Device
 from core.equipment_geometry import (
-    RACK_MOUNTS, complete_building, effective_mount, facing_deg, footprint,
-    mount_height_m,
+    OUTDOOR_LEVEL, RACK_MOUNTS, complete_building, complete_site, effective_mount,
+    facing_deg, footprint, mount_height_m,
 )
 from tools.export_dcim_floorplan import build as build_floorplan
 from tools.layout_buildings import check as layout_check
@@ -115,6 +115,9 @@ def test_every_room_is_placed_in_a_building(topo):
     for dc, b in fp["buildings"].items():
         names = [x["name"] for x in b["levels"]]
         assert names == ["G", "1", "2", "Roof"], (dc, names)
+        # the yard is in the compound, not a level of the building
+        yard = fp["rooms"][f"{dc}/Generator Yard"]
+        assert yard["level"] == OUTDOOR_LEVEL and yard["class"] == "outdoor"
 
 
 def test_rooms_on_a_level_do_not_overlap(topo):
@@ -159,7 +162,7 @@ def test_rack_probes_stand_at_their_rack_on_the_rooms_floor(topo):
 
 def test_floorplan_export_files_only_rack_gear_under_racks(topo):
     doc = build_floorplan(topo)
-    assert doc["schema"] == "dcim-floorplan/1.1"
+    assert doc["schema"] == "dcim-floorplan/1.2"
     in_rack = {i for r in doc["racks"] for i in r["device_ids"]}
     for d in doc["devices"]:
         if d["mount"] in RACK_MOUNTS:
@@ -168,3 +171,82 @@ def test_floorplan_export_files_only_rack_gear_under_racks(topo):
             assert d["rack_id"] is None and d["id"] not in in_rack, d["name"]
             assert d["room"] and d["datacenter"]
     assert set(doc["floorplan"]["buildings"]) == {"DC1", "DC2"}
+
+
+# ── S3: the compound, the moved rooms, the fabric (docs/27 §8b, §8c) ────────
+
+def test_the_gensets_stand_in_a_yard_and_the_chillers_on_the_ground(topo):
+    devs = [n["device"] for n in topo["nodes"]]
+    gens = [d for d in devs if d["device_type"] == "generator"]
+    assert gens and all(d["room"] == "Generator Yard" and d["floor"] == OUTDOOR_LEVEL for d in gens)
+    assert all(d["name"].endswith("-GR") for d in gens)          # the room code did not change
+    chillers = [d for d in devs if d["device_type"] == "chiller"]
+    assert chillers and all(d["room"] == "Central Plant" and d["floor"] == "G" for d in chillers)
+    assert not any(d["room"] == "Generator Room" for d in devs)
+
+
+def test_every_device_stands_on_its_rooms_level(topo):
+    rooms = topo["floorplan"]["rooms"]
+    for n in topo["nodes"]:
+        d = n["device"]
+        r = rooms.get(f"{d.get('datacenter')}/{d.get('room')}")
+        if r is None:
+            continue
+        assert str(d.get("floor")) == str(r["level"]), (d["name"], d.get("floor"), r["level"])
+
+
+def test_support_rooms_exist_with_their_class(topo):
+    for dc in ("DC1", "DC2"):
+        for room in ("Staging & Storage", "Operations Room", "Meet-Me Room"):
+            assert topo["floorplan"]["rooms"][f"{dc}/{room}"]["class"] == "support", (dc, room)
+
+
+def test_complete_site_adds_fabric_and_a_compound_without_touching_the_rooms(topo):
+    fp = topo["floorplan"]
+    before = copy.deepcopy(fp)
+    out = complete_site(fp, (n["device"] for n in topo["nodes"]))
+    assert fp == before
+    b = out["buildings"]["DC1"]
+    # the service strip (corridor + lobby/dock/core band) is part of the building
+    assert b["extent_m"] == {"width": 25.0, "depth": 21.0}
+    fab = out["fabric"]["DC1"]
+    kinds = {(f["level"], f["kind"]) for f in fab}
+    for lv in ("G", "1", "2"):
+        assert (lv, "corridor") in kinds and (lv, "core") in kinds
+    assert ("G", "lobby") in kinds and ("G", "dock") in kinds and ("G", "entrance") in kinds
+    # one door per room; the halls' and the UPS room's are the ones the BMS watches
+    doors = {f["attrs"]["room"]: f["attrs"] for f in fab if f["kind"] == "door" and "room" in f.get("attrs", {})}
+    assert doors["DC1/Server Hall A"]["monitored"] and doors["DC1/UPS Room"]["monitored"]
+    assert not doors["DC1/Central Plant"]["monitored"] and not doors["DC1/Staging & Storage"]["monitored"]
+    comp = out["compound"]["DC1"]
+    zk = {z["kind"] for z in comp["zones"]}
+    assert {"fence", "gate", "guardhouse", "road", "apron", "parking", "substation", "generator_yard",
+            "fuel_tank", "water_tank", "fire_pump_house", "telecom_entrance"} <= zk
+    yard = next(z for z in comp["zones"] if z["kind"] == "generator_yard")
+    assert yard["attrs"]["room"] == "DC1/Generator Yard"
+    # the yard lies east of the building, inside the fence
+    (fx0, fy0), (fx1, fy1) = comp["outline_m"][0], comp["outline_m"][2]
+    assert all(fx0 <= x <= fx1 and fy0 <= y <= fy1 for x, y in yard["polygon_m"])
+    assert min(x for x, _ in yard["polygon_m"]) >= b["outline_m"][1][0]
+
+
+def test_an_outdoor_room_never_sets_the_buildings_levels_or_outline():
+    fp = {"rooms": {
+        "D/Hall": {"datacenter": "D", "room": "Hall", "width_m": 10, "depth_m": 8, "level": "1", "origin": {"x": 0, "y": 0}},
+        "D/Generator Yard": {"datacenter": "D", "room": "Generator Yard", "class": "outdoor",
+                             "width_m": 10, "depth_m": 12, "level": OUTDOOR_LEVEL},
+    }}
+    out = complete_site(fp, [])
+    b = out["buildings"]["D"]
+    assert [x["name"] for x in b["levels"]] == ["1"]
+    assert b["outline_m"][1][0] == 10.0                      # the yard did not widen the building
+    yard = out["rooms"]["D/Generator Yard"]
+    assert yard["placement"] == "auto" and yard["origin"]["x"] >= 14.0   # set down east of it
+    assert out["compound"]["D"]["zones"][-2]["kind"] == "generator_yard"
+    assert out["compound"]["D"]["zones"][-1]["kind"] == "fuel_tank"
+
+
+def test_the_export_carries_fabric_and_compound(topo):
+    doc = build_floorplan(topo)
+    assert set(doc["floorplan"]["fabric"]) == {"DC1", "DC2"} == set(doc["floorplan"]["compound"])
+    assert doc["floorplan"]["rooms"]["DC1/Generator Yard"]["class"] == "outdoor"

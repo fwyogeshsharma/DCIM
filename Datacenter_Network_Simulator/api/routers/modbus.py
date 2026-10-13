@@ -21,6 +21,43 @@ from api.state import AppState
 router = APIRouter(prefix="/modbus", tags=["Modbus"])
 
 
+class DoorAction(BaseModel):
+    """Hold a door contact open (seconds > 0) or close it (0)."""
+    device: str          # the contact's name, e.g. DOOR-DC1-HA
+    seconds: float = 60.0
+
+
+class HydrogenAction(BaseModel):
+    """Add gas to a site's battery room in % LEL, or null to clear."""
+    datacenter: str
+    pct_lel: float | None = None
+
+
+@router.post("/doors", response_model=OkResponse)
+def hold_door(body: DoorAction):
+    """Scenario: a door held open. The contact reads 1 until the time runs
+    out; the platform's held-open rule raises the alarm."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    if body.seconds <= 0:
+        st.close_door(body.device)
+        return OkResponse(message=f"{body.device} closed")
+    st.open_door(body.device, body.seconds)
+    return OkResponse(message=f"{body.device} open for {body.seconds:.0f} s")
+
+
+@router.post("/hydrogen", response_model=OkResponse)
+def gas_battery_room(body: HydrogenAction):
+    """Scenario: a charger gassing a string. Adds to the room's reading
+    until cleared."""
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    st.set_hydrogen_extra(body.datacenter, body.pct_lel)
+    return OkResponse(message=f"{body.datacenter} hydrogen extra {'cleared' if body.pct_lel is None else f'{body.pct_lel} % LEL'}")
+
+
 def _state() -> "AppState":
     return AppState.get()
 

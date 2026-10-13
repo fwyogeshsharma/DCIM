@@ -547,11 +547,97 @@ _ROOM_TX = ModbusMap(
     },
 )
 
+#: S3 (dcim-platform docs/27 §8b/§8c): the instruments a real site wires to
+#: its BMS I/O and nobody puts on a network of their own. Each is tiny, as a
+#: real one is, and each carries a validity bit for the same reason the
+#: thermowells do.
+#:
+#: Door contact: a magnetic reed switch on the frame, a dry contact into a
+#: BMS or access-control input - read as ONE discrete bit. Hydrogen: a
+#: catalytic or electrochemical cell in the battery room reporting % of the
+#: lower explosive limit (IEEE 1635 / NFPA 1 cap VRLA rooms at 1 % by volume,
+#: which is 25 % LEL), with its own alarm relay. Battery string temperature:
+#: a probe on a cell, the quantity VRLA life is written against. Tank level:
+#: a hydrostatic or radar transmitter on the bulk diesel and the makeup water
+#: tanks, with a low-level relay.
+_DOOR_TX = ModbusMap(
+    map_id="SIM-DOORCT-v1", vendor="Generic", product="Door Contact Input",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Door_Open", "door_open", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Reading_Valid", presence_of="door_open"),
+        ],
+    },
+)
+
+_H2_TX = ModbusMap(
+    map_id="SIM-H2DET-v1", vendor="Generic", product="Hydrogen Gas Detector",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "H2_Concentration", "h2_pct_lel", "u16", 100, "%LEL"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Alarm_High", "h2_alarm", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Reading_Valid", presence_of="h2_pct_lel"),
+        ],
+    },
+)
+
+_BATT_TX = ModbusMap(
+    map_id="SIM-BATTEMP-TX-v1", vendor="Generic", product="Battery Temperature Probe",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Battery_Temperature", "battery_temp_c", "s16", 10, "degC"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Reading_Valid", presence_of="battery_temp_c"),
+        ],
+    },
+)
+
+#: The same transmitter on both tanks, but two templates: a DCIM binds the
+#: bulk diesel to the generator's fuel key and the makeup water to the
+#: towers', and a template is where that binding lives.
+_FUEL_TX = ModbusMap(
+    map_id="SIM-FUELTANK-TX-v1", vendor="Generic", product="Bulk Fuel Tank Level Transmitter",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Bulk_Fuel_Level", "tank_level_pct", "u16", 10, "%"),
+            _P(0x0001, "Bulk_Fuel_Volume", "tank_volume_l", "u32", 1, "L"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Alarm_Low_Level", "tank_low", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Reading_Valid", presence_of="tank_level_pct"),
+        ],
+    },
+)
+
+_WATER_TX = ModbusMap(
+    map_id="SIM-WATERTANK-TX-v1", vendor="Generic", product="Makeup Water Tank Level Transmitter",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Water_Level", "tank_level_pct", "u16", 10, "%"),
+            _P(0x0001, "Water_Volume", "tank_volume_l", "u32", 1, "L"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Alarm_Low_Level", "tank_low", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Reading_Valid", presence_of="tank_level_pct"),
+        ],
+    },
+)
+
 PROBE_MAPS: Dict[str, ModbusMap] = {
     "chw_supply": _TEMP_TX, "chw_return": _TEMP_TX,
     "cw_supply":  _TEMP_TX, "cw_return":  _TEMP_TX,
     "ct_basin":   _TEMP_TX, "chw_flow":   _FLOW_TX,
     "room_air":   _ROOM_TX,
+    "door_contact": _DOOR_TX, "hydrogen": _H2_TX, "battery_temp": _BATT_TX,
+    "fuel_level": _FUEL_TX, "water_level": _WATER_TX,
 }
 
 

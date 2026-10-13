@@ -1,5 +1,5 @@
 {
-  "schema": "dcim-floorplan/1.1",
+  "schema": "dcim-floorplan/1.2",
   "description": "DCIM asset / floor-plan export. Physical placement DB intended to be imported by a DCIM and joined to live device telemetry by device identity. Contains NO telemetry -- poll the simulator's device protocols (Redfish/SNMP/gNMI) for live values.",
   "source_topology": {
     "name": null,
@@ -28,26 +28,6 @@
           2
         ],
         "racks_per_row": 9,
-        "aisles": [],
-        "level": "1",
-        "origin": {
-          "x": 15.2,
-          "y": 0.0
-        },
-        "rotation_deg": 0
-      },
-      "DC1/Generator Room": {
-        "datacenter": "DC1",
-        "room": "Generator Room",
-        "class": "facility",
-        "containment": "none",
-        "width_m": 10.0,
-        "depth_m": 12.6,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
         "aisles": [],
         "level": "G",
         "origin": {
@@ -277,26 +257,6 @@
           2
         ],
         "racks_per_row": 9,
-        "aisles": [],
-        "level": "1",
-        "origin": {
-          "x": 15.2,
-          "y": 0.0
-        },
-        "rotation_deg": 0
-      },
-      "DC2/Generator Room": {
-        "datacenter": "DC2",
-        "room": "Generator Room",
-        "class": "facility",
-        "containment": "none",
-        "width_m": 10.0,
-        "depth_m": 12.6,
-        "rows": [
-          1,
-          2
-        ],
-        "racks_per_row": 3,
         "aisles": [],
         "level": "G",
         "origin": {
@@ -553,6 +513,148 @@
           "y": 0.0
         },
         "rotation_deg": 0
+      },
+      "DC1/Generator Yard": {
+        "datacenter": "DC1",
+        "room": "Generator Yard",
+        "class": "outdoor",
+        "containment": "none",
+        "width_m": 10.0,
+        "depth_m": 12.6,
+        "rows": [
+          1,
+          2
+        ],
+        "racks_per_row": 3,
+        "aisles": [],
+        "level": "Site",
+        "origin": {
+          "x": 29.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
+      },
+      "DC2/Generator Yard": {
+        "datacenter": "DC2",
+        "room": "Generator Yard",
+        "class": "outdoor",
+        "containment": "none",
+        "width_m": 10.0,
+        "depth_m": 12.6,
+        "rows": [
+          1,
+          2
+        ],
+        "racks_per_row": 3,
+        "aisles": [],
+        "level": "Site",
+        "origin": {
+          "x": 29.0,
+          "y": 0.0
+        },
+        "rotation_deg": 0
+      },
+      "DC1/Staging & Storage": {
+        "datacenter": "DC1",
+        "room": "Staging & Storage",
+        "class": "support",
+        "containment": "none",
+        "width_m": 8.0,
+        "depth_m": 5.0,
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 0.0,
+          "y": 10.0
+        },
+        "rotation_deg": 0
+      },
+      "DC1/Operations Room": {
+        "datacenter": "DC1",
+        "room": "Operations Room",
+        "class": "support",
+        "containment": "none",
+        "width_m": 6.0,
+        "depth_m": 5.0,
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 12.2,
+          "y": 5.4
+        },
+        "rotation_deg": 0
+      },
+      "DC1/Meet-Me Room": {
+        "datacenter": "DC1",
+        "room": "Meet-Me Room",
+        "class": "support",
+        "containment": "none",
+        "width_m": 4.0,
+        "depth_m": 5.4,
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 15.2,
+          "y": 0.0
+        },
+        "rotation_deg": 0
+      },
+      "DC2/Staging & Storage": {
+        "datacenter": "DC2",
+        "room": "Staging & Storage",
+        "class": "support",
+        "containment": "none",
+        "width_m": 8.0,
+        "depth_m": 5.0,
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "level": "G",
+        "origin": {
+          "x": 0.0,
+          "y": 10.0
+        },
+        "rotation_deg": 0
+      },
+      "DC2/Operations Room": {
+        "datacenter": "DC2",
+        "room": "Operations Room",
+        "class": "support",
+        "containment": "none",
+        "width_m": 6.0,
+        "depth_m": 5.0,
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 12.2,
+          "y": 5.4
+        },
+        "rotation_deg": 0
+      },
+      "DC2/Meet-Me Room": {
+        "datacenter": "DC2",
+        "room": "Meet-Me Room",
+        "class": "support",
+        "containment": "none",
+        "width_m": 4.0,
+        "depth_m": 5.4,
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "level": "1",
+        "origin": {
+          "x": 15.2,
+          "y": 0.0
+        },
+        "rotation_deg": 0
       }
     },
     "buildings": {
@@ -587,21 +689,21 @@
             0.0
           ],
           [
-            31.2,
+            25.0,
             0.0
           ],
           [
-            31.2,
-            15.0
+            25.0,
+            21.0
           ],
           [
             0.0,
-            15.0
+            21.0
           ]
         ],
         "extent_m": {
-          "width": 31.2,
-          "depth": 15.0
+          "width": 25.0,
+          "depth": 21.0
         }
       },
       "DC2": {
@@ -635,22 +737,1728 @@
             0.0
           ],
           [
-            31.2,
+            25.0,
             0.0
           ],
           [
-            31.2,
-            15.0
+            25.0,
+            21.0
           ],
           [
             0.0,
-            15.0
+            21.0
           ]
         ],
         "extent_m": {
-          "width": 31.2,
-          "depth": 15.0
+          "width": 25.0,
+          "depth": 21.0
         }
+      }
+    },
+    "fabric": {
+      "DC1": [
+        {
+          "id": "DC1/G/corridor",
+          "level": "G",
+          "kind": "corridor",
+          "name": "Corridor",
+          "polygon_m": [
+            [
+              0.0,
+              15.0
+            ],
+            [
+              22.0,
+              15.0
+            ],
+            [
+              22.0,
+              17.4
+            ],
+            [
+              0.0,
+              17.4
+            ]
+          ]
+        },
+        {
+          "id": "DC1/G/core",
+          "level": "G",
+          "kind": "core",
+          "name": "Stair and lift core",
+          "polygon_m": [
+            [
+              22.0,
+              15.0
+            ],
+            [
+              25.0,
+              15.0
+            ],
+            [
+              25.0,
+              21.0
+            ],
+            [
+              22.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC1/G/lobby",
+          "level": "G",
+          "kind": "lobby",
+          "name": "Lobby",
+          "polygon_m": [
+            [
+              0.0,
+              17.4
+            ],
+            [
+              6.0,
+              17.4
+            ],
+            [
+              6.0,
+              21.0
+            ],
+            [
+              0.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC1/G/dock",
+          "level": "G",
+          "kind": "dock",
+          "name": "Loading dock",
+          "polygon_m": [
+            [
+              6.0,
+              17.4
+            ],
+            [
+              12.0,
+              17.4
+            ],
+            [
+              12.0,
+              21.0
+            ],
+            [
+              6.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC1/G/entrance",
+          "level": "G",
+          "kind": "entrance",
+          "name": "Entrance",
+          "polygon_m": [
+            [
+              1.8,
+              20.8
+            ],
+            [
+              4.2,
+              20.8
+            ],
+            [
+              4.2,
+              21.0
+            ],
+            [
+              1.8,
+              21.0
+            ]
+          ],
+          "attrs": {
+            "external": true
+          }
+        },
+        {
+          "id": "DC1/G/dock-door",
+          "level": "G",
+          "kind": "door",
+          "name": "Dock door",
+          "polygon_m": [
+            [
+              7.5,
+              20.8
+            ],
+            [
+              10.5,
+              20.8
+            ],
+            [
+              10.5,
+              21.0
+            ],
+            [
+              7.5,
+              21.0
+            ]
+          ],
+          "attrs": {
+            "external": true,
+            "monitored": false
+          }
+        },
+        {
+          "id": "DC1/Central Plant/door",
+          "level": "G",
+          "kind": "door",
+          "name": "Central Plant door",
+          "polygon_m": [
+            [
+              16.4,
+              14.9
+            ],
+            [
+              17.6,
+              14.9
+            ],
+            [
+              17.6,
+              15.1
+            ],
+            [
+              16.4,
+              15.1
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Central Plant",
+            "monitored": false,
+            "external": false
+          }
+        },
+        {
+          "id": "DC1/Mechanical Room/door",
+          "level": "G",
+          "kind": "door",
+          "name": "Mechanical Room door",
+          "polygon_m": [
+            [
+              -0.1,
+              7.4
+            ],
+            [
+              0.1,
+              7.4
+            ],
+            [
+              0.1,
+              8.6
+            ],
+            [
+              -0.1,
+              8.6
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Mechanical Room",
+            "monitored": false,
+            "external": true
+          }
+        },
+        {
+          "id": "DC1/UPS Room/door",
+          "level": "G",
+          "kind": "door",
+          "name": "UPS Room door",
+          "polygon_m": [
+            [
+              -0.1,
+              2.4
+            ],
+            [
+              0.1,
+              2.4
+            ],
+            [
+              0.1,
+              3.6
+            ],
+            [
+              -0.1,
+              3.6
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/UPS Room",
+            "monitored": true,
+            "external": true
+          }
+        },
+        {
+          "id": "DC1/Staging & Storage/door",
+          "level": "G",
+          "kind": "door",
+          "name": "Staging & Storage door",
+          "polygon_m": [
+            [
+              3.4,
+              14.9
+            ],
+            [
+              4.6,
+              14.9
+            ],
+            [
+              4.6,
+              15.1
+            ],
+            [
+              3.4,
+              15.1
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Staging & Storage",
+            "monitored": false,
+            "external": false
+          }
+        },
+        {
+          "id": "DC1/1/corridor",
+          "level": "1",
+          "kind": "corridor",
+          "name": "Corridor",
+          "polygon_m": [
+            [
+              0.0,
+              15.0
+            ],
+            [
+              22.0,
+              15.0
+            ],
+            [
+              22.0,
+              17.4
+            ],
+            [
+              0.0,
+              17.4
+            ]
+          ]
+        },
+        {
+          "id": "DC1/1/core",
+          "level": "1",
+          "kind": "core",
+          "name": "Stair and lift core",
+          "polygon_m": [
+            [
+              22.0,
+              15.0
+            ],
+            [
+              25.0,
+              15.0
+            ],
+            [
+              25.0,
+              21.0
+            ],
+            [
+              22.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC1/Server Hall A/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Server Hall A door",
+          "polygon_m": [
+            [
+              -0.1,
+              5.55
+            ],
+            [
+              0.1,
+              5.55
+            ],
+            [
+              0.1,
+              6.75
+            ],
+            [
+              -0.1,
+              6.75
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Server Hall A",
+            "monitored": true,
+            "external": true
+          }
+        },
+        {
+          "id": "DC1/Network Room/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Network Room door",
+          "polygon_m": [
+            [
+              15.1,
+              2.1
+            ],
+            [
+              15.3,
+              2.1
+            ],
+            [
+              15.3,
+              3.3
+            ],
+            [
+              15.1,
+              3.3
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Network Room",
+            "monitored": true,
+            "external": false
+          }
+        },
+        {
+          "id": "DC1/Operations Room/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Operations Room door",
+          "polygon_m": [
+            [
+              18.1,
+              7.3
+            ],
+            [
+              18.3,
+              7.3
+            ],
+            [
+              18.3,
+              8.5
+            ],
+            [
+              18.1,
+              8.5
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Operations Room",
+            "monitored": false,
+            "external": false
+          }
+        },
+        {
+          "id": "DC1/Meet-Me Room/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Meet-Me Room door",
+          "polygon_m": [
+            [
+              19.1,
+              2.1
+            ],
+            [
+              19.3,
+              2.1
+            ],
+            [
+              19.3,
+              3.3
+            ],
+            [
+              19.1,
+              3.3
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Meet-Me Room",
+            "monitored": true,
+            "external": false
+          }
+        },
+        {
+          "id": "DC1/2/corridor",
+          "level": "2",
+          "kind": "corridor",
+          "name": "Corridor",
+          "polygon_m": [
+            [
+              0.0,
+              15.0
+            ],
+            [
+              22.0,
+              15.0
+            ],
+            [
+              22.0,
+              17.4
+            ],
+            [
+              0.0,
+              17.4
+            ]
+          ]
+        },
+        {
+          "id": "DC1/2/core",
+          "level": "2",
+          "kind": "core",
+          "name": "Stair and lift core",
+          "polygon_m": [
+            [
+              22.0,
+              15.0
+            ],
+            [
+              25.0,
+              15.0
+            ],
+            [
+              25.0,
+              21.0
+            ],
+            [
+              22.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC1/Server Hall B/door",
+          "level": "2",
+          "kind": "door",
+          "name": "Server Hall B door",
+          "polygon_m": [
+            [
+              -0.1,
+              5.55
+            ],
+            [
+              0.1,
+              5.55
+            ],
+            [
+              0.1,
+              6.75
+            ],
+            [
+              -0.1,
+              6.75
+            ]
+          ],
+          "attrs": {
+            "room": "DC1/Server Hall B",
+            "monitored": true,
+            "external": true
+          }
+        }
+      ],
+      "DC2": [
+        {
+          "id": "DC2/G/corridor",
+          "level": "G",
+          "kind": "corridor",
+          "name": "Corridor",
+          "polygon_m": [
+            [
+              0.0,
+              15.0
+            ],
+            [
+              22.0,
+              15.0
+            ],
+            [
+              22.0,
+              17.4
+            ],
+            [
+              0.0,
+              17.4
+            ]
+          ]
+        },
+        {
+          "id": "DC2/G/core",
+          "level": "G",
+          "kind": "core",
+          "name": "Stair and lift core",
+          "polygon_m": [
+            [
+              22.0,
+              15.0
+            ],
+            [
+              25.0,
+              15.0
+            ],
+            [
+              25.0,
+              21.0
+            ],
+            [
+              22.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC2/G/lobby",
+          "level": "G",
+          "kind": "lobby",
+          "name": "Lobby",
+          "polygon_m": [
+            [
+              0.0,
+              17.4
+            ],
+            [
+              6.0,
+              17.4
+            ],
+            [
+              6.0,
+              21.0
+            ],
+            [
+              0.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC2/G/dock",
+          "level": "G",
+          "kind": "dock",
+          "name": "Loading dock",
+          "polygon_m": [
+            [
+              6.0,
+              17.4
+            ],
+            [
+              12.0,
+              17.4
+            ],
+            [
+              12.0,
+              21.0
+            ],
+            [
+              6.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC2/G/entrance",
+          "level": "G",
+          "kind": "entrance",
+          "name": "Entrance",
+          "polygon_m": [
+            [
+              1.8,
+              20.8
+            ],
+            [
+              4.2,
+              20.8
+            ],
+            [
+              4.2,
+              21.0
+            ],
+            [
+              1.8,
+              21.0
+            ]
+          ],
+          "attrs": {
+            "external": true
+          }
+        },
+        {
+          "id": "DC2/G/dock-door",
+          "level": "G",
+          "kind": "door",
+          "name": "Dock door",
+          "polygon_m": [
+            [
+              7.5,
+              20.8
+            ],
+            [
+              10.5,
+              20.8
+            ],
+            [
+              10.5,
+              21.0
+            ],
+            [
+              7.5,
+              21.0
+            ]
+          ],
+          "attrs": {
+            "external": true,
+            "monitored": false
+          }
+        },
+        {
+          "id": "DC2/Central Plant/door",
+          "level": "G",
+          "kind": "door",
+          "name": "Central Plant door",
+          "polygon_m": [
+            [
+              16.4,
+              14.9
+            ],
+            [
+              17.6,
+              14.9
+            ],
+            [
+              17.6,
+              15.1
+            ],
+            [
+              16.4,
+              15.1
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Central Plant",
+            "monitored": false,
+            "external": false
+          }
+        },
+        {
+          "id": "DC2/Mechanical Room/door",
+          "level": "G",
+          "kind": "door",
+          "name": "Mechanical Room door",
+          "polygon_m": [
+            [
+              -0.1,
+              7.4
+            ],
+            [
+              0.1,
+              7.4
+            ],
+            [
+              0.1,
+              8.6
+            ],
+            [
+              -0.1,
+              8.6
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Mechanical Room",
+            "monitored": false,
+            "external": true
+          }
+        },
+        {
+          "id": "DC2/UPS Room/door",
+          "level": "G",
+          "kind": "door",
+          "name": "UPS Room door",
+          "polygon_m": [
+            [
+              -0.1,
+              2.4
+            ],
+            [
+              0.1,
+              2.4
+            ],
+            [
+              0.1,
+              3.6
+            ],
+            [
+              -0.1,
+              3.6
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/UPS Room",
+            "monitored": true,
+            "external": true
+          }
+        },
+        {
+          "id": "DC2/Staging & Storage/door",
+          "level": "G",
+          "kind": "door",
+          "name": "Staging & Storage door",
+          "polygon_m": [
+            [
+              3.4,
+              14.9
+            ],
+            [
+              4.6,
+              14.9
+            ],
+            [
+              4.6,
+              15.1
+            ],
+            [
+              3.4,
+              15.1
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Staging & Storage",
+            "monitored": false,
+            "external": false
+          }
+        },
+        {
+          "id": "DC2/1/corridor",
+          "level": "1",
+          "kind": "corridor",
+          "name": "Corridor",
+          "polygon_m": [
+            [
+              0.0,
+              15.0
+            ],
+            [
+              22.0,
+              15.0
+            ],
+            [
+              22.0,
+              17.4
+            ],
+            [
+              0.0,
+              17.4
+            ]
+          ]
+        },
+        {
+          "id": "DC2/1/core",
+          "level": "1",
+          "kind": "core",
+          "name": "Stair and lift core",
+          "polygon_m": [
+            [
+              22.0,
+              15.0
+            ],
+            [
+              25.0,
+              15.0
+            ],
+            [
+              25.0,
+              21.0
+            ],
+            [
+              22.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC2/Server Hall A/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Server Hall A door",
+          "polygon_m": [
+            [
+              -0.1,
+              5.55
+            ],
+            [
+              0.1,
+              5.55
+            ],
+            [
+              0.1,
+              6.75
+            ],
+            [
+              -0.1,
+              6.75
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Server Hall A",
+            "monitored": true,
+            "external": true
+          }
+        },
+        {
+          "id": "DC2/Network Room/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Network Room door",
+          "polygon_m": [
+            [
+              15.1,
+              2.1
+            ],
+            [
+              15.3,
+              2.1
+            ],
+            [
+              15.3,
+              3.3
+            ],
+            [
+              15.1,
+              3.3
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Network Room",
+            "monitored": true,
+            "external": false
+          }
+        },
+        {
+          "id": "DC2/Operations Room/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Operations Room door",
+          "polygon_m": [
+            [
+              18.1,
+              7.3
+            ],
+            [
+              18.3,
+              7.3
+            ],
+            [
+              18.3,
+              8.5
+            ],
+            [
+              18.1,
+              8.5
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Operations Room",
+            "monitored": false,
+            "external": false
+          }
+        },
+        {
+          "id": "DC2/Meet-Me Room/door",
+          "level": "1",
+          "kind": "door",
+          "name": "Meet-Me Room door",
+          "polygon_m": [
+            [
+              19.1,
+              2.1
+            ],
+            [
+              19.3,
+              2.1
+            ],
+            [
+              19.3,
+              3.3
+            ],
+            [
+              19.1,
+              3.3
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Meet-Me Room",
+            "monitored": true,
+            "external": false
+          }
+        },
+        {
+          "id": "DC2/2/corridor",
+          "level": "2",
+          "kind": "corridor",
+          "name": "Corridor",
+          "polygon_m": [
+            [
+              0.0,
+              15.0
+            ],
+            [
+              22.0,
+              15.0
+            ],
+            [
+              22.0,
+              17.4
+            ],
+            [
+              0.0,
+              17.4
+            ]
+          ]
+        },
+        {
+          "id": "DC2/2/core",
+          "level": "2",
+          "kind": "core",
+          "name": "Stair and lift core",
+          "polygon_m": [
+            [
+              22.0,
+              15.0
+            ],
+            [
+              25.0,
+              15.0
+            ],
+            [
+              25.0,
+              21.0
+            ],
+            [
+              22.0,
+              21.0
+            ]
+          ]
+        },
+        {
+          "id": "DC2/Server Hall B/door",
+          "level": "2",
+          "kind": "door",
+          "name": "Server Hall B door",
+          "polygon_m": [
+            [
+              -0.1,
+              5.55
+            ],
+            [
+              0.1,
+              5.55
+            ],
+            [
+              0.1,
+              6.75
+            ],
+            [
+              -0.1,
+              6.75
+            ]
+          ],
+          "attrs": {
+            "room": "DC2/Server Hall B",
+            "monitored": true,
+            "external": true
+          }
+        }
+      ]
+    },
+    "compound": {
+      "DC1": {
+        "outline_m": [
+          [
+            -18.0,
+            -10.0
+          ],
+          [
+            47.0,
+            -10.0
+          ],
+          [
+            47.0,
+            35.0
+          ],
+          [
+            -18.0,
+            35.0
+          ]
+        ],
+        "extent_m": {
+          "width": 65.0,
+          "depth": 45.0
+        },
+        "zones": [
+          {
+            "id": "DC1/fence",
+            "level": "Site",
+            "kind": "fence",
+            "name": "Fence",
+            "polygon_m": [
+              [
+                -18.0,
+                -10.0
+              ],
+              [
+                47.0,
+                -10.0
+              ],
+              [
+                47.0,
+                35.0
+              ],
+              [
+                -18.0,
+                35.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/apron",
+            "level": "Site",
+            "kind": "apron",
+            "name": "Loading apron",
+            "polygon_m": [
+              [
+                0.0,
+                21.0
+              ],
+              [
+                25.0,
+                21.0
+              ],
+              [
+                25.0,
+                25.0
+              ],
+              [
+                0.0,
+                25.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/road",
+            "level": "Site",
+            "kind": "road",
+            "name": "Service road",
+            "polygon_m": [
+              [
+                -18.0,
+                25.0
+              ],
+              [
+                47.0,
+                25.0
+              ],
+              [
+                47.0,
+                28.0
+              ],
+              [
+                -18.0,
+                28.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/parking",
+            "level": "Site",
+            "kind": "parking",
+            "name": "Car park",
+            "polygon_m": [
+              [
+                -16.0,
+                28.5
+              ],
+              [
+                -2.0,
+                28.5
+              ],
+              [
+                -2.0,
+                32.0
+              ],
+              [
+                -16.0,
+                32.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/gate",
+            "level": "Site",
+            "kind": "gate",
+            "name": "Gate",
+            "polygon_m": [
+              [
+                10.5,
+                34.0
+              ],
+              [
+                14.5,
+                34.0
+              ],
+              [
+                14.5,
+                35.0
+              ],
+              [
+                10.5,
+                35.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/guardhouse",
+            "level": "Site",
+            "kind": "guardhouse",
+            "name": "Guardhouse",
+            "polygon_m": [
+              [
+                15.5,
+                31.0
+              ],
+              [
+                18.5,
+                31.0
+              ],
+              [
+                18.5,
+                34.0
+              ],
+              [
+                15.5,
+                34.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/substation",
+            "level": "Site",
+            "kind": "substation",
+            "name": "Utility substation",
+            "polygon_m": [
+              [
+                -16.0,
+                2.0
+              ],
+              [
+                -6.0,
+                2.0
+              ],
+              [
+                -6.0,
+                13.0
+              ],
+              [
+                -16.0,
+                13.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/water-tank",
+            "level": "Site",
+            "kind": "water_tank",
+            "name": "Makeup water tank",
+            "polygon_m": [
+              [
+                10.5,
+                -6.0
+              ],
+              [
+                14.5,
+                -6.0
+              ],
+              [
+                14.5,
+                -2.0
+              ],
+              [
+                10.5,
+                -2.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/fire-pump-house",
+            "level": "Site",
+            "kind": "fire_pump_house",
+            "name": "Fire pump house",
+            "polygon_m": [
+              [
+                16.5,
+                -5.0
+              ],
+              [
+                20.5,
+                -5.0
+              ],
+              [
+                20.5,
+                -2.0
+              ],
+              [
+                16.5,
+                -2.0
+              ]
+            ]
+          },
+          {
+            "id": "DC1/telecom-west",
+            "level": "Site",
+            "kind": "telecom_entrance",
+            "name": "Telecom entrance A",
+            "polygon_m": [
+              [
+                -18.0,
+                13.7
+              ],
+              [
+                0.0,
+                13.7
+              ],
+              [
+                0.0,
+                14.3
+              ],
+              [
+                -18.0,
+                14.3
+              ]
+            ]
+          },
+          {
+            "id": "DC1/telecom-east",
+            "level": "Site",
+            "kind": "telecom_entrance",
+            "name": "Telecom entrance B",
+            "polygon_m": [
+              [
+                25.0,
+                0.7
+              ],
+              [
+                47.0,
+                0.7
+              ],
+              [
+                47.0,
+                1.3
+              ],
+              [
+                25.0,
+                1.3
+              ]
+            ]
+          },
+          {
+            "id": "DC1/Generator Yard",
+            "level": "Site",
+            "kind": "generator_yard",
+            "name": "Generator Yard",
+            "polygon_m": [
+              [
+                29.0,
+                0.0
+              ],
+              [
+                39.0,
+                0.0
+              ],
+              [
+                39.0,
+                12.6
+              ],
+              [
+                29.0,
+                12.6
+              ]
+            ],
+            "attrs": {
+              "room": "DC1/Generator Yard"
+            }
+          },
+          {
+            "id": "DC1/fuel-tank",
+            "level": "Site",
+            "kind": "fuel_tank",
+            "name": "Bulk fuel tank",
+            "polygon_m": [
+              [
+                40.0,
+                2.0
+              ],
+              [
+                43.0,
+                2.0
+              ],
+              [
+                43.0,
+                10.0
+              ],
+              [
+                40.0,
+                10.0
+              ]
+            ]
+          }
+        ]
+      },
+      "DC2": {
+        "outline_m": [
+          [
+            -18.0,
+            -10.0
+          ],
+          [
+            47.0,
+            -10.0
+          ],
+          [
+            47.0,
+            35.0
+          ],
+          [
+            -18.0,
+            35.0
+          ]
+        ],
+        "extent_m": {
+          "width": 65.0,
+          "depth": 45.0
+        },
+        "zones": [
+          {
+            "id": "DC2/fence",
+            "level": "Site",
+            "kind": "fence",
+            "name": "Fence",
+            "polygon_m": [
+              [
+                -18.0,
+                -10.0
+              ],
+              [
+                47.0,
+                -10.0
+              ],
+              [
+                47.0,
+                35.0
+              ],
+              [
+                -18.0,
+                35.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/apron",
+            "level": "Site",
+            "kind": "apron",
+            "name": "Loading apron",
+            "polygon_m": [
+              [
+                0.0,
+                21.0
+              ],
+              [
+                25.0,
+                21.0
+              ],
+              [
+                25.0,
+                25.0
+              ],
+              [
+                0.0,
+                25.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/road",
+            "level": "Site",
+            "kind": "road",
+            "name": "Service road",
+            "polygon_m": [
+              [
+                -18.0,
+                25.0
+              ],
+              [
+                47.0,
+                25.0
+              ],
+              [
+                47.0,
+                28.0
+              ],
+              [
+                -18.0,
+                28.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/parking",
+            "level": "Site",
+            "kind": "parking",
+            "name": "Car park",
+            "polygon_m": [
+              [
+                -16.0,
+                28.5
+              ],
+              [
+                -2.0,
+                28.5
+              ],
+              [
+                -2.0,
+                32.0
+              ],
+              [
+                -16.0,
+                32.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/gate",
+            "level": "Site",
+            "kind": "gate",
+            "name": "Gate",
+            "polygon_m": [
+              [
+                10.5,
+                34.0
+              ],
+              [
+                14.5,
+                34.0
+              ],
+              [
+                14.5,
+                35.0
+              ],
+              [
+                10.5,
+                35.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/guardhouse",
+            "level": "Site",
+            "kind": "guardhouse",
+            "name": "Guardhouse",
+            "polygon_m": [
+              [
+                15.5,
+                31.0
+              ],
+              [
+                18.5,
+                31.0
+              ],
+              [
+                18.5,
+                34.0
+              ],
+              [
+                15.5,
+                34.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/substation",
+            "level": "Site",
+            "kind": "substation",
+            "name": "Utility substation",
+            "polygon_m": [
+              [
+                -16.0,
+                2.0
+              ],
+              [
+                -6.0,
+                2.0
+              ],
+              [
+                -6.0,
+                13.0
+              ],
+              [
+                -16.0,
+                13.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/water-tank",
+            "level": "Site",
+            "kind": "water_tank",
+            "name": "Makeup water tank",
+            "polygon_m": [
+              [
+                10.5,
+                -6.0
+              ],
+              [
+                14.5,
+                -6.0
+              ],
+              [
+                14.5,
+                -2.0
+              ],
+              [
+                10.5,
+                -2.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/fire-pump-house",
+            "level": "Site",
+            "kind": "fire_pump_house",
+            "name": "Fire pump house",
+            "polygon_m": [
+              [
+                16.5,
+                -5.0
+              ],
+              [
+                20.5,
+                -5.0
+              ],
+              [
+                20.5,
+                -2.0
+              ],
+              [
+                16.5,
+                -2.0
+              ]
+            ]
+          },
+          {
+            "id": "DC2/telecom-west",
+            "level": "Site",
+            "kind": "telecom_entrance",
+            "name": "Telecom entrance A",
+            "polygon_m": [
+              [
+                -18.0,
+                13.7
+              ],
+              [
+                0.0,
+                13.7
+              ],
+              [
+                0.0,
+                14.3
+              ],
+              [
+                -18.0,
+                14.3
+              ]
+            ]
+          },
+          {
+            "id": "DC2/telecom-east",
+            "level": "Site",
+            "kind": "telecom_entrance",
+            "name": "Telecom entrance B",
+            "polygon_m": [
+              [
+                25.0,
+                0.7
+              ],
+              [
+                47.0,
+                0.7
+              ],
+              [
+                47.0,
+                1.3
+              ],
+              [
+                25.0,
+                1.3
+              ]
+            ]
+          },
+          {
+            "id": "DC2/Generator Yard",
+            "level": "Site",
+            "kind": "generator_yard",
+            "name": "Generator Yard",
+            "polygon_m": [
+              [
+                29.0,
+                0.0
+              ],
+              [
+                39.0,
+                0.0
+              ],
+              [
+                39.0,
+                12.6
+              ],
+              [
+                29.0,
+                12.6
+              ]
+            ],
+            "attrs": {
+              "room": "DC2/Generator Yard"
+            }
+          },
+          {
+            "id": "DC2/fuel-tank",
+            "level": "Site",
+            "kind": "fuel_tank",
+            "name": "Bulk fuel tank",
+            "polygon_m": [
+              [
+                40.0,
+                2.0
+              ],
+              [
+                43.0,
+                2.0
+              ],
+              [
+                43.0,
+                10.0
+              ],
+              [
+                40.0,
+                10.0
+              ]
+            ]
+          }
+        ]
       }
     }
   },
@@ -1881,11 +3689,11 @@
       "reserved_units": []
     },
     {
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
+      "rack_id": "DC1:CentralPlant:FG:R1:RACK9",
       "datacenter": "DC1",
       "datacenter_city": "Chicago",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "row": 1,
       "rack_num": 9,
       "floor_x": 15.2,
@@ -1907,11 +3715,11 @@
       "reserved_units": []
     },
     {
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
+      "rack_id": "DC2:CentralPlant:FG:R1:RACK9",
       "datacenter": "DC2",
       "datacenter_city": "New York",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "row": 1,
       "rack_num": 9,
       "floor_x": 15.2,
@@ -10076,8 +11884,8 @@
       "vendor": "Caterpillar",
       "model": "Caterpillar 3516B",
       "datacenter": "DC1",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -10265,8 +12073,8 @@
       "vendor": "Caterpillar",
       "model": "Caterpillar 3516B",
       "datacenter": "DC2",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -10760,8 +12568,8 @@
       "vendor": "Verdigris Technologies",
       "model": "Verdigris EV2-42",
       "datacenter": "DC1",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -10912,8 +12720,8 @@
       "vendor": "Verdigris Technologies",
       "model": "Verdigris EV2-42",
       "datacenter": "DC2",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -10935,7 +12743,7 @@
       "model": "APC Galaxy RPP 80A",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -10962,7 +12770,7 @@
       "model": "Verdigris EV2-42",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -10984,7 +12792,7 @@
       "model": "APC Galaxy RPP 80A",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11011,7 +12819,7 @@
       "model": "Verdigris EV2-42",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11033,8 +12841,8 @@
       "model": "Cisco Catalyst 9300-48T",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC1:CentralPlant:FG:R1:RACK9",
       "rack_unit": 42,
       "u_height": 1,
       "mount": "rack",
@@ -11055,7 +12863,7 @@
       "model": "Carrier 19DV 800kW",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11082,7 +12890,7 @@
       "model": "Carrier 19DV 800kW",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11109,7 +12917,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11136,7 +12944,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11163,7 +12971,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11190,7 +12998,7 @@
       "model": "Grundfos TP 100-360",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11217,7 +13025,7 @@
       "model": "Grundfos TP 100-360",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11298,7 +13106,7 @@
       "model": "Belimo PR..A-BAC",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11320,7 +13128,7 @@
       "model": "Belimo PR..A-BAC",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11342,7 +13150,7 @@
       "model": "Plant CHW Supply Temp",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11364,7 +13172,7 @@
       "model": "Plant CHW Return Temp",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11386,7 +13194,7 @@
       "model": "Plant CHW Flow Meter",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11408,8 +13216,8 @@
       "model": "Cisco Catalyst 9300-48T",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC2:CentralPlant:FG:R1:RACK9",
       "rack_unit": 42,
       "u_height": 1,
       "mount": "rack",
@@ -11430,7 +13238,7 @@
       "model": "Carrier 19DV 800kW",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11457,7 +13265,7 @@
       "model": "Carrier 19DV 800kW",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11484,7 +13292,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11511,7 +13319,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11538,7 +13346,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11565,7 +13373,7 @@
       "model": "Grundfos TP 100-360",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11592,7 +13400,7 @@
       "model": "Grundfos TP 100-360",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11673,7 +13481,7 @@
       "model": "Belimo PR..A-BAC",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11695,7 +13503,7 @@
       "model": "Belimo PR..A-BAC",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11717,7 +13525,7 @@
       "model": "Plant CHW Supply Temp",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11739,7 +13547,7 @@
       "model": "Plant CHW Return Temp",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11761,7 +13569,7 @@
       "model": "Plant CHW Flow Meter",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11783,7 +13591,7 @@
       "model": "Carrier 19DV 800kW",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11810,7 +13618,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11837,7 +13645,7 @@
       "model": "Carrier 19DV 800kW",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -11864,7 +13672,7 @@
       "model": "Grundfos NB 100-200",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12023,7 +13831,7 @@
       "model": "Plant CW Supply Temp",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12045,7 +13853,7 @@
       "model": "Plant CW Return Temp",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12067,7 +13875,7 @@
       "model": "Plant CT Basin Temp",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12089,7 +13897,7 @@
       "model": "Plant CW Supply Temp",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12111,7 +13919,7 @@
       "model": "Plant CW Return Temp",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12133,7 +13941,7 @@
       "model": "Plant CT Basin Temp",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12502,8 +14310,8 @@
       "vendor": "Caterpillar",
       "model": "Caterpillar 3516B",
       "datacenter": "DC1",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12529,8 +14337,8 @@
       "vendor": "Caterpillar",
       "model": "Caterpillar 3516B",
       "datacenter": "DC2",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -12557,8 +14365,8 @@
       "model": "APC AP8941",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC1:CentralPlant:FG:R1:RACK9",
       "rack_unit": 0,
       "u_height": null,
       "mount": "zero_u",
@@ -12579,8 +14387,8 @@
       "model": "APC AP8941",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC1:CentralPlant:FG:R1:RACK9",
       "rack_unit": 0,
       "u_height": null,
       "mount": "zero_u",
@@ -13349,8 +15157,8 @@
       "model": "APC AP8941",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC2:CentralPlant:FG:R1:RACK9",
       "rack_unit": 0,
       "u_height": null,
       "mount": "zero_u",
@@ -13371,8 +15179,8 @@
       "model": "APC AP8941",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC2:CentralPlant:FG:R1:RACK9",
       "rack_unit": 0,
       "u_height": null,
       "mount": "zero_u",
@@ -15281,8 +17089,8 @@
       "vendor": "ASCO Power Technologies",
       "model": "ASCO 7000 Paralleling Switchgear",
       "datacenter": "DC1",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15465,8 +17273,8 @@
       "vendor": "ASCO Power Technologies",
       "model": "ASCO 7000 Paralleling Switchgear",
       "datacenter": "DC2",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15689,7 +17497,7 @@
       "model": "Grundfos TP 100-360",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15743,7 +17551,7 @@
       "model": "Grundfos TP 100-360",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15797,7 +17605,7 @@
       "model": "APC Galaxy RPP 80A",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15824,7 +17632,7 @@
       "model": "Verdigris EV2-42",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15846,7 +17654,7 @@
       "model": "APC Galaxy RPP 80A",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -15873,7 +17681,7 @@
       "model": "Verdigris EV2-42",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -16155,8 +17963,8 @@
       "model": "Cisco Catalyst 9300-48T",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC1:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC1:CentralPlant:FG:R1:RACK9",
       "rack_unit": 40,
       "u_height": 1,
       "mount": "rack",
@@ -16243,8 +18051,8 @@
       "model": "Cisco Catalyst 9300-48T",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
-      "rack_id": "DC2:CentralPlant:F1:R1:RACK9",
+      "floor": "G",
+      "rack_id": "DC2:CentralPlant:FG:R1:RACK9",
       "rack_unit": 40,
       "u_height": 1,
       "mount": "rack",
@@ -16727,7 +18535,7 @@
       "model": "Moxa MGate MB3480",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": null,
       "u_height": null,
@@ -16749,7 +18557,7 @@
       "model": "Moxa MGate MB3480",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": null,
       "u_height": null,
@@ -16771,7 +18579,7 @@
       "model": "LOYTEC LINX-151",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": null,
       "u_height": null,
@@ -16793,7 +18601,7 @@
       "model": "LOYTEC LINX-151",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": null,
       "u_height": null,
@@ -17518,8 +19326,8 @@
       "vendor": "Vertiv (Liebert)",
       "model": "Plant Room Air T/RH",
       "datacenter": "DC1",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -17562,8 +19370,8 @@
       "vendor": "Vertiv (Liebert)",
       "model": "Plant Room Air T/RH",
       "datacenter": "DC2",
-      "room": "Generator Room",
-      "floor": "G",
+      "room": "Generator Yard",
+      "floor": "Site",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -17607,7 +19415,7 @@
       "model": "Plant Room Air T/RH",
       "datacenter": "DC1",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -17651,7 +19459,7 @@
       "model": "Plant Room Air T/RH",
       "datacenter": "DC2",
       "room": "Central Plant",
-      "floor": "1",
+      "floor": "G",
       "rack_id": null,
       "rack_unit": 0,
       "u_height": null,
@@ -17686,6 +19494,446 @@
       "power_draw_w": 0,
       "feed_a": null,
       "feed_b": null
+    },
+    {
+      "id": "af265ef4",
+      "name": "DOOR-DC1-HA",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC1",
+      "room": "Server Hall A",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 6.15,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "6098299e",
+      "name": "DOOR-DC1-HB",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC1",
+      "room": "Server Hall B",
+      "floor": "2",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 6.15,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "bde77f9f",
+      "name": "DOOR-DC1-NR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC1",
+      "room": "Network Room",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 2.95,
+      "floor_y": 2.7,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "00b88e44",
+      "name": "DOOR-DC1-UR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC1",
+      "room": "UPS Room",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 3.0,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "911b5316",
+      "name": "DOOR-DC1-MM",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC1",
+      "room": "Meet-Me Room",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 3.95,
+      "floor_y": 2.7,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "7e15dd8a",
+      "name": "H2-DC1-UR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Hydrogen Detector",
+      "datacenter": "DC1",
+      "room": "UPS Room",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 4.5,
+      "floor_y": 0.05,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "ae620bbf",
+      "name": "BTT-DC1-UR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Battery Temperature",
+      "datacenter": "DC1",
+      "room": "UPS Room",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "panel",
+      "floor_x": 2.33,
+      "floor_y": 5.6,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "f7315356",
+      "name": "FUEL-DC1-GR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Tank Level Transmitter",
+      "datacenter": "DC1",
+      "room": "Generator Yard",
+      "floor": "Site",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "panel",
+      "floor_x": 9.95,
+      "floor_y": 6.3,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "92ffc361",
+      "name": "WTR-DC1-CP",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Tank Level Transmitter",
+      "datacenter": "DC1",
+      "room": "Central Plant",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "pipe",
+      "floor_x": 15.95,
+      "floor_y": 11.0,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.2,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "d6f32efe",
+      "name": "THR-DC1-OR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Room Air T/RH",
+      "datacenter": "DC1",
+      "room": "Operations Room",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 2.5,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "f1512545",
+      "name": "DOOR-DC2-HA",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC2",
+      "room": "Server Hall A",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 6.15,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "47c86626",
+      "name": "DOOR-DC2-HB",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC2",
+      "room": "Server Hall B",
+      "floor": "2",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 6.15,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "3a2c9b69",
+      "name": "DOOR-DC2-NR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC2",
+      "room": "Network Room",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 2.95,
+      "floor_y": 2.7,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "e1a37652",
+      "name": "DOOR-DC2-UR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC2",
+      "room": "UPS Room",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 3.0,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "6d5c6159",
+      "name": "DOOR-DC2-MM",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Door Contact",
+      "datacenter": "DC2",
+      "room": "Meet-Me Room",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 3.95,
+      "floor_y": 2.7,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "b8847eaf",
+      "name": "H2-DC2-UR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Hydrogen Detector",
+      "datacenter": "DC2",
+      "room": "UPS Room",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 4.5,
+      "floor_y": 0.05,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "b740d406",
+      "name": "BTT-DC2-UR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Battery Temperature",
+      "datacenter": "DC2",
+      "room": "UPS Room",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "panel",
+      "floor_x": 2.33,
+      "floor_y": 5.6,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "42aa90af",
+      "name": "FUEL-DC2-GR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Tank Level Transmitter",
+      "datacenter": "DC2",
+      "room": "Generator Yard",
+      "floor": "Site",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "panel",
+      "floor_x": 9.95,
+      "floor_y": 6.3,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "3b1b4603",
+      "name": "WTR-DC2-CP",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Tank Level Transmitter",
+      "datacenter": "DC2",
+      "room": "Central Plant",
+      "floor": "G",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "pipe",
+      "floor_x": 15.95,
+      "floor_y": 11.0,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.2,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "19a34bf5",
+      "name": "THR-DC2-OR",
+      "device_type": "sensor",
+      "vendor": "Vertiv (Liebert)",
+      "model": "Plant Room Air T/RH",
+      "datacenter": "DC2",
+      "room": "Operations Room",
+      "floor": "1",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "wall",
+      "floor_x": 0.05,
+      "floor_y": 2.5,
+      "facing_deg": null,
+      "footprint_m": null,
+      "mount_height_m": 1.5,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
     }
   ],
   "summary": {
@@ -17693,8 +19941,8 @@
       "DC1",
       "DC2"
     ],
-    "rooms": 16,
+    "rooms": 22,
     "racks": 42,
-    "devices": 684
+    "devices": 704
   }
 }

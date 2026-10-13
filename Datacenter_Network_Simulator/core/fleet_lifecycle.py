@@ -60,6 +60,10 @@ _ROOM_CODE = {
     "Server Hall A": "HA", "Server Hall B": "HB", "Central Plant": "CP",
     "Network Room": "NR", "UPS Room": "UR", "Generator Room": "GR",
     "Mechanical Room": "MR", "Roof": "RF",
+    # S3 (docs/27 §8b/§8c): the yard keeps the room's code so GEN1-DC1-GR
+    # stays GEN1-DC1-GR; the support rooms get codes of their own.
+    "Generator Yard": "GR", "Staging & Storage": "SS",
+    "Operations Room": "OR", "Meet-Me Room": "MM",
 }
 # clone-prefix → leading type code (pdu*/rpp* carry an A/B side, handled inline)
 _PREFIX_CODE = {"srv": "SRV", "tor": "LF", "spine": "SP", "ev2": "EV2",
@@ -399,6 +403,18 @@ class FleetLifecycleEngine:
         dev.os_deployed = _lc.os_deployed_for(
             to_state, bool(getattr(dev, "os_deployed", True)))
         self._stage_day[dev.id] = self.day
+        # Somebody went into the room to rack it or pull it: the room's door
+        # contact sees them. Twenty seconds to a few minutes, the way a real
+        # install does; the platform alarms only on a door HELD open.
+        if to_state in ("installed", "decommissioned"):
+            ss = getattr(self.s, "state_store", None)
+            door = f"DOOR-{dev.datacenter or ''}-{_room_code(dev.room)}"
+            if ss is not None and hasattr(ss, "open_door") and any(
+                    d.name == door for d in self.s.device_manager.get_all_devices()):
+                try:
+                    ss.open_door(door, random.uniform(20.0, 200.0))
+                except Exception as e:
+                    self._log(f"[Fleet] door {door}: {e}")
         try:
             if _lc.on_wire(dev):
                 self._commission(dev)

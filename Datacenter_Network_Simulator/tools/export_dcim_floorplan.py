@@ -39,7 +39,7 @@ from core.rack_capacity import (  # noqa: E402
     FIRST_SERVER_UNIT, LAST_SERVER_UNIT, RACK_POWER_BUDGET_W_DEFAULT,
 )
 from core.equipment_geometry import (  # noqa: E402
-    RACK_MOUNTS, complete_building, effective_mount, geometry_fields,
+    RACK_MOUNTS, complete_site, effective_mount, geometry_fields,
 )
 
 
@@ -294,7 +294,9 @@ def build(topology: dict) -> "OrderedDict":
             r["reserved_units"] = []
 
     out = OrderedDict()
-    out["schema"] = "dcim-floorplan/1.1"
+    # 1.2 (docs/27 §8b/§8c): rooms may be class "support" or "outdoor" (level
+    # "Site"); floorplan carries the indoor fabric and the compound per site.
+    out["schema"] = "dcim-floorplan/1.2"
     out["description"] = (
         "DCIM asset / floor-plan export. Physical placement DB intended to be "
         "imported by a DCIM and joined to live device telemetry by device "
@@ -317,9 +319,11 @@ def build(topology: dict) -> "OrderedDict":
         "aisle_width": fp.get("aisle_width"),
     }
     # Rooms placed in their buildings (level + origin), levels and outline derived.
-    _placed = complete_building(fp, (n["device"] for n in nodes)) if fp else {}
+    _placed = complete_site(fp, (n["device"] for n in nodes)) if fp else {}
     out["floorplan"]["rooms"] = _placed.get("rooms", {})
     out["floorplan"]["buildings"] = _placed.get("buildings", {})
+    out["floorplan"]["fabric"] = _placed.get("fabric", {})
+    out["floorplan"]["compound"] = _placed.get("compound", {})
     out["racks"] = list(racks.values())
     out["devices"] = devices
 

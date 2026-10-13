@@ -580,8 +580,8 @@ class TopologyEngine:
         if self.floorplan:
             # Every room placed in its building, levels derived - including a hall
             # the fleet opened at runtime, which has no curated placement.
-            from core.equipment_geometry import complete_building
-            out["floorplan"] = complete_building(
+            from core.equipment_geometry import complete_site
+            out["floorplan"] = complete_site(
                 self.floorplan, (n["device"] for n in nodes if n["device"]))
         return out
 

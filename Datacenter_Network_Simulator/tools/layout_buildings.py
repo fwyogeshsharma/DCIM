@@ -38,6 +38,16 @@ any overlap left.
 The Central Plant CT basin probe (CTB) physically sits in the tower basin on the
 roof; it stays in Central Plant because its room is part of its name.
 
+  5. THE COMPOUND (docs/27 §8c, S3). Standby gensets of this size stand in a
+     fenced yard outside, not in a room: the Generator Room becomes the Generator
+     Yard, an OUTDOOR room (level "Site") east of the building, and its two sets
+     keep their names (the room code GR stays). Water-cooled chillers belong on
+     the ground, so the Central Plant moves from level 1 to G beside the UPS and
+     mechanical rooms. Three support rooms are added for S3's devices: Staging &
+     Storage (G), the Operations Room and the Meet-Me Room (level 1). Every
+     device's `floor` is set to its room's level, so a chiller that moved down a
+     floor says so.
+
 Idempotent: every coordinate is assigned absolutely.
 
     python tools/layout_buildings.py topologies/dual_dc_enterprise.json
@@ -54,25 +64,39 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.equipment_geometry import (  # noqa: E402
-    RACK_MOUNTS, complete_building, effective_mount, footprint,
+    RACK_MOUNTS, complete_site, effective_mount, footprint,
 )
 
 FLOOR_TO_FLOOR_M = 5.0
 
 # room -> (level, origin x, origin y, width_m, depth_m or None = keep)
+# The ground floor is 25 x 15 m (UPS + Central Plant), which sets the building's
+# outline; the Generator Yard stands 4 m east of it in the same plan frame.
 BUILDING = {
-    "UPS Room":        ("G",    0.0,  0.0, 9.0,  6.0),
-    "Mechanical Room": ("G",    0.0,  6.0, 8.0,  4.0),
-    "Generator Room":  ("G",    9.0,  0.0, 10.0, 12.6),
-    "Server Hall A":   ("1",    0.0,  0.0, None, None),
+    "UPS Room":          ("G",    0.0,  0.0, 9.0,  6.0),
+    "Mechanical Room":   ("G",    0.0,  6.0, 8.0,  4.0),
+    "Staging & Storage": ("G",    0.0, 10.0, 8.0,  5.0),
+    "Central Plant":     ("G",    9.0,  0.0, 16.0, 15.0),
+    "Server Hall A":     ("1",    0.0,  0.0, None, None),
     # Server Hall A is 12.2 m wide since its CRAHs moved to the aisle ends
     # (tools/regrid_halls_aisle_end_crahs.py), so the rooms beside it on level 1
     # start where it ends.
-    "Network Room":    ("1",   12.2,  0.0, None, None),
-    "Central Plant":   ("1",   15.2,  0.0, 16.0, 15.0),
-    "Server Hall B":   ("2",    0.0,  0.0, None, None),
-    "Roof":            ("Roof", 0.0,  0.0, 12.0, 6.0),
+    "Network Room":      ("1",   12.2,  0.0, None, None),
+    "Meet-Me Room":      ("1",   15.2,  0.0, 4.0,  5.4),
+    "Operations Room":   ("1",   12.2,  5.4, 6.0,  5.0),
+    "Server Hall B":     ("2",    0.0,  0.0, None, None),
+    "Roof":              ("Roof", 0.0,  0.0, 12.0, 6.0),
+    "Generator Yard":    ("Site", 29.0, 0.0, 10.0, 12.6),
 }
+# Rooms the tool creates when the topology lacks them, with their class.
+NEW_ROOMS = {
+    "Staging & Storage": "support",
+    "Operations Room":   "support",
+    "Meet-Me Room":      "support",
+    "Generator Yard":    "outdoor",
+}
+# Rooms renamed in place: the devices follow, their names do not (GR stays GR).
+RENAMES = {"Generator Room": "Generator Yard"}
 
 # room -> {name head: (x, y, facing_deg, mounting, rack_facing or None)}
 # x/y = centre of a free-standing unit, or the point a probe/meter/valve sits at.
@@ -90,7 +114,7 @@ PLACE = {
         "EV21":  (3.40, 2.52, 180, "panel", None),   # clamps SWGR1
         "THR":   (0.05, 3.70, 90, "wall", None),
     },
-    "Generator Room": {
+    "Generator Yard": {
         # radiators to the north louvre wall, 1.5 m between sets
         "GEN1":  (2.52, 4.50, 0, "floor", None),
         "GEN2":  (6.66, 4.50, 0, "floor", None),
@@ -158,6 +182,34 @@ def apply(topo: dict) -> list[str]:
     fp = topo.setdefault("floorplan", {})
     rooms = fp.setdefault("rooms", {})
     devs = [n["device"] for n in topo["nodes"] if n.get("device")]
+    dcs = sorted({k.split("/", 1)[0] for k in rooms} | {d.get("datacenter") for d in devs if d.get("datacenter")})
+
+    # 0. the compound (S3): rename the generator room into a yard, and create
+    # the support rooms the fleet and S3's devices will use
+    for key in list(rooms):
+        dc, room = key.split("/", 1)
+        if room in RENAMES:
+            new = RENAMES[room]
+            r = rooms.pop(key)
+            r["room"] = new
+            rooms[f"{dc}/{new}"] = r
+            moved = 0
+            for dv in devs:
+                if dv.get("datacenter") == dc and dv.get("room") == room:
+                    dv["room"] = new
+                    moved += 1
+            log.append(f"room {key} -> {dc}/{new} ({moved} devices follow)")
+    for dc in dcs:
+        for room, cls in NEW_ROOMS.items():
+            key = f"{dc}/{room}"
+            if key not in rooms:
+                rooms[key] = {"datacenter": dc, "room": room, "class": cls, "containment": "none",
+                              "width_m": BUILDING[room][3], "depth_m": BUILDING[room][4],
+                              "rows": [], "racks_per_row": 0, "aisles": []}
+                log.append(f"room {key}: created ({cls})")
+            elif rooms[key].get("class") != cls:
+                log.append(f"room {key}: class {rooms[key].get('class')} -> {cls}")
+                rooms[key]["class"] = cls
 
     # 1. building placement + room extents
     for key, r in rooms.items():
@@ -166,6 +218,8 @@ def apply(topo: dict) -> list[str]:
         if spec is None:
             continue
         level, ox, oy, w, d = spec
+        if r.get("level") != level:
+            log.append(f"room {key}: level {r.get('level')} -> {level}")
         r["level"] = level
         r["origin"] = {"x": ox, "y": oy}
         r["rotation_deg"] = 0
@@ -173,6 +227,13 @@ def apply(topo: dict) -> list[str]:
         if w is not None and (r.get("width_m"), r.get("depth_m")) != (w, d):
             log.append(f"room {key}: {r.get('width_m')}x{r.get('depth_m')} -> {w}x{d} m")
             r["width_m"], r["depth_m"] = w, d
+    # A device stands on its room's level; a room that moved takes its devices
+    # with it (the Central Plant's chillers were on floor "1").
+    for dv in devs:
+        spec = BUILDING.get(dv.get("room") or "")
+        if spec and str(dv.get("floor")) != spec[0]:
+            log.append(f"floor {dv['name']}: {dv.get('floor')} -> {spec[0]}")
+            dv["floor"] = spec[0]
     for dc in sorted({k.split("/", 1)[0] for k in rooms}):
         b = fp.setdefault("buildings", {}).setdefault(dc, {})
         b["name"] = f"{dc} Building"
@@ -286,10 +347,12 @@ def main(argv: list[str]) -> int:
     log = apply(topo)
     print("\n".join(log) or "already laid out")
     path.write_text(json.dumps(topo, indent=2), encoding="utf-8")   # file has no final newline
-    placed = complete_building(topo["floorplan"], (n["device"] for n in topo["nodes"]))
+    placed = complete_site(topo["floorplan"], (n["device"] for n in topo["nodes"]))
     for dc, b in placed["buildings"].items():
         lv = ", ".join(f"{x['name']}@{x['elevation_m']}m" for x in b["levels"])
-        print(f"{dc}: {b.get('extent_m')} levels {lv}")
+        zones = len(placed.get("compound", {}).get(dc, {}).get("zones", []))
+        print(f"{dc}: building {b.get('extent_m')} levels {lv}; "
+              f"compound {placed.get('compound', {}).get(dc, {}).get('extent_m')} with {zones} zones")
     issues = check(topo)
     if issues:
         print(f"\n{len(issues)} placement issue(s) left (see --check):")

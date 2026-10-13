@@ -209,6 +209,12 @@ _PROBE_ROLES = {
     # there is no rack PDU in those rooms to hang a probe off, and they still
     # have to be monitored.
     "THR":  "room_air",       # room temperature / humidity  (°C, %)
+    # S3 (dcim-platform docs/27 §8b/§8c): what else a BMS trunk carries.
+    "DOOR": "door_contact",   # door open                    (bit)
+    "H2":   "hydrogen",       # battery-room hydrogen        (% LEL)
+    "BTT":  "battery_temp",   # UPS string temperature       (°C)
+    "FUEL": "fuel_level",     # bulk diesel tank             (%, L)
+    "WTR":  "water_level",    # makeup water tank            (%, L)
     "CHWS": "chw_supply",     # chilled-water supply header  (°C)
     "CHWR": "chw_return",     # chilled-water return header  (°C)
     "CWS":  "cw_supply",      # condenser-water supply       (°C)
@@ -232,6 +238,66 @@ _PROBE_MODEL_PREFIX = "Plant "
 _WATER_ROLES = frozenset({"chw_supply", "chw_return", "cw_supply", "cw_return",
                           "ct_basin", "chw_flow"})
 
+#: The S3 points: neither air nor water. A contact, a gas, a string, a tank.
+#: The cold-aisle air rules must not touch them either - a door contact has
+#: no temperature to be low.
+_POINT_ROLES = frozenset({"door_contact", "hydrogen", "battery_temp", "fuel_level", "water_level"})
+
+# ── Battery room, bulk fuel, makeup water ─────────────────────────────────────
+#: A VRLA string runs a few K above the room it stands in - it is charging,
+#: and a float-charged cell dissipates heat. Hydrogen is evolved on charge, a
+#: little all the time and much more as the string warms; IEEE 1635 caps a
+#: battery room at 1 % by volume (25 % of the lower explosive limit), so an
+#: alarm there is the number that matters.
+_BATT_ABOVE_ROOM_K = 2.5
+_H2_BASE_LEL = 0.8
+_H2_PER_K_ABOVE_27 = 0.6
+_H2_ALARM_LEL = 25.0
+#: Bulk diesel: two 2 MW sets burn about 500 L/h each at full load, so a
+#: 40 000 L tank is 40 h for both - the figure a NOC asks for during an
+#: outage. A delivery is ordered below 30 % and arrives some hours later.
+_BULK_FUEL_L = 40000.0
+_GEN_BURN_L_PER_H = 500.0
+_FUEL_REFILL_BELOW_PCT = 30.0
+_FUEL_REFILL_TO_PCT = 95.0
+_FUEL_DELIVERY_H = 8.0
+_TANK_LOW_PCT = 30.0
+#: Makeup water for the towers: a day tank with a float valve. The towers
+#: draw their makeup from it; mains refills it when it falls below the valve.
+_MAKEUP_WATER_L = 20000.0
+_WATER_REFILL_BELOW_PCT = 60.0
+_WATER_REFILL_TO_PCT = 90.0
+_WATER_MAINS_L_PER_MIN = 80.0
+
+
+def fuel_step(pct: float, burn_l_per_h: float, dt_h: float,
+              delivery_due_h: float | None) -> tuple[float, float | None]:
+    """One step of the bulk tank: burn what the running sets draw, order a
+    delivery below the reorder level, fill when it arrives.
+
+    Returns (new pct, hours until the pending delivery or None). Pure."""
+    litres = max(0.0, pct) / 100.0 * _BULK_FUEL_L
+    litres = max(0.0, litres - burn_l_per_h * max(0.0, dt_h))
+    pct = 100.0 * litres / _BULK_FUEL_L
+    if delivery_due_h is None and pct < _FUEL_REFILL_BELOW_PCT:
+        delivery_due_h = _FUEL_DELIVERY_H
+    elif delivery_due_h is not None:
+        delivery_due_h -= max(0.0, dt_h)
+        if delivery_due_h <= 0:
+            pct, delivery_due_h = _FUEL_REFILL_TO_PCT, None
+    return round(pct, 2), delivery_due_h
+
+
+def water_step(pct: float, makeup_l_per_min: float, dt_min: float) -> float:
+    """One step of the makeup tank: the towers draw, the float valve fills
+    from the mains below its level until it is back up. Pure."""
+    litres = max(0.0, pct) / 100.0 * _MAKEUP_WATER_L
+    litres -= max(0.0, makeup_l_per_min) * max(0.0, dt_min)
+    if litres / _MAKEUP_WATER_L * 100.0 < _WATER_REFILL_BELOW_PCT:
+        litres = min(_MAKEUP_WATER_L * _WATER_REFILL_TO_PCT / 100.0,
+                     litres + _WATER_MAINS_L_PER_MIN * max(0.0, dt_min))
+    return round(100.0 * max(0.0, litres) / _MAKEUP_WATER_L, 2)
+
 #: What each kind of room without racks actually runs at, keyed by the suffix
 #: its transmitter carries (CODE-DC-ROOM). These are NOT one number, and the
 #: differences are the point:
@@ -245,14 +311,15 @@ _WATER_ROLES = frozenset({"chw_supply", "chw_return", "cw_supply", "cw_return",
 #:   CP  chiller plant. Warmest of the four: pumps, compressors and a room
 #:       whose job is to reject heat, usually on ventilation alone.
 #:   MR  mechanical room, between the two.
-_ROOM_AIR_SETPOINT_C = {"UR": 24.0, "GR": 26.0, "CP": 27.0, "MR": 26.0}
+#:   OR  operations room. An office with people in it, held at 22 °C.
+_ROOM_AIR_SETPOINT_C = {"UR": 24.0, "GR": 26.0, "CP": 27.0, "MR": 26.0, "OR": 22.0}
 _ROOM_AIR_DEFAULT_C = 25.0
 _ELECTRICAL_ROOM_RH = 45.0
 
 #: How hard each kind of room follows the weather, K per K of outdoor air above
 #: 20 °C. A cooled room barely does; a ventilated one largely does, because
 #: outdoor air is what is cooling it.
-_ROOM_AIR_WEATHER_K = {"UR": 0.10, "MR": 0.20, "GR": 0.30, "CP": 0.25}
+_ROOM_AIR_WEATHER_K = {"UR": 0.10, "MR": 0.20, "GR": 0.30, "CP": 0.25, "OR": 0.05}
 
 
 def _probe_role(device) -> "str | None":
@@ -708,6 +775,14 @@ class DeviceStateStore:
         # keyed by device name → (role, value). Published by _compute_chw_loop and
         # consumed by _step_device so the probes report the loop instead of air.
         self._probe_reading: Dict[str, tuple] = {}
+        # S3 instruments: door contacts held open until a moment (name ->
+        # epoch s), the bulk fuel and makeup water tanks per site, and when the
+        # pending diesel delivery lands.
+        self._door_open_until: Dict[str, float] = {}
+        self._tank_pct: Dict[tuple, float] = {}
+        self._fuel_delivery_h: Dict[str, float | None] = {}
+        self._tank_t: float | None = None
+        self._h2_extra_lel: Dict[str, float] = {}
 
         # ── Utility → generator transfer ──────────────────────────────────────
         # One sequencer per DC, driven from the utility feed's health. Everything
@@ -5973,8 +6048,42 @@ class DeviceStateStore:
         # making, and the flow meter on the CHW main reports the water it is
         # moving, both of which move the moment the fleet does.
         readings: Dict[str, tuple] = {}
+        # The tanks step on wall time between ticks: fuel burns while a set
+        # runs, the towers draw makeup while they run.
+        _now_t = time.time()
+        _dt_h = 0.0 if self._tank_t is None else max(0.0, (_now_t - self._tank_t) / 3600.0)
+        self._tank_t = _now_t
+        _gens_by_dc: Dict[str, list] = {}
+        _towers_by_dc: Dict[str, list] = {}
+        try:
+            for _d in self._dm.get_all_devices():
+                if _d.device_type == DeviceType.GENERATOR:
+                    _gens_by_dc.setdefault(_d.datacenter or "", []).append(_d.name)
+                elif _d.device_type == DeviceType.COOLING_TOWER:
+                    _towers_by_dc.setdefault(_d.datacenter or "", []).append(_d.name)
+        except Exception:
+            pass
         for dc, probes in (ctx.get("probes_by_dc") or {}).items():
             cond = self._cond_water_c.get(dc, self._COND_DESIGN_C)
+            # The battery room's air, from which the string and the gas follow.
+            _ur_air = _ROOM_AIR_SETPOINT_C["UR"] + self._electrical_room_drift(dc, "UR")
+            _batt_c = _ur_air + _BATT_ABOVE_ROOM_K
+            _h2 = (_H2_BASE_LEL + _H2_PER_K_ABOVE_27 * max(0.0, _batt_c - 27.0)
+                   + float(self._h2_extra_lel.get(dc, 0.0)))
+            _burn = 0.0
+            for _g in _gens_by_dc.get(dc, []):
+                _gs = _ext_state_cache.get(_g, {})
+                if _gs.get("gen_status") == "running":
+                    _burn += _GEN_BURN_L_PER_H * max(0.3, float(_gs.get("gen_load_pct", 50.0) or 0) / 100.0)
+            _fuel, _due = fuel_step(self._tank_pct.get((dc, "fuel_level"), 92.0), _burn, _dt_h,
+                                    self._fuel_delivery_h.get(dc))
+            self._tank_pct[(dc, "fuel_level")] = _fuel
+            self._fuel_delivery_h[dc] = _due
+            _makeup = 0.0
+            for _t in _towers_by_dc.get(dc, []):
+                _makeup += float((_plant_state_cache.get(_t) or {}).get("Makeup_Flow", 0.0) or 0.0)
+            self._tank_pct[(dc, "water_level")] = water_step(
+                self._tank_pct.get((dc, "water_level"), 84.0), _makeup, _dt_h * 60.0)
             src = {
                 "chw_supply": self._chw_supply_c.get(dc),
                 "chw_return": self._chw_return_c.get(dc),
@@ -6000,11 +6109,40 @@ class DeviceStateStore:
                     _suffix = str(name).split("-")[-1].upper()
                     val = (_ROOM_AIR_SETPOINT_C.get(_suffix, _ROOM_AIR_DEFAULT_C)
                            + self._electrical_room_drift(dc, _suffix))
+                elif role == "door_contact":
+                    val = 1.0 if self._door_open_until.get(name, 0.0) > _now_t else 0.0
+                elif role == "hydrogen":
+                    val = _h2
+                elif role == "battery_temp":
+                    val = _batt_c
+                elif role in ("fuel_level", "water_level"):
+                    val = self._tank_pct.get((dc, role))
                 else:
                     val = src.get(role)
                 if val is not None:
                     readings[name] = (role, round(float(val), 2))
         self._probe_reading = readings
+
+    # ── S3 instruments: doors and gas, from outside the tick ──────────────────
+    def open_door(self, name: str, seconds: float = 60.0) -> None:
+        """Hold a door contact open for *seconds* from now - a technician
+        going into a room, or a scenario holding one open. The platform's
+        held-open rule is what turns a long one into an alarm."""
+        self._door_open_until[str(name)] = time.time() + max(0.0, float(seconds))
+
+    def close_door(self, name: str) -> None:
+        self._door_open_until.pop(str(name), None)
+
+    def door_open(self, name: str) -> bool:
+        return self._door_open_until.get(str(name), 0.0) > time.time()
+
+    def set_hydrogen_extra(self, dc: str, pct_lel: float | None) -> None:
+        """Add gas to a site's battery room (a scenario: a failed charger
+        gassing a string), or clear it with None."""
+        if pct_lel is None:
+            self._h2_extra_lel.pop(dc, None)
+        else:
+            self._h2_extra_lel[dc] = max(0.0, float(pct_lel))
 
     def _electrical_room_drift(self, dc: str, suffix: str = "") -> float:
         """How far a room with no racks sits above its setpoint, in K.
@@ -7010,6 +7148,12 @@ class DeviceStateStore:
                     _ELECTRICAL_ROOM_RH + ((hash(device.name) % 7) - 3)
                     + random.uniform(-0.3, 0.3), 1)
                 device.airflow = 0.0
+            elif _role in _POINT_ROLES:
+                # Not air: the reading is published under its own key below
+                # and the air fields stay empty so nothing reads a contact as
+                # a thermometer.
+                device.inlet_temp = 0.0
+                device.airflow = 0.0
             else:
                 device.inlet_temp = round(_val + random.uniform(-0.1, 0.1), 1)
                 device.airflow = 0.0
@@ -7471,7 +7615,8 @@ class DeviceStateStore:
         # the room supply air (mid and exhaust follow it), so capping it at 31.9
         # would hide the one reading a real floor sees first on a CRAH failure.
         # Humidity, dew point and airflow are still walks and keep their caps.
-        if dt == DeviceType.SENSOR and _probe_role(device) not in _WATER_ROLES:
+        if dt == DeviceType.SENSOR and _probe_role(device) not in _WATER_ROLES \
+                and _probe_role(device) not in _POINT_ROLES:
             device.humidity    = min(max(device.humidity, 30.1), 69.9)  # <30 / >70
             device.dewpoint    = min(device.dewpoint, 20.9)          # > 21
             device.airflow     = min(max(device.airflow, 0.31), 3.49)   # <0.3 / >3.5
@@ -8070,11 +8215,26 @@ class DeviceStateStore:
         # temperature rather than mistaking it for room ambient.
         _probe = self._probe_reading.get(name)
         if device.device_type == DeviceType.SENSOR and _probe is not None:
-            _role, _ = _probe
+            _role, _val = _probe
             st["probe_role"] = _role
+            for _k in ("water_temp", "water_flow_lps", "room_air_temp_c", "room_air_rh_pct"):
+                if _role in _POINT_ROLES:
+                    st.pop(_k, None)
             if _role == "chw_flow":
                 st["water_flow_lps"] = float(device.airflow)
                 st.pop("water_temp", None)
+            elif _role == "door_contact":
+                st["door_open"] = 1.0 if float(_val) >= 0.5 else 0.0
+            elif _role == "hydrogen":
+                st["h2_pct_lel"] = round(float(_val), 2)
+                st["h2_alarm"] = 1.0 if float(_val) >= _H2_ALARM_LEL else 0.0
+            elif _role == "battery_temp":
+                st["battery_temp_c"] = round(float(_val) + ((hash(name) % 5) - 2) / 10.0, 1)
+            elif _role in ("fuel_level", "water_level"):
+                _cap = _BULK_FUEL_L if _role == "fuel_level" else _MAKEUP_WATER_L
+                st["tank_level_pct"] = round(float(_val), 1)
+                st["tank_volume_l"] = int(round(float(_val) / 100.0 * _cap))
+                st["tank_low"] = 1.0 if float(_val) < _TANK_LOW_PCT else 0.0
             elif _role == "room_air":
                 # Two channels, and it is AIR. Published under its own ext keys
                 # so nothing downstream can read a switchroom's air as loop

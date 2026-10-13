@@ -54,8 +54,12 @@ def test_no_field_instrument_holds_an_address(shipped):
     water = [d for d in rtu if d.name.split("-")[0] in PROBE_ORDER]
     rooms = [d for d in rtu if d.name.startswith("THR-")]
     assert len(water) == 12                      # six per site
-    assert len(rooms) == 8                       # four rooms per site
-    assert len(rtu) == len(water) + len(rooms)
+    assert len(rooms) == 10                      # four plant rooms + the operations room, per site
+    # S3: a door contact per watched room, a gas detector, a string probe and
+    # two tank levels per site - eighteen points that are neither water nor air.
+    points = [d for d in rtu if d.name.split("-")[0] in ("DOOR", "H2", "BTT", "FUEL", "WTR")]
+    assert len(points) == 18
+    assert len(rtu) == len(water) + len(rooms) + len(points)
     for d in rtu:
         assert not d.ip_address and not d.mgmt_ip, (
             f"{d.name} still holds an address — a thermowell is not a network node")
@@ -83,7 +87,13 @@ def test_the_water_instruments_keep_the_head_of_the_trunk(shipped):
     for gw in gws:
         assert gw.mgmt_ip
         assert [c.split("-")[0] for c in gw.modbus_children[:6]] == PROBE_ORDER
-        assert all(c.startswith("THR-") for c in gw.modbus_children[6:])
+        # Everything after the head is an instrument the trunk gained later - room
+
+        # transmitters, door contacts, the gas detector, the string probe, the tank
+
+        # levels (S3) - and none of them is a water point.
+
+        assert all(c.split("-")[0] not in PROBE_ORDER for c in gw.modbus_children[6:])
 
 
 def test_instruments_point_at_a_gateway_that_exists(shipped):
@@ -143,7 +153,13 @@ def test_identity_survives_the_loss_of_the_ip(shipped):
                      # why the role is separate and why it must NOT be in
                      # device_state_store._WATER_ROLES - the air rules are
                      # exactly the ones that should reach a switchroom.
-                     "room_air"}
+                     "room_air",
+
+                     # S3: a contact, a gas, a string, two tanks - on the same trunk, read the
+
+                     # same way, none of them air or water.
+
+                     "door_contact", "hydrogen", "battery_temp", "fuel_level", "water_level"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
