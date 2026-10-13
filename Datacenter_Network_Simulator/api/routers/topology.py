@@ -676,7 +676,7 @@ def apply_layout(req: LayoutRequest):
                 # electrical: distribution and the upstream that feeds it
                 "ups": 3, "pdu": 3, "floor_pdu": 3, "rpp": 3, "generator": 3, "sensor": 3,
                 "utility_feed": 3, "switchgear": 3, "ats": 3, "mcc": 3,
-                "energy_monitor": 3,
+                "energy_monitor": 3, "transformer": 3,
                 # mechanical plant
                 "crah": 4, "chiller": 4, "pump": 4, "cooling_tower": 4,
                 "valve": 4, "cdu": 4,

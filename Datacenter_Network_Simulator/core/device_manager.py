@@ -42,6 +42,7 @@ class DeviceType(str, Enum):
     CDU            = "cdu"           # Coolant Distribution Unit (direct-to-chip liquid cooling) -- SNMP + BACnet (native comm card)
     MODBUS_GATEWAY = "modbus_gateway"  # Modbus TCP/RTU gateway (Moxa MGate class) -- fronts an RS-485 trunk of field transmitters
     BACNET_ROUTER  = "bacnet_router"    # BACnet/IP <-> MS/TP router (Loytec/Distech class) -- fronts an RS-485 trunk of field controllers
+    TRANSFORMER    = "transformer"   # MV/LV service transformer in the substation -- its tank-mounted monitor speaks Modbus TCP, no SNMP
 
 
 # Floor-standing / plant equipment: located by room/area, NOT mounted in an IT rack.
@@ -50,6 +51,7 @@ class DeviceType(str, Enum):
 FACILITY_TYPES = frozenset({
     DeviceType.GENERATOR,
     DeviceType.UTILITY_FEED,
+    DeviceType.TRANSFORMER,
     DeviceType.SWITCHGEAR,
     DeviceType.ATS,
     DeviceType.MCC,
@@ -225,6 +227,7 @@ FACILITY_MGMT_TYPES = frozenset({
     DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.UPS,
     DeviceType.ATS, DeviceType.MCC, DeviceType.MPP, DeviceType.SWITCHGEAR,
     DeviceType.UTILITY_FEED, DeviceType.GENERATOR, DeviceType.ENERGY_MONITOR,
+    DeviceType.TRANSFORMER,
     DeviceType.SENSOR, DeviceType.CRAH, DeviceType.CHILLER,
     DeviceType.COOLING_TOWER, DeviceType.PUMP, DeviceType.VALVE, DeviceType.CDU,
     # A Modbus gateway is one Ethernet port on the BMS management plane plus one
@@ -1447,12 +1450,16 @@ _MODEL_RATED_W = {
     # in the hall, not off the chiller plant's motor control center.
     "pow-r-line 3a 225a":     140300,   # Eaton, 225 A
     "pow-r-line 3a 150a":      93500,   # Eaton, 150 A
+    # Service transformer: nameplate is kVA; taken as W at unity so load% is
+    # against the nameplate the way the monitor itself reports it.
+    "2000kva":              2000000,   # Schneider Minera 2 MVA oil-immersed ONAN/ONAF, 11/0.415 kV
 }
 # Device types that carry power (rated by throughput) rather than draw it.
 _DIST_RATED_TYPES = {DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.RPP,
                      DeviceType.UPS, DeviceType.GENERATOR,
                      DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                     DeviceType.ATS, DeviceType.MCC, DeviceType.MPP}
+                     DeviceType.ATS, DeviceType.MCC, DeviceType.MPP,
+                     DeviceType.TRANSFORMER}
 
 
 #: Supply phases and per-phase breaker rating (A) per rack/floor-PDU SKU.

@@ -252,6 +252,37 @@ MODBUS_MAPS: Dict[str, ModbusMap] = {
         },
     ),
 
+    # ── Service transformer — Qualitrol 509 ITM transformer monitor ─────────
+    # The transformer has no electronics of its own. What answers is the
+    # monitor bolted to the tank: top-oil and winding RTDs (the winding one is
+    # a thermal image - oil temperature plus a CT-heated gradient, which is
+    # how every WTI works), a load CT per phase, the off-circuit tap position
+    # and the gas (Buchholz) relay. The alarm bits are the monitor's own
+    # relays at the vendor defaults: oil 85 C, winding 105 C. Scaled u16 like
+    # the Eaton maps; a monitor is a small embedded box, not a PQ meter.
+    "transformer": ModbusMap(
+        map_id="SIM-XFMR-ITM-v1", vendor="Qualitrol",
+        product="509 ITM transformer monitor", word_order=WORD_BIG,
+        points={
+            SPACE_INPUT: [
+                _P(0x0000, "Top_Oil_Temperature", "xfmr_oil_c",     "u16", 10, "degC"),
+                _P(0x0001, "Winding_Temperature", "xfmr_hotspot_c", "u16", 10, "degC"),
+                _P(0x0002, "Load_Percent",        "xfmr_load_pct",  "u16", 10, "%"),
+                _P(0x0003, "Tap_Position",        "xfmr_tap",       "u16",  1, ""),
+                _P(0x0013, "Current_A",           "xfmr_ia",        "u16",  1, "A"),
+                _P(0x0014, "Current_B",           "xfmr_ib",        "u16",  1, "A"),
+                _P(0x0015, "Current_C",           "xfmr_ic",        "u16",  1, "A"),
+            ],
+            SPACE_DISCRETE: [
+                ModbusPoint(0, "Fans_Running",       "xfmr_fans",       truthy="running"),
+                ModbusPoint(1, "Oil_Temp_Alarm",     "xfmr_oil_alarm",  truthy="alarm"),
+                ModbusPoint(2, "Winding_Temp_Alarm", "xfmr_wind_alarm", truthy="alarm"),
+                ModbusPoint(3, "Gas_Relay_Alarm",    "xfmr_gas_alarm",  truthy="alarm"),
+                ModbusPoint(4, "Data_Valid", presence_of="xfmr_oil_c"),
+            ],
+        },
+    ),
+
     # ── Switchgear — Eaton Magnum DS / Digitrip via Power Xpert Gateway ─────
     # Scaled integers, and word-SWAPPED 32-bit values: the PXG presents the trip
     # unit's data with the low word first. Anyone who decodes this map with the

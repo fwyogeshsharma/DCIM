@@ -91,6 +91,9 @@ FOOTPRINTS: dict[str, tuple[float, float, float, str]] = {
     "Grundfos NB 100-200": (0.60, 1.30, 0.80, "class"),              # end-suction on baseplate
     "Grundfos TP 100-360": (0.50, 0.50, 1.30, "class"),              # vertical in-line
     "Eaton Pow-R-Line 3a 150A": (0.51, 0.15, 1.52, "class"),         # wall panelboard
+    # A 2 MVA oil-immersed ground-mounted unit with radiators: tank plus
+    # radiator banks on both long sides, cable boxes at one end.
+    "Schneider Minera 2000kVA ONAN 11/0.415kV": (2.40, 1.60, 2.20, "class"),
 }
 
 # Fallback per type, for SKUs not in the table above (fleet clones, new models).
@@ -106,6 +109,7 @@ _TYPE_FOOTPRINTS: dict[str, tuple[float, float, float, str]] = {
     "chiller":       (2.50, 4.70, 2.80, "class"),
     "pump":          (0.60, 1.20, 0.90, "class"),
     "cooling_tower": (2.80, 2.20, 4.20, "class"),
+    "transformer":   (2.40, 1.60, 2.20, "class"),
 }
 
 # ── mounting ────────────────────────────────────────────────────────────────
@@ -122,7 +126,7 @@ RACK_MOUNTS = frozenset({"rack", "zero_u", "rack_front", "rack_rear"})
 POINT_MOUNTS = frozenset({"wall", "pipe", "panel", "ceiling", "underfloor"})
 
 _FLOOR_TYPES = frozenset({"generator", "ups", "switchgear", "ats", "mcc", "rpp",
-                          "crah", "chiller", "pump", "cooling_tower"})
+                          "crah", "chiller", "pump", "cooling_tower", "transformer"})
 _DEFAULT_MOUNT = {
     "mpp": "wall",
     "valve": "pipe",
@@ -455,8 +459,14 @@ def complete_site(floorplan: dict, devices: Iterable[Any]) -> dict:
         zones.append(_space(f"{dc}/parking", OUTDOOR_LEVEL, "parking", "Car park", _rect(sx0 + 2.0, bd + 7.5, 14.0, 3.5)))
         zones.append(_space(f"{dc}/gate", OUTDOOR_LEVEL, "gate", "Gate", _rect(xm - 2.0, sy1 - 1.0, 4.0, 1.0)))
         zones.append(_space(f"{dc}/guardhouse", OUTDOOR_LEVEL, "guardhouse", "Guardhouse", _rect(xm + 3.0, sy1 - 4.0, 3.0, 3.0)))
-        zones.append(_space(f"{dc}/substation", OUTDOOR_LEVEL, "substation", "Utility substation",
-                            _rect(x0 - 16.0, y0 + 2.0, 10.0, max(8.0, D - 4.0))))
+        # Drawn only until the topology holds a Substation room of its own:
+        # then the room is the zone, carrying the transformer and its alarms,
+        # and a second outline under it would be two substations.
+        outdoor_kinds = {_outdoor_kind(rooms[k].get("room") or k) for k in keys
+                         if is_outdoor(rooms[k]["level"]) and isinstance(rooms[k].get("origin"), dict)}
+        if "substation" not in outdoor_kinds:
+            zones.append(_space(f"{dc}/substation", OUTDOOR_LEVEL, "substation", "Utility substation",
+                                _rect(x0 - 16.0, y0 + 2.0, 10.0, max(8.0, D - 4.0))))
         zones.append(_space(f"{dc}/water-tank", OUTDOOR_LEVEL, "water_tank", "Makeup water tank", _rect(xm - 2.0, y0 - 6.0, 4.0, 4.0)))
         zones.append(_space(f"{dc}/fire-pump-house", OUTDOOR_LEVEL, "fire_pump_house", "Fire pump house", _rect(xm + 4.0, y0 - 5.0, 4.0, 3.0)))
         zones.append(_space(f"{dc}/telecom-west", OUTDOOR_LEVEL, "telecom_entrance", "Telecom entrance A", _rect(sx0, y0 + D - 1.3, SITE_WEST_M, 0.6)))

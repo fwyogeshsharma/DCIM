@@ -12,6 +12,7 @@ export const DEVICE_TYPES = [
   { value: 'rpp',           label: 'Remote Power Panel' },
   { value: 'generator',     label: 'Generator' },
   { value: 'utility_feed',  label: 'Utility Feed' },
+  { value: 'transformer',   label: 'Transformer' },
   { value: 'switchgear',    label: 'Switchgear' },
   { value: 'ats',           label: 'Automatic Transfer Switch' },
   { value: 'mcc',           label: 'Motor Control Center' },
@@ -99,6 +100,7 @@ export const MODELS: Record<string, string[]> = {
   'generator:Kohler Power':      ['Kohler 250REOZJB','Kohler 600REOZJB'],
   // Electrical upstream — SKUs mirror the deployed topology (add_electrical_upstream.py).
   'utility_feed:Schneider Electric':      ['Schneider PowerLogic ION9000'],
+  'transformer:Schneider Electric':       ['Schneider Minera 2000kVA ONAN 11/0.415kV'],
   'switchgear:Eaton':                     ['Eaton Magnum DS 4000A'],
   'switchgear:ASCO Power Technologies':   ['ASCO 7000 Paralleling Switchgear'],
   'ats:ASCO Power Technologies':          ['ASCO 7000 Series 4000A'],

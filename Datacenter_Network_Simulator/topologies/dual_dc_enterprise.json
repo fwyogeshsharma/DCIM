@@ -159134,6 +159134,130 @@
         "modbus_unit_id": 20,
         "modbus_gateway_ip": "10.52.24.19"
       }
+    },
+    {
+      "id": "04cd7540",
+      "position": {
+        "x": -220,
+        "y": 4615
+      },
+      "device": {
+        "name": "TX1-DC1-SB",
+        "device_type": "transformer",
+        "vendor": "Schneider Electric",
+        "ip_address": "",
+        "snmp_port": 0,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "4f:c2:3d:b9:65:5a",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "model_name": "Schneider Minera 2000kVA ONAN 11/0.415kV",
+        "metrics_enabled": true,
+        "id": "04cd7540",
+        "mgmt_ip": "10.52.14.48",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": 2000000,
+        "room": "Substation",
+        "rack_row": 0,
+        "rack_num": 0,
+        "rack_unit": 0,
+        "floor_x": 5.0,
+        "floor_y": 5.5,
+        "country": "USA",
+        "datacenter_city": "Chicago",
+        "datacenter": "DC1",
+        "floor": "Site",
+        "outlets": [],
+        "psus": [],
+        "rotation_deg": 90,
+        "mounting": "floor"
+      }
+    },
+    {
+      "id": "5c79b02a",
+      "position": {
+        "x": 5380,
+        "y": 4485
+      },
+      "device": {
+        "name": "TX1-DC2-SB",
+        "device_type": "transformer",
+        "vendor": "Schneider Electric",
+        "ip_address": "",
+        "snmp_port": 0,
+        "gnmi_port": 57400,
+        "snmp_community": "",
+        "interface_count": 1,
+        "interface_groups": [
+          {
+            "iface_type": "Gigabit Ethernet (1 Gbps)",
+            "count": 1
+          }
+        ],
+        "interfaces": [
+          {
+            "index": 1,
+            "name": "eth0",
+            "speed": 1000000000,
+            "oper_status": 1,
+            "in_octets": 0,
+            "out_octets": 0,
+            "in_errors": 0,
+            "out_errors": 0,
+            "in_discards": 0,
+            "out_discards": 0,
+            "mac_address": "b6:84:f8:3a:71:81",
+            "connected_to_device": null,
+            "connected_to_iface": null,
+            "role": "mgmt"
+          }
+        ],
+        "model_name": "Schneider Minera 2000kVA ONAN 11/0.415kV",
+        "metrics_enabled": true,
+        "id": "5c79b02a",
+        "mgmt_ip": "10.52.24.48",
+        "mgmt_vlan": 10,
+        "power_draw_w": 0,
+        "rated_power_w": 2000000,
+        "room": "Substation",
+        "rack_row": 0,
+        "rack_num": 0,
+        "rack_unit": 0,
+        "floor_x": 5.0,
+        "floor_y": 5.5,
+        "country": "USA",
+        "datacenter_city": "New York",
+        "datacenter": "DC2",
+        "floor": "Site",
+        "outlets": [],
+        "psus": [],
+        "rotation_deg": 90,
+        "mounting": "floor"
+      }
     }
   ],
   "edges": [
@@ -182175,6 +182299,38 @@
       "src_iface": null,
       "dst_iface": null,
       "layer": "fieldbus"
+    },
+    {
+      "src": "04cd7540",
+      "dst": "f49c7b06",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "04cd7540",
+      "dst": "1d31a3b3",
+      "src_iface": 0,
+      "dst_iface": 5,
+      "broken": false,
+      "layer": "management"
+    },
+    {
+      "src": "5c79b02a",
+      "dst": "80e8526a",
+      "src_iface": 0,
+      "dst_iface": 0,
+      "broken": false,
+      "layer": "power"
+    },
+    {
+      "src": "5c79b02a",
+      "dst": "f8b995ba",
+      "src_iface": 0,
+      "dst_iface": 5,
+      "broken": false,
+      "layer": "management"
     }
   ],
   "floorplan": {
@@ -182827,6 +182983,40 @@
           "y": 0.0
         },
         "rotation_deg": 0
+      },
+      "DC1/Substation": {
+        "datacenter": "DC1",
+        "room": "Substation",
+        "class": "outdoor",
+        "containment": "none",
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "rotation_deg": 0,
+        "level": "Site",
+        "origin": {
+          "x": -16.0,
+          "y": 2.0
+        },
+        "width_m": 10.0,
+        "depth_m": 11.0
+      },
+      "DC2/Substation": {
+        "datacenter": "DC2",
+        "room": "Substation",
+        "class": "outdoor",
+        "containment": "none",
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "rotation_deg": 0,
+        "level": "Site",
+        "origin": {
+          "x": -16.0,
+          "y": 2.0
+        },
+        "width_m": 10.0,
+        "depth_m": 11.0
       }
     },
     "buildings": {

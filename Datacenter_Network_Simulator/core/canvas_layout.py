@@ -78,6 +78,7 @@ ROW_ORDER = {
     "UPS Room":        ["UTIL", "SWGR", "ATS", "UPS", "EV"],
     "Generator Room":  ["GEN", "SWGR", "EV"],
     "Generator Yard":  ["GEN", "SWGR", "EV"],
+    "Substation":      ["TX"],
     "Mechanical Room": ["MCC", "EV", "BMSC"],
     "Central Plant":   ["RPP", "EV", "PDU", "OOBM", "BMSC",
                         "CHL", "CHWP", "CWP", "VALVE", "SENSOR"],
@@ -88,7 +89,7 @@ ROW_ORDER = {
 BANDS = [
     ["Network Room"],
     ["Server Hall A", "Server Hall B"],
-    ["UPS Room", "Generator Room", "Generator Yard", "Mechanical Room", "Staging & Storage"],
+    ["Substation", "UPS Room", "Generator Room", "Generator Yard", "Mechanical Room", "Staging & Storage"],
     ["Central Plant", "Roof"],
 ]
 

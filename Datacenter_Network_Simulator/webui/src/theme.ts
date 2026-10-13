@@ -30,6 +30,7 @@ export const NODE_COLOR: Record<string, string> = {
   ups:            'var(--node-ups)',
   sensor:         'var(--node-sensor)',
   utility_feed:   'var(--node-utility-feed)',
+  transformer:    'var(--node-transformer)',
   switchgear:     'var(--node-switchgear)',
   ats:            'var(--node-ats)',
   mcc:            'var(--node-mcc)',

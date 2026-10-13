@@ -287,7 +287,7 @@ async def get_all_devices(device_type: str = None, layer: str = None):
     _POWER_TYPES        = {DeviceType.UPS, DeviceType.PDU, DeviceType.FLOOR_PDU, DeviceType.RPP,
                            DeviceType.GENERATOR, DeviceType.UTILITY_FEED,
                            DeviceType.SWITCHGEAR, DeviceType.ATS, DeviceType.MCC,
-                           DeviceType.MPP}
+                           DeviceType.MPP, DeviceType.TRANSFORMER}
     _ENVIRONMENTAL_TYPES = {DeviceType.SENSOR}
     devices = s.device_manager.get_all_devices()
     if layer == "production":

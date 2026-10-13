@@ -504,6 +504,7 @@ VENDOR_TRAPS: dict[str, dict[TrapType, str]] = {
 NON_SNMP_DEVICE_TYPES = frozenset({
     # BACnet/IP or Modbus field devices — no SNMP stack of their own
     "chiller", "cooling_tower", "pump", "valve", "utility_feed", "energy_monitor",
+    "transformer",
     # Modbus + protocol gateway in production (EMCP, ASCO Connect, Power Xpert)
     "generator", "ats", "switchgear", "mcc", "mpp",
 })

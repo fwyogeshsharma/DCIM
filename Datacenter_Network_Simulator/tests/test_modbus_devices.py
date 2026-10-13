@@ -251,7 +251,9 @@ def test_the_served_set_is_exactly_the_documented_one():
     comms and its branches are metered by the EV2s; chiller/pump/tower/valve carry
     one comm card, not two. If this set changes, that reasoning changed with it."""
     assert MODBUS_DEVICE_TYPES == {
-        "utility_feed", "switchgear", "mcc", "mpp", "generator", "ats", "ups"}
+        "utility_feed", "switchgear", "mcc", "mpp", "generator", "ats", "ups",
+        # S3: the service transformer's tank monitor (docs/27 §8c.2)
+        "transformer"}
 
 
 def test_every_type_has_a_distinct_identity():

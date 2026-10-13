@@ -18,6 +18,7 @@ const TYPE_ICON: Record<string, string> = {
   generator:     '⚙',
   ups:           '🔋',
   utility_feed:  '🏛',
+  transformer:   '⧖',
   switchgear:    '▦',
   ats:           '⇄',
   mcc:           '⛭',

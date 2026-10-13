@@ -87,6 +87,9 @@ BUILDING = {
     "Server Hall B":     ("2",    0.0,  0.0, None, None),
     "Roof":              ("Roof", 0.0,  0.0, 12.0, 6.0),
     "Generator Yard":    ("Site", 29.0, 0.0, 10.0, 12.6),
+    # The fenced utility substation on the west margin, where the compound
+    # already drew it (core.equipment_geometry.complete_site).
+    "Substation":        ("Site", -16.0, 2.0, 10.0, 11.0),
 }
 # Rooms the tool creates when the topology lacks them, with their class.
 NEW_ROOMS = {
@@ -94,6 +97,7 @@ NEW_ROOMS = {
     "Operations Room":   "support",
     "Meet-Me Room":      "support",
     "Generator Yard":    "outdoor",
+    "Substation":        "outdoor",
 }
 # Rooms renamed in place: the devices follow, their names do not (GR stays GR).
 RENAMES = {"Generator Room": "Generator Yard"}
@@ -113,6 +117,11 @@ PLACE = {
         "UTIL1": (2.00, 2.52, 180, "panel", None),   # revenue meter in SWGR1's incoming section
         "EV21":  (3.40, 2.52, 180, "panel", None),   # clamps SWGR1
         "THR":   (0.05, 3.70, 90, "wall", None),
+    },
+    "Substation": {
+        # the transformer on its plinth mid-yard, radiators east-west, cable
+        # boxes toward the building
+        "TX1":   (5.00, 5.50, 90, "floor", None),
     },
     "Generator Yard": {
         # radiators to the north louvre wall, 1.5 m between sets

@@ -655,6 +655,40 @@
           "y": 0.0
         },
         "rotation_deg": 0
+      },
+      "DC1/Substation": {
+        "datacenter": "DC1",
+        "room": "Substation",
+        "class": "outdoor",
+        "containment": "none",
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "rotation_deg": 0,
+        "level": "Site",
+        "origin": {
+          "x": -16.0,
+          "y": 2.0
+        },
+        "width_m": 10.0,
+        "depth_m": 11.0
+      },
+      "DC2/Substation": {
+        "datacenter": "DC2",
+        "room": "Substation",
+        "class": "outdoor",
+        "containment": "none",
+        "rows": [],
+        "racks_per_row": 0,
+        "aisles": [],
+        "rotation_deg": 0,
+        "level": "Site",
+        "origin": {
+          "x": -16.0,
+          "y": 2.0
+        },
+        "width_m": 10.0,
+        "depth_m": 11.0
       }
     },
     "buildings": {
@@ -1947,30 +1981,6 @@
             ]
           },
           {
-            "id": "DC1/substation",
-            "level": "Site",
-            "kind": "substation",
-            "name": "Utility substation",
-            "polygon_m": [
-              [
-                -16.0,
-                2.0
-              ],
-              [
-                -6.0,
-                2.0
-              ],
-              [
-                -6.0,
-                13.0
-              ],
-              [
-                -16.0,
-                13.0
-              ]
-            ]
-          },
-          {
             "id": "DC1/water-tank",
             "level": "Site",
             "kind": "water_tank",
@@ -2091,6 +2101,33 @@
             ],
             "attrs": {
               "room": "DC1/Generator Yard"
+            }
+          },
+          {
+            "id": "DC1/Substation",
+            "level": "Site",
+            "kind": "substation",
+            "name": "Substation",
+            "polygon_m": [
+              [
+                -16.0,
+                2.0
+              ],
+              [
+                -6.0,
+                2.0
+              ],
+              [
+                -6.0,
+                13.0
+              ],
+              [
+                -16.0,
+                13.0
+              ]
+            ],
+            "attrs": {
+              "room": "DC1/Substation"
             }
           },
           {
@@ -2288,30 +2325,6 @@
             ]
           },
           {
-            "id": "DC2/substation",
-            "level": "Site",
-            "kind": "substation",
-            "name": "Utility substation",
-            "polygon_m": [
-              [
-                -16.0,
-                2.0
-              ],
-              [
-                -6.0,
-                2.0
-              ],
-              [
-                -6.0,
-                13.0
-              ],
-              [
-                -16.0,
-                13.0
-              ]
-            ]
-          },
-          {
             "id": "DC2/water-tank",
             "level": "Site",
             "kind": "water_tank",
@@ -2432,6 +2445,33 @@
             ],
             "attrs": {
               "room": "DC2/Generator Yard"
+            }
+          },
+          {
+            "id": "DC2/Substation",
+            "level": "Site",
+            "kind": "substation",
+            "name": "Substation",
+            "polygon_m": [
+              [
+                -16.0,
+                2.0
+              ],
+              [
+                -6.0,
+                2.0
+              ],
+              [
+                -6.0,
+                13.0
+              ],
+              [
+                -16.0,
+                13.0
+              ]
+            ],
+            "attrs": {
+              "room": "DC2/Substation"
             }
           },
           {
@@ -19934,6 +19974,60 @@
       "power_draw_w": 0,
       "feed_a": null,
       "feed_b": null
+    },
+    {
+      "id": "04cd7540",
+      "name": "TX1-DC1-SB",
+      "device_type": "transformer",
+      "vendor": "Schneider Electric",
+      "model": "Schneider Minera 2000kVA ONAN 11/0.415kV",
+      "datacenter": "DC1",
+      "room": "Substation",
+      "floor": "Site",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "floor",
+      "floor_x": 5.0,
+      "floor_y": 5.5,
+      "facing_deg": 90.0,
+      "footprint_m": {
+        "width": 2.4,
+        "depth": 1.6,
+        "height": 2.2,
+        "basis": "class"
+      },
+      "mount_height_m": 1.1,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
+    },
+    {
+      "id": "5c79b02a",
+      "name": "TX1-DC2-SB",
+      "device_type": "transformer",
+      "vendor": "Schneider Electric",
+      "model": "Schneider Minera 2000kVA ONAN 11/0.415kV",
+      "datacenter": "DC2",
+      "room": "Substation",
+      "floor": "Site",
+      "rack_id": null,
+      "rack_unit": 0,
+      "u_height": null,
+      "mount": "floor",
+      "floor_x": 5.0,
+      "floor_y": 5.5,
+      "facing_deg": 90.0,
+      "footprint_m": {
+        "width": 2.4,
+        "depth": 1.6,
+        "height": 2.2,
+        "basis": "class"
+      },
+      "mount_height_m": 1.1,
+      "power_draw_w": 0,
+      "feed_a": null,
+      "feed_b": null
     }
   ],
   "summary": {
@@ -19941,8 +20035,8 @@
       "DC1",
       "DC2"
     ],
-    "rooms": 22,
+    "rooms": 24,
     "racks": 42,
-    "devices": 704
+    "devices": 706
   }
 }

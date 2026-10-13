@@ -47,7 +47,7 @@ def feed_ids(topo: dict, dev_id: str, byid: dict | None = None) -> tuple:
 # Distribution tiers that FEED a PDU rather than draw from one. Used to orient an edge
 # that carries no terminations, so an RPP upstream of a PDU never reads as its load.
 _UPSTREAM_TYPES = ("rpp", "ups", "switchgear", "ats", "utility_feed", "generator",
-                   "mcc", "mpp", "floor_pdu")
+                   "mcc", "mpp", "floor_pdu", "transformer")
 
 
 def fed_by(topo: dict, pdu_ids, byid: dict | None = None) -> list:

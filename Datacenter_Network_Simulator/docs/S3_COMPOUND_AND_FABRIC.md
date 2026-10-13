@@ -127,3 +127,45 @@ Meet-Me Room holds the carriers' own equipment, which a tenant's DCIM does not
 poll; its door contact is what we see, which is realistic. Staging & Storage
 holds no simulated stock yet; the lifecycle reserves a slot at the rack, as a
 DCIM does.
+
+## Increment 2b — the substation (2026-10-13)
+
+Every site of this size takes its supply at medium voltage and steps it down
+on its own compound. `tools/add_substation.py` (idempotent, repairs) gives each
+datacenter a `Substation` outdoor room on the west margin - where
+`complete_site()` already drew the utility substation; the room now IS that
+zone - and in it `TX1-<DC>-SB`, a `transformer`: Schneider Minera 2000 kVA
+ONAN/ONAF, 11/0.415 kV, 2.4 × 1.6 × 2.2 m on its plinth.
+
+The transformer has no electronics. What answers is the monitor on its tank
+(`SIM-XFMR-ITM-v1`, Qualitrol 509 ITM class) on Modbus TCP at the next
+BMS-plane address after the revenue meter, with a management port on the
+plant's BMS access switch and a POWER edge into the revenue meter: MV in, LV
+out, meter on the secondary (`_POWER_RANK` -1, above `utility_feed`). No SNMP
+(`_NO_SNMP_TYPES`).
+
+| Register | What | Model |
+|---|---|---|
+| `Top_Oil_Temperature` ×10 °C | tank RTD | IEC 60076-7 exponential model, ONAN distribution constants (55 K rise at rated, R = 5, x = 0.8), 180 min time constant |
+| `Winding_Temperature` ×10 °C | thermal image | top oil + 23 K × K^1.6, 4 min time constant |
+| `Load_Percent` ×10, `Current_A/B/C` A | load CTs | what flows to the meter below, over the nameplate; I = S / (√3 · 415 V) |
+| `Tap_Position` | off-circuit tap | 3 of 5, moves only by override `xfmr_tap` |
+| `Fans_Running` | ONAF stage | on at 65 °C top oil, off below 55 |
+| `Oil_Temp_Alarm`, `Winding_Temp_Alarm` | the monitor's relays | 85 °C / 105 °C, vendor defaults |
+| `Gas_Relay_Alarm` | Buchholz | only from override `xfmr_gas_alarm`: there is no slow path to it |
+| `Data_Valid` | | |
+
+Ambient is the site's own outdoor air (`_plant_oa_by_name`): a transformer in
+a yard is cooled by the weather and nothing else, so the same summer afternoon
+that lifts the condenser water lifts the oil. `core.device_state_store.
+transformer_thermal_step` is pure; `tests/test_transformer.py` runs a day
+through it.
+
+Platform side (dcim-platform `0104`): the `transformer` device type, keys
+`oil_temperature`, `winding_temperature`, `tap_position` (`current` and
+`load_pct` admit the type), rules oil 85/95 °C and winding 105/115 °C, the
+estate's load rule learning the type.
+
+Switching on: regenerate as for increment 2 (the topology gained a room and
+two devices; the Modbus plane binds two new addresses), then the full
+importer.

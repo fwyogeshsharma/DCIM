@@ -139,6 +139,7 @@ const APPLICABLE_TRAPS: Record<string, TrapEntry[]> = {
   // gear — no native SNMP traps. Explicit [] so they don't fall to the generic
   // COLD_START/CPU_HIGH fallback (which is meaningless for power distribution).
   utility_feed: [],
+  transformer: [],
   switchgear: [],
   mcc: [],
   mpp: [],

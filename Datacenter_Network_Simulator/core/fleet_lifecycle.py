@@ -63,7 +63,7 @@ _ROOM_CODE = {
     # S3 (docs/27 §8b/§8c): the yard keeps the room's code so GEN1-DC1-GR
     # stays GEN1-DC1-GR; the support rooms get codes of their own.
     "Generator Yard": "GR", "Staging & Storage": "SS",
-    "Operations Room": "OR", "Meet-Me Room": "MM",
+    "Operations Room": "OR", "Meet-Me Room": "MM", "Substation": "SB",
 }
 # clone-prefix → leading type code (pdu*/rpp* carry an A/B side, handled inline)
 _PREFIX_CODE = {"srv": "SRV", "tor": "LF", "spine": "SP", "ev2": "EV2",

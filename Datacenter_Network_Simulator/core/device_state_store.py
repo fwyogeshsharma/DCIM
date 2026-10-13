@@ -288,6 +288,47 @@ def fuel_step(pct: float, burn_l_per_h: float, dt_h: float,
     return round(pct, 2), delivery_due_h
 
 
+# IEC 60076-7 (loading guide), Table 5, "distribution ONAN": top-oil rise at
+# rated load, hot-spot gradient over top oil at rated load, the loss ratio R,
+# the oil and winding exponents x and y, and the two time constants. The
+# relays are Qualitrol's defaults for a mineral-oil unit; the fans are the
+# ONAF stage every 2 MVA radiator tank can be fitted with.
+_XFMR_OIL_RISE_K = 55.0
+_XFMR_HOTSPOT_GRADIENT_K = 23.0
+_XFMR_LOSS_RATIO = 5.0
+_XFMR_OIL_EXP = 0.8
+_XFMR_WINDING_EXP = 1.6
+_XFMR_TAU_OIL_S = 180.0 * 60.0
+_XFMR_TAU_WINDING_S = 4.0 * 60.0
+_XFMR_OIL_ALARM_C = 85.0
+_XFMR_HOTSPOT_ALARM_C = 105.0
+_XFMR_FANS_ON_C = 65.0
+_XFMR_FANS_OFF_C = 55.0
+_XFMR_TAP_NOMINAL = 3   # of 5, +/-2 x 2.5 %
+
+
+def transformer_thermal_step(oil_rise_k: float, hotspot_grad_k: float,
+                             load_factor: float, dt_s: float) -> tuple:
+    """One tick of IEC 60076-7's exponential model, as (top-oil rise over
+    ambient, hot-spot gradient over top oil), both in K.
+
+    Steady state at load factor K: oil rise = R_or * ((1 + R K^2)/(1 + R))^x,
+    gradient = H_gr * K^y. Each relaxes toward its steady state with its own
+    time constant - hours for the oil, minutes for the copper - so a step in
+    load shows in the winding long before the tank, which is why a WTI exists.
+    Pure, so a day of load can be run through it in a test.
+    """
+    k = max(0.0, float(load_factor))
+    oil_ss = _XFMR_OIL_RISE_K * ((1.0 + _XFMR_LOSS_RATIO * k * k)
+                                 / (1.0 + _XFMR_LOSS_RATIO)) ** _XFMR_OIL_EXP
+    hs_ss = _XFMR_HOTSPOT_GRADIENT_K * (k ** _XFMR_WINDING_EXP)
+    dt = max(0.0, float(dt_s))
+    a_oil = 1.0 - math.exp(-dt / _XFMR_TAU_OIL_S)
+    a_hs = 1.0 - math.exp(-dt / _XFMR_TAU_WINDING_S)
+    return (oil_rise_k + (oil_ss - oil_rise_k) * a_oil,
+            hotspot_grad_k + (hs_ss - hotspot_grad_k) * a_hs)
+
+
 def water_step(pct: float, makeup_l_per_min: float, dt_min: float) -> float:
     """One step of the makeup tank: the towers draw, the float valve fills
     from the mains below its level until it is back up. Pure."""
@@ -783,6 +824,10 @@ class DeviceStateStore:
         self._fuel_delivery_h: Dict[str, float | None] = {}
         self._tank_t: float | None = None
         self._h2_extra_lel: Dict[str, float] = {}
+        # Service transformers: (top-oil rise K, hot-spot gradient K) per
+        # device, carried between ticks because oil has hours of thermal
+        # inertia and a reading that jumped with the load would be a lie.
+        self._xfmr_thermal: Dict[str, tuple] = {}
 
         # ── Utility → generator transfer ──────────────────────────────────────
         # One sequencer per DC, driven from the utility feed's health. Everything
@@ -1494,7 +1539,9 @@ class DeviceStateStore:
     # transfer switch — mechanical load is NOT UPS-backed, it rides the transfer gap
     # on chilled-water thermal mass. The mpp is a hall panelboard one tier below the
     # mcc, the mechanical mirror of what the rpp is on the critical side.
-    _POWER_RANK = {"utility_feed": 0, "generator": 0,
+    # The service transformer stands above the revenue meter: MV in, LV out,
+    # and the meter reads what comes off its secondary.
+    _POWER_RANK = {"transformer": -1, "utility_feed": 0, "generator": 0,
                    "switchgear": 1, "ats": 2,
                    "ups": 3, "mcc": 3,
                    "rpp": 4, "floor_pdu": 4, "mpp": 4, "pdu": 5}
@@ -2380,7 +2427,8 @@ class DeviceStateStore:
         switchgear / ATS / MCC / MPP / generator) — the same values served over SNMP,
         for the Live Metrics page tabs. Each row carries the device's own metric
         fields."""
-        _pfx = {"utility_feed": "util_", "switchgear": "swgr_", "ats": "ats_",
+        _pfx = {"transformer": "xfmr_",
+                "utility_feed": "util_", "switchgear": "swgr_", "ats": "ats_",
                 "mcc": "mcc_", "mpp": "mpp_", "generator": "gen_"}
         dm = getattr(self, "_dm", None)
         if dm is None:
@@ -2743,6 +2791,56 @@ class DeviceStateStore:
             return self._grid_freq[grid_key]
         return self._step_grid_freq(grid_key)
 
+    def _outdoor_air_c(self, dc: str) -> Optional[float]:
+        """The site's outdoor dry bulb this tick, from the plant's weather
+        feed, or None before the first weather sample."""
+        for _name, _pair in (self._plant_oa_by_name or {}).items():
+            if _name.split("-")[1:2] == [dc] and _pair:
+                return float(_pair[0])
+        return None
+
+    def _step_transformer(self, device: "Device", st: dict, dc: str,
+                          utility_ok: bool, thr_w: float, rated_w: float) -> None:
+        """The service transformer's monitor (docs/27 §8c.2, S3 increment 2b).
+
+        Load is what flows to the revenue meter below it. The temperatures
+        follow IEC 60076-7's exponential model with the ONAN distribution
+        constants, lagged by the oil and winding time constants, over the
+        site's own outdoor air - a transformer in the yard is cooled by the
+        weather and nothing else. The fans are the ONAF stage on top-oil
+        temperature; the alarm bits are the monitor's relays at the vendor
+        defaults. The gas relay only trips from an injected override: there
+        is no slow path to a Buchholz alarm, it is a fault or it is not.
+        """
+        oa = self._outdoor_air_c(dc)
+        ambient = oa if oa is not None else 20.0
+        k = (thr_w / rated_w) if (rated_w > 0 and utility_ok) else 0.0
+        oil_rise, hs_grad = self._xfmr_thermal.get(device.id, (0.0, 0.0))
+        oil_rise, hs_grad = transformer_thermal_step(oil_rise, hs_grad, k, self._dt)
+        self._xfmr_thermal[device.id] = (oil_rise, hs_grad)
+        oil_c = ambient + oil_rise
+        hotspot_c = oil_c + hs_grad
+        ov = self.device_overrides.get(device.id) or {}
+        # Secondary current per phase: I = S / (sqrt(3) * V_LL), with the small
+        # imbalance a real load has; the monitor's CTs read whole amps.
+        i_avg = (k * rated_w) / (1.7320508 * 415.0) if k > 0 else 0.0
+        i_ph = [i_avg * (1.0 + random.uniform(-0.015, 0.015)) for _ in range(3)]
+        st["xfmr_oil_c"] = round(oil_c, 1)
+        st["xfmr_hotspot_c"] = round(hotspot_c, 1)
+        st["xfmr_load_pct"] = round(max(0.0, min(150.0, k * 100.0)), 1)
+        # Off-circuit tap changer: set at commissioning, moved with the
+        # transformer de-energised, so it reads the same number for years.
+        st["xfmr_tap"] = int(ov.get("xfmr_tap", _XFMR_TAP_NOMINAL))
+        st["xfmr_ia"] = round(i_ph[0])
+        st["xfmr_ib"] = round(i_ph[1])
+        st["xfmr_ic"] = round(i_ph[2])
+        fans_were = st.get("xfmr_fans") == "running"
+        fans = (oil_c >= _XFMR_FANS_ON_C) or (fans_were and oil_c > _XFMR_FANS_OFF_C)
+        st["xfmr_fans"] = "running" if fans else "off"
+        st["xfmr_oil_alarm"] = "alarm" if oil_c >= _XFMR_OIL_ALARM_C else "normal"
+        st["xfmr_wind_alarm"] = "alarm" if hotspot_c >= _XFMR_HOTSPOT_ALARM_C else "normal"
+        st["xfmr_gas_alarm"] = "alarm" if ov.get("xfmr_gas_alarm") else "normal"
+
     def _step_electrical(self, device: "Device", st: dict) -> None:
         """Live telemetry for the electrical upstream, all of it derived from the
         DC's transfer state so the one-line reads consistently end to end.
@@ -2777,6 +2875,11 @@ class DeviceStateStore:
             if volts <= 0 or pf <= 0:
                 return 0.0
             return round(kw * 1000.0 / (1.7320508 * volts * pf), 1)
+
+        if dtv == "transformer":
+            self._step_transformer(device, st, dc, utility_ok, thr, rated)
+            _ext_state_cache[device.name] = dict(st)
+            return
 
         if dtv == "utility_feed":
             # Schneider PowerLogic ION9000 revenue/PQ meter — reports MEASURED
@@ -3304,7 +3407,7 @@ class DeviceStateStore:
         input_live: Dict[str, bool] = {}
         for nid in sorted(rank, key=lambda x: rank.get(x, self._LEAF_RANK)):
             dtv = id_type.get(nid)
-            if dtv == "utility_feed":
+            if dtv in ("utility_feed", "transformer"):
                 en[nid] = not self._utility_failed.get(self._dc_of(nid), False)
             elif dtv == "generator":
                 en[nid] = self._transfer.status(self._dc_of(nid)).gen_at_voltage
@@ -7989,7 +8092,8 @@ class DeviceStateStore:
 
         # ── Electrical upstream (utility feed / switchgear / ATS / MCC) ───
         if device.device_type in (DeviceType.UTILITY_FEED, DeviceType.SWITCHGEAR,
-                                  DeviceType.ATS, DeviceType.MCC, DeviceType.MPP):
+                                  DeviceType.ATS, DeviceType.MCC, DeviceType.MPP,
+                                  DeviceType.TRANSFORMER):
             self._step_electrical(device, st)
 
         # ── PDU / Floor PDU ───────────────────────────────────────────────

@@ -180,6 +180,9 @@ OidEntry = Tuple[str, str, str]
 _NO_SNMP_TYPES = frozenset({
     DeviceType.RPP, DeviceType.CHILLER, DeviceType.PUMP,
     DeviceType.COOLING_TOWER, DeviceType.VALVE,
+    # A transformer monitor is a Modbus box on the tank; nothing on a
+    # transformer answers SNMP.
+    DeviceType.TRANSFORMER,
 })
 
 # Server BMC SNMP agent — enterprise subtree (project base 99999, .26 = BMC;

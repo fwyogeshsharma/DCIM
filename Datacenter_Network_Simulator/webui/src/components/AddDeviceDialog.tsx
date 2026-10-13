@@ -152,7 +152,7 @@ const BMC_PORT: Record<string, string> = {
 // Mirrors FACILITY_MGMT_TYPES / FACILITY_REDUNDANT_MGMT_TYPES in core/device_manager.py.
 const FACILITY_MGMT_TYPES = new Set([
   'pdu', 'floor_pdu', 'ups', 'ats', 'mcc', 'mpp', 'switchgear',
-  'utility_feed', 'generator', 'energy_monitor', 'sensor', 'crah', 'chiller',
+  'utility_feed', 'transformer', 'generator', 'energy_monitor', 'sensor', 'crah', 'chiller',
   'cooling_tower', 'pump', 'valve', 'cdu', 'modbus_gateway', 'bacnet_router',
 ])
 const FACILITY_REDUNDANT_MGMT_TYPES = new Set(['pdu', 'floor_pdu', 'ups', 'ats', 'switchgear'])
@@ -196,6 +196,7 @@ function defaultVendorFor(type: string): string {
     oob_switch:    'Cisco Systems',
     sensor:        'Raritan',
     utility_feed:  'Schneider Electric',
+    transformer:   'Schneider Electric',
     switchgear:    'Eaton',
     ats:           'ASCO Power Technologies',
     mcc:           'Eaton',
