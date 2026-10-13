@@ -220,7 +220,7 @@ def test_complete_site_adds_fabric_and_a_compound_without_touching_the_rooms(top
     assert not doors["DC1/Central Plant"]["monitored"] and not doors["DC1/Staging & Storage"]["monitored"]
     comp = out["compound"]["DC1"]
     zk = {z["kind"] for z in comp["zones"]}
-    assert {"fence", "gate", "guardhouse", "road", "apron", "parking", "substation", "generator_yard",
+    assert {"fence", "gate", "driveway", "guardhouse", "road", "apron", "parking", "substation", "generator_yard",
             "fuel_tank", "water_tank", "fire_pump_house", "telecom_entrance"} <= zk
     yard = next(z for z in comp["zones"] if z["kind"] == "generator_yard")
     assert yard["attrs"]["room"] == "DC1/Generator Yard"

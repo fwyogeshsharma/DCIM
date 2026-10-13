@@ -458,6 +458,9 @@ def complete_site(floorplan: dict, devices: Iterable[Any]) -> dict:
         zones.append(_space(f"{dc}/road", OUTDOOR_LEVEL, "road", "Service road", _rect(sx0, bd + 4.0, sx1 - sx0, 3.0)))
         zones.append(_space(f"{dc}/parking", OUTDOOR_LEVEL, "parking", "Car park", _rect(sx0 + 2.0, bd + 7.5, 14.0, 3.5)))
         zones.append(_space(f"{dc}/gate", OUTDOOR_LEVEL, "gate", "Gate", _rect(xm - 2.0, sy1 - 1.0, 4.0, 1.0)))
+        # The driveway from the gate to the service road, the gate's width.
+        zones.append(_space(f"{dc}/driveway", OUTDOOR_LEVEL, "driveway", "Driveway",
+                            _rect(xm - 2.0, bd + 7.0, 4.0, (sy1 - 1.0) - (bd + 7.0))))
         zones.append(_space(f"{dc}/guardhouse", OUTDOOR_LEVEL, "guardhouse", "Guardhouse", _rect(xm + 3.0, sy1 - 4.0, 3.0, 3.0)))
         # Drawn only until the topology holds a Substation room of its own:
         # then the room is the zone, carrying the transformer and its alarms,
