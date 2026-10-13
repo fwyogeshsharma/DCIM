@@ -662,6 +662,69 @@ _WATER_TX = ModbusMap(
     },
 )
 
+#: Life safety, as a BMS is allowed to see it. A fire panel is its own system
+#: (NFPA 72 / EN 54); what crosses to the BMS is a one-way feed - the panel
+#: maker's Modbus or BACnet gateway (Notifier MODBUS-GW, Simplex BACpac,
+#: Siemens Cerberus/Desigo), or three relays: alarm, trouble, supervisory.
+#: Nothing here is writable and nothing ever should be.
+_FACP_TX = ModbusMap(
+    map_id="SIM-FACP-GW-v1", vendor="Generic", product="Fire Alarm Panel Gateway",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Zones_In_Alarm", "fire_zones", "u16", 1, "bitmask"),
+            _P(0x0001, "Zone_Alarm_Count", "fire_zone_count", "u16", 1, ""),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Fire_Alarm", "fire_alarm", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Trouble", "fire_trouble", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(2, "Supervisory", "fire_supervisory", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(3, "Reading_Valid", presence_of="fire_alarm"),
+        ],
+    },
+)
+
+#: An aspirating detector (Xtralis VESDA, Wagner Titanus, Siemens FDA) through
+#: its high-level interface: smoke as % obscuration per metre, the stage it
+#: has reached (0 normal, 1 Alert, 2 Action, 3 Fire 1, 4 Fire 2), and the
+#: airflow fault that says the pipe network is blocked or broken.
+_ASD_TX = ModbusMap(
+    map_id="SIM-ASD-HLI-v1", vendor="Generic", product="Aspirating Smoke Detector",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Smoke_Obscuration", "smoke_obsc_pct_m", "u16", 1000, "%/m"),
+            _P(0x0001, "Alarm_Stage", "smoke_stage", "u16", 1, "enum"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Airflow_Fault", "asd_flow_fault", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Reading_Valid", presence_of="smoke_obsc_pct_m"),
+        ],
+    },
+)
+
+#: A clean-agent releasing panel (Kidde ARIES, Fike SHP PRO, Siemens XC10):
+#: its state (0 normal, 1 first alarm, 2 pre-discharge, 3 released, 4 abort
+#: held), the pre-discharge countdown, and the cylinder pressure with its
+#: supervisory switch.
+_GAS_TX = ModbusMap(
+    map_id="SIM-GASREL-v1", vendor="Generic", product="Clean Agent Release Panel",
+    word_order=WORD_BIG, accept_any_unit=False,
+    points={
+        SPACE_INPUT: [
+            _P(0x0000, "Release_State", "gas_state", "u16", 1, "enum"),
+            _P(0x0001, "Discharge_Countdown", "gas_countdown_s", "u16", 1, "s"),
+            _P(0x0002, "Agent_Pressure", "agent_pressure_bar", "u16", 10, "bar"),
+        ],
+        SPACE_DISCRETE: [
+            ModbusPoint(0, "Agent_Released", "agent_released", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(1, "Abort_Active", "gas_abort", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(2, "Agent_Low_Pressure", "agent_low_pressure", truthy=lambda v: float(v or 0) >= 0.5),
+            ModbusPoint(3, "Reading_Valid", presence_of="gas_state"),
+        ],
+    },
+)
+
 PROBE_MAPS: Dict[str, ModbusMap] = {
     "chw_supply": _TEMP_TX, "chw_return": _TEMP_TX,
     "cw_supply":  _TEMP_TX, "cw_return":  _TEMP_TX,
@@ -669,6 +732,7 @@ PROBE_MAPS: Dict[str, ModbusMap] = {
     "room_air":   _ROOM_TX,
     "door_contact": _DOOR_TX, "hydrogen": _H2_TX, "battery_temp": _BATT_TX,
     "fuel_level": _FUEL_TX, "water_level": _WATER_TX,
+    "fire_panel": _FACP_TX, "smoke_aspirating": _ASD_TX, "gas_release": _GAS_TX,
 }
 
 

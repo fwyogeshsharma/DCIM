@@ -33,6 +33,60 @@ class HydrogenAction(BaseModel):
     pct_lel: float | None = None
 
 
+class SmokeAction(BaseModel):
+    """Smoke in a room in % obscuration per metre (null clears it), and
+    optionally an airflow fault on that room's detector."""
+    datacenter: str
+    room: str                      # the room's code: HA, HB
+    pct_per_m: float | None = None
+    airflow_fault: bool | None = None
+
+
+class AbortAction(BaseModel):
+    """Press (true) or let go of (false) a room's gas abort switch."""
+    datacenter: str
+    room: str
+    held: bool = True
+
+
+class FireReset(BaseModel):
+    datacenter: str
+
+
+def _store():
+    st = getattr(_state(), "state_store", None)
+    if st is None:
+        raise HTTPException(status_code=503, detail="State store not initialized")
+    return st
+
+
+@router.post("/fire/smoke", response_model=OkResponse)
+def smoke_in_room(body: SmokeAction):
+    """Scenario: smoke in a hall. The aspirating detector climbs through its
+    stages over its transport time (0.08 Alert, 0.14 Action, 0.20 Fire 1,
+    2.0 Fire 2 % obs/m); Fire 2 starts the gas release countdown."""
+    st = _store()
+    st.set_smoke(body.datacenter, body.room, body.pct_per_m)
+    if body.airflow_fault is not None:
+        st.set_asd_flow_fault(f"ASD-{body.datacenter}-{body.room.upper()}", body.airflow_fault)
+    what = "cleared" if body.pct_per_m is None else f"{body.pct_per_m} % obs/m"
+    return OkResponse(message=f"{body.datacenter} {body.room.upper()} smoke {what}")
+
+
+@router.post("/fire/abort", response_model=OkResponse)
+def gas_abort(body: AbortAction):
+    """Scenario: somebody holding the abort switch by the door."""
+    _store().hold_gas_abort(body.datacenter, body.room, body.held)
+    return OkResponse(message=f"{body.datacenter} {body.room.upper()} abort {'held' if body.held else 'released'}")
+
+
+@router.post("/fire/reset", response_model=OkResponse)
+def fire_reset(body: FireReset):
+    """Reset a site's fire panels: smoke cleared, cylinders replaced."""
+    _store().reset_fire(body.datacenter)
+    return OkResponse(message=f"{body.datacenter} fire panels reset")
+
+
 @router.post("/doors", response_model=OkResponse)
 def hold_door(body: DoorAction):
     """Scenario: a door held open. The contact reads 1 until the time runs

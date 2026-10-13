@@ -59,7 +59,10 @@ def test_no_field_instrument_holds_an_address(shipped):
     # two tank levels per site - eighteen points that are neither water nor air.
     points = [d for d in rtu if d.name.split("-")[0] in ("DOOR", "H2", "BTT", "FUEL", "WTR")]
     assert len(points) == 18
-    assert len(rtu) == len(water) + len(rooms) + len(points)
+    # Fire: a panel per site, a detector and a gas release panel per hall.
+    fire = [d for d in rtu if d.name.split("-")[0] in ("FACP", "ASD", "GSP")]
+    assert len(fire) == 10
+    assert len(rtu) == len(water) + len(rooms) + len(points) + len(fire)
     for d in rtu:
         assert not d.ip_address and not d.mgmt_ip, (
             f"{d.name} still holds an address — a thermowell is not a network node")
@@ -159,7 +162,9 @@ def test_identity_survives_the_loss_of_the_ip(shipped):
 
                      # same way, none of them air or water.
 
-                     "door_contact", "hydrogen", "battery_temp", "fuel_level", "water_level"}
+                     "door_contact", "hydrogen", "battery_temp", "fuel_level", "water_level",
+                     # Fire: the panel, the aspirating detectors, the gas release panels.
+                     "fire_panel", "smoke_aspirating", "gas_release"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

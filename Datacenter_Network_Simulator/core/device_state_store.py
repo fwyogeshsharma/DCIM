@@ -215,6 +215,11 @@ _PROBE_ROLES = {
     "BTT":  "battery_temp",   # UPS string temperature       (°C)
     "FUEL": "fuel_level",     # bulk diesel tank             (%, L)
     "WTR":  "water_level",    # makeup water tank            (%, L)
+    # Life safety, as the BMS sees it (docs/FIRE_SYSTEM.md): monitored, never
+    # commanded.
+    "FACP": "fire_panel",        # fire alarm control panel  (alarm / trouble / supervisory, zones)
+    "ASD":  "smoke_aspirating",  # aspirating smoke detector (% obs/m, stage)
+    "GSP":  "gas_release",       # clean-agent release panel (state, countdown, cylinder bar)
     "CHWS": "chw_supply",     # chilled-water supply header  (°C)
     "CHWR": "chw_return",     # chilled-water return header  (°C)
     "CWS":  "cw_supply",      # condenser-water supply       (°C)
@@ -241,7 +246,80 @@ _WATER_ROLES = frozenset({"chw_supply", "chw_return", "cw_supply", "cw_return",
 #: The S3 points: neither air nor water. A contact, a gas, a string, a tank.
 #: The cold-aisle air rules must not touch them either - a door contact has
 #: no temperature to be low.
-_POINT_ROLES = frozenset({"door_contact", "hydrogen", "battery_temp", "fuel_level", "water_level"})
+_POINT_ROLES = frozenset({"door_contact", "hydrogen", "battery_temp", "fuel_level", "water_level",
+                          "fire_panel", "smoke_aspirating", "gas_release"})
+
+# ── Fire detection and gas suppression ────────────────────────────────────────
+#: An aspirating detector draws room air down a sampling pipe to a laser
+#: chamber and reports obscuration in % per metre. The four thresholds are
+#: Xtralis VESDA VLP's factory defaults; a clean data hall sits two orders of
+#: magnitude under the first of them, which is the point of the instrument.
+_ASD_ALERT, _ASD_ACTION, _ASD_FIRE1, _ASD_FIRE2 = 0.08, 0.14, 0.20, 2.0
+_ASD_BACKGROUND = 0.008
+#: Transport down the pipe plus the chamber's own smoothing. EN 54-20 allows a
+#: Class A system up to 120 s end to end; a hall-sized network runs well under.
+_ASD_TAU_S = 25.0
+#: Gas release states, as a releasing panel reports them.
+GAS_NORMAL, GAS_FIRST_ALARM, GAS_PRE_DISCHARGE, GAS_RELEASED, GAS_ABORT = 0, 1, 2, 3, 4
+#: NFPA 2001 / EN 15004 pre-discharge delay: time to leave the room. 30 s is
+#: the usual setting; the abort switch holds the countdown while it is pressed.
+_GAS_DELAY_S = 30.0
+_GAS_ABORT_HOLD_S = 10.0     # what the countdown is held at, per the IRI abort convention
+#: FK-5-1-12 (Novec 1230) cylinders are superpressurised with nitrogen to
+#: 25 bar at 21 C; the supervisory switch trips about 10 % under that.
+_AGENT_BAR = 25.0
+_AGENT_LOW_BAR = 22.5
+_AGENT_EMPTY_BAR = 0.6
+#: Which bit of the panel's zone word each room is. A real panel has hundreds
+#: of points; the gateway maps the zones the BMS was asked to show.
+FIRE_ZONE_BIT = {"HA": 0, "HB": 1, "NR": 2, "UR": 3, "MM": 4, "OR": 5}
+
+
+def asd_stage(obscuration_pct_m: float) -> int:
+    """The detector's alarm stage for a smoke level: 0 normal, 1 Alert,
+    2 Action, 3 Fire 1, 4 Fire 2. Pure."""
+    v = float(obscuration_pct_m)
+    return 4 if v >= _ASD_FIRE2 else 3 if v >= _ASD_FIRE1 else 2 if v >= _ASD_ACTION else 1 if v >= _ASD_ALERT else 0
+
+
+def asd_step(obscuration_pct_m: float, target_pct_m: float, dt_s: float) -> float:
+    """Smoke at the chamber relaxing toward what is in the room. Pure."""
+    a = 1.0 - math.exp(-max(0.0, float(dt_s)) / _ASD_TAU_S)
+    return max(0.0, obscuration_pct_m + (target_pct_m - obscuration_pct_m) * a)
+
+
+def gas_release_step(state: int, countdown_s: float, stage: int, abort: bool,
+                     dt_s: float) -> tuple[int, float]:
+    """One step of a clean-agent releasing panel, as (state, countdown s).
+
+    Cross-zoned on the detector's two fire thresholds, the way a single
+    aspirating detector is commonly used for release: Fire 1 is the first
+    alarm (sounders, nothing discharges), Fire 2 starts the pre-discharge
+    delay. The abort switch is a dead-man: held, it parks the countdown at
+    ten seconds; let go, the countdown resumes from there.
+
+    Every step latches. NFPA 72 has a control unit hold an alarm until it is
+    reset by hand, so smoke thinning out does not stand the panel down: a
+    first alarm stays a first alarm, a countdown that has started runs to
+    discharge unless somebody is holding the abort, and a release stays a
+    release until the cylinders are replaced. Only a reset goes backwards,
+    and that is not this function. Pure.
+    """
+    if state == GAS_RELEASED:
+        return GAS_RELEASED, 0.0
+    counting = state in (GAS_PRE_DISCHARGE, GAS_ABORT)
+    if stage < 4 and not counting:
+        # Not at the second threshold and never has been.
+        return (GAS_FIRST_ALARM if stage == 3 or state == GAS_FIRST_ALARM else GAS_NORMAL), 0.0
+    # Fire 2: counting down, held, or gone.
+    if state in (GAS_NORMAL, GAS_FIRST_ALARM):
+        countdown_s = _GAS_DELAY_S
+    if abort:
+        return GAS_ABORT, max(countdown_s - max(0.0, dt_s), _GAS_ABORT_HOLD_S)
+    countdown_s -= max(0.0, dt_s)
+    if countdown_s <= 0.0:
+        return GAS_RELEASED, 0.0
+    return GAS_PRE_DISCHARGE, countdown_s
 
 # ── Battery room, bulk fuel, makeup water ─────────────────────────────────────
 #: A VRLA string runs a few K above the room it stands in - it is charging,
@@ -824,6 +902,17 @@ class DeviceStateStore:
         self._fuel_delivery_h: Dict[str, float | None] = {}
         self._tank_t: float | None = None
         self._h2_extra_lel: Dict[str, float] = {}
+        # Fire: smoke put into a room by a scenario, what each detector's
+        # chamber reads, each release panel's (state, countdown s, cylinder
+        # bar), held abort switches, and what each instrument publishes.
+        self._smoke_room: Dict[tuple, float] = {}      # (dc, suffix) -> % obs/m in the room
+        self._asd_obsc: Dict[str, float] = {}          # detector name -> chamber reading
+        self._asd_flow_fault: set = set()              # detector names with an airflow fault
+        self._gas_panel: Dict[tuple, tuple] = {}       # (dc, suffix) -> (state, countdown, bar)
+        self._gas_abort: set = set()                   # (dc, suffix) with the abort switch held
+        self._fire_pub: Dict[str, dict] = {}           # instrument name -> its points
+        self._fire_latched: set = set()                # (dc, suffix) the site panel holds in alarm
+        self._fire_hvac_off: Dict[str, list] = {}      # dc -> CRAHs the release panels have stopped
         # Service transformers: (top-oil rise K, hot-spot gradient K) per
         # device, carried between ticks because oil has hours of thermal
         # inertia and a reading that jumped with the load would be a lie.
@@ -6158,12 +6247,15 @@ class DeviceStateStore:
         self._tank_t = _now_t
         _gens_by_dc: Dict[str, list] = {}
         _towers_by_dc: Dict[str, list] = {}
+        _gsp_room: Dict[str, str] = {}      # release panel name -> the room it protects
         try:
             for _d in self._dm.get_all_devices():
                 if _d.device_type == DeviceType.GENERATOR:
                     _gens_by_dc.setdefault(_d.datacenter or "", []).append(_d.name)
                 elif _d.device_type == DeviceType.COOLING_TOWER:
                     _towers_by_dc.setdefault(_d.datacenter or "", []).append(_d.name)
+                elif _d.device_type == DeviceType.SENSOR and str(_d.name).startswith("GSP-"):
+                    _gsp_room[_d.name] = _d.room or ""
         except Exception:
             pass
         for dc, probes in (ctx.get("probes_by_dc") or {}).items():
@@ -6207,6 +6299,59 @@ class DeviceStateStore:
                 # do not share a number.
                 "room_air": None,
             }
+            # Fire: detectors first, then the release panel each one drives,
+            # then the site panel that reports them all.
+            _dt_s = _dt_h * 3600.0
+            _stage_by_room: Dict[str, int] = {}
+            _zones = _alarms = 0
+            _trouble = _superv = False
+            _hvac_off: list = []
+            for name, role in probes:
+                if role != "smoke_aspirating":
+                    continue
+                _sfx = str(name).split("-")[-1].upper()
+                _bg = _ASD_BACKGROUND + (hash(name) % 5) / 1000.0
+                _o = asd_step(self._asd_obsc.get(name, _bg),
+                              _bg + float(self._smoke_room.get((dc, _sfx), 0.0)), _dt_s)
+                self._asd_obsc[name] = _o
+                _stg = asd_stage(_o)
+                _stage_by_room[_sfx] = max(_stage_by_room.get(_sfx, 0), _stg)
+                _ff = name in self._asd_flow_fault
+                _trouble = _trouble or _ff
+                self._fire_pub[name] = {"smoke_obsc_pct_m": round(_o + random.uniform(-0.0006, 0.0006), 4),
+                                        "smoke_stage": float(_stg), "asd_flow_fault": 1.0 if _ff else 0.0}
+            for name, role in probes:
+                if role != "gas_release":
+                    continue
+                _sfx = str(name).split("-")[-1].upper()
+                _gs, _cd, _bar = self._gas_panel.get((dc, _sfx), (GAS_NORMAL, 0.0, _AGENT_BAR))
+                _gs, _cd = gas_release_step(_gs, _cd, _stage_by_room.get(_sfx, 0),
+                                            (dc, _sfx) in self._gas_abort, _dt_s)
+                if _gs == GAS_RELEASED:
+                    _bar = _AGENT_EMPTY_BAR
+                self._gas_panel[(dc, _sfx)] = (_gs, _cd, _bar)
+                # The release panel's HVAC relay: from the start of the
+                # countdown the room's air handlers are stopped, so the agent
+                # is not blown out of the room it is discharged into. They
+                # stay stopped until the panel is reset.
+                if _gs >= GAS_PRE_DISCHARGE:
+                    for _c in (ctx.get("crah_by_room") or {}).get((dc, _gsp_room.get(name, "")), ()):
+                        self._plant_auto_points.setdefault(_c, {})["Unit_Running"] = 0.0
+                        _hvac_off.append(_c)
+                _low = _bar < _AGENT_LOW_BAR
+                _superv = _superv or _low or _gs == GAS_ABORT
+                self._fire_pub[name] = {"gas_state": float(_gs), "gas_countdown_s": round(_cd, 0),
+                                        "agent_pressure_bar": round(_bar, 1),
+                                        "agent_released": 1.0 if _gs == GAS_RELEASED else 0.0,
+                                        "gas_abort": 1.0 if _gs == GAS_ABORT else 0.0,
+                                        "agent_low_pressure": 1.0 if _low else 0.0}
+            self._fire_hvac_off[dc] = sorted(_hvac_off)
+            for _sfx, _stg in _stage_by_room.items():
+                if _stg >= 3:
+                    self._fire_latched.add((dc, _sfx))
+                if (dc, _sfx) in self._fire_latched:
+                    _alarms += 1
+                    _zones |= 1 << FIRE_ZONE_BIT.get(_sfx, 15)
             for name, role in probes:
                 if role == "room_air":
                     _suffix = str(name).split("-")[-1].upper()
@@ -6216,6 +6361,15 @@ class DeviceStateStore:
                     val = 1.0 if self._door_open_until.get(name, 0.0) > _now_t else 0.0
                 elif role == "hydrogen":
                     val = _h2
+                elif role == "smoke_aspirating":
+                    val = self._asd_obsc.get(name, 0.0)
+                elif role == "gas_release":
+                    val = self._fire_pub.get(name, {}).get("gas_state", 0.0)
+                elif role == "fire_panel":
+                    val = 1.0 if _alarms else 0.0
+                    self._fire_pub[name] = {"fire_alarm": val, "fire_trouble": 1.0 if _trouble else 0.0,
+                                            "fire_supervisory": 1.0 if _superv else 0.0,
+                                            "fire_zones": float(_zones), "fire_zone_count": float(_alarms)}
                 elif role == "battery_temp":
                     val = _batt_c
                 elif role in ("fuel_level", "water_level"):
@@ -6246,6 +6400,41 @@ class DeviceStateStore:
             self._h2_extra_lel.pop(dc, None)
         else:
             self._h2_extra_lel[dc] = max(0.0, float(pct_lel))
+
+    # ── Fire: scenarios from outside the tick ────────────────────────────────
+    def set_smoke(self, dc: str, room: str, pct_per_m: float | None) -> None:
+        """Put smoke into a room, in % obscuration per metre, or clear it
+        with None. The detector's chamber follows over its transport time."""
+        key = (dc, str(room).upper())
+        if pct_per_m is None:
+            self._smoke_room.pop(key, None)
+        else:
+            self._smoke_room[key] = max(0.0, float(pct_per_m))
+
+    def set_asd_flow_fault(self, name: str, fault: bool) -> None:
+        """A blocked or broken sampling pipe: the detector cannot vouch for
+        the room, and the panel reports trouble."""
+        (self._asd_flow_fault.add if fault else self._asd_flow_fault.discard)(str(name))
+
+    def hold_gas_abort(self, dc: str, room: str, held: bool) -> None:
+        """Press or let go of a room's abort switch."""
+        key = (dc, str(room).upper())
+        (self._gas_abort.add if held else self._gas_abort.discard)(key)
+
+    def reset_fire(self, dc: str) -> None:
+        """Reset a site's panels after an event: smoke cleared, aborts
+        released, discharged cylinders replaced. On a real site the last of
+        those is a contractor's visit, not a button. The air handlers the
+        release panels stopped start again on the next tick."""
+        for store in (self._smoke_room, self._gas_panel):
+            for key in [k for k in store if k[0] == dc]:
+                store.pop(key, None)
+        self._gas_abort = {k for k in self._gas_abort if k[0] != dc}
+        self._fire_latched = {k for k in self._fire_latched if k[0] != dc}
+        self._fire_hvac_off.pop(dc, None)
+        for name in [n for n in self._asd_obsc if f"-{dc}-" in n]:
+            self._asd_obsc.pop(name, None)
+            self._asd_flow_fault.discard(name)
 
     def _electrical_room_drift(self, dc: str, suffix: str = "") -> float:
         """How far a room with no racks sits above its setpoint, in K.
@@ -8332,6 +8521,8 @@ class DeviceStateStore:
             elif _role == "hydrogen":
                 st["h2_pct_lel"] = round(float(_val), 2)
                 st["h2_alarm"] = 1.0 if float(_val) >= _H2_ALARM_LEL else 0.0
+            elif _role in ("fire_panel", "smoke_aspirating", "gas_release"):
+                st.update(self._fire_pub.get(name, {}))
             elif _role == "battery_temp":
                 st["battery_temp_c"] = round(float(_val) + ((hash(name) % 5) - 2) / 10.0, 1)
             elif _role in ("fuel_level", "water_level"):

@@ -56,6 +56,13 @@ INSTRUMENTS = [
     ("FUEL", "Plant Tank Level Transmitter", "panel", "Generator Yard",     "GR"),
     ("WTR",  "Plant Tank Level Transmitter", "pipe",  "Central Plant",      "CP"),
     ("THR",  "Plant Room Air T/RH",         "wall",  "Operations Room",     "OR"),
+    # Fire (docs/FIRE_SYSTEM.md): the panel where the operators are, an
+    # aspirating detector and a gas release panel in each hall.
+    ("FACP", "Plant Fire Alarm Panel",      "wall",  "Operations Room",     "OR"),
+    ("ASD",  "Plant Aspirating Smoke Detector", "wall", "Server Hall A",    "HA"),
+    ("ASD",  "Plant Aspirating Smoke Detector", "wall", "Server Hall B",    "HB"),
+    ("GSP",  "Plant Gas Release Panel",     "wall",  "Server Hall A",       "HA"),
+    ("GSP",  "Plant Gas Release Panel",     "wall",  "Server Hall B",       "HB"),
 ]
 #: Where in its room each non-door instrument sits (room metres).
 SPOT = {
@@ -64,6 +71,11 @@ SPOT = {
     ("FUEL", "GR"): (9.95, 6.30),    # the yard's east fence line, toward the tank
     ("WTR", "CP"):  (15.95, 11.00),  # the plant's north-east corner, where the makeup main enters
     ("THR", "OR"):  (0.05, 2.50),
+    ("FACP", "OR"): (3.00, 0.05),    # the operations room's north wall, in sight of the desk
+    ("ASD", "HA"):  (6.10, 0.05),    # the detector on the hall's north wall, its pipes over the aisles
+    ("ASD", "HB"):  (6.10, 0.05),
+    ("GSP", "HA"):  (0.05, 7.40),    # by the door, with the release and abort stations
+    ("GSP", "HB"):  (0.05, 7.40),
 }
 
 
