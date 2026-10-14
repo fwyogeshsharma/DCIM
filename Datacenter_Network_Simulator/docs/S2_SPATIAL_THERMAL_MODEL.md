@@ -141,11 +141,13 @@ w_ij = f_j · exp( −dist(c_i, d_j) / L )
 
 `L` is the influence length. **Default 5 m. This is uncertain**: published influence-zone sizes run ~3–8 m depending on plenum depth and obstructions, so it is a named constant and the tests pin behaviour, not the number.
 
-The rack's tile air is the influence-weighted mix of what the running units discharge:
+The rack's tile air is the influence-weighted mix of what the running units discharge, each unit's air warmed by its plenum run to the tile:
 
 ```
-T_tile,i = Σ_j w_ij · S_j / Σ_j w_ij        (if Σ_j w_ij > 0, else: no supply → see 5.3)
+T_tile,i = Σ_j w_ij · (S_j + g · dist(c_i, d_j)) / Σ_j w_ij        (if Σ_j w_ij > 0, else: no supply → see 5.3)
 ```
+
+`g` is the plenum heat gain, **default 0.10 K/m, uncertain** (`PLENUM_GAIN_K_PER_M`): tile air picks up heat from the raised floor above it, from cables and from the slab; surveys and CFD put the rise at ~1–2 K over a 10–15 m run, more in a shallow or congested plenum. *Added 2026-10-14 after the shadow run (§9): with every unit on the one discharge setpoint and no plenum term, the halls read 0.3 K rack-to-rack.*
 
 ### 5.3 Local coverage — starvation instead of a room-wide penalty
 
@@ -186,6 +188,8 @@ T_in,i(z) = T_tile,i + r_i(z) · (T_hot,i − T_tile,i)
 | hot aisle | 0.01 | 0.02 | 0.02 | +0.01 | +0.05 · o_i |
 
 *z* is the device's height in the rack (U to metres, the same geometry the platform uses). This **replaces** the fixed `rack_unit/42 · 3 K`.
+
+`o_i` comes from the rack's fill: the store counts the IT devices it saw in the rack this tick, at 2U each (`_IT_DEVICE_U`, the fleet standard), and the rest of the 42U is open. No blanking-plate discipline is modelled; a device height field would replace the constant.
 
 In a contained hall with the hot aisle 12 K above the tile, the bottom-to-top rise becomes about 0.25 K. Uncontained, it is about 1.8 K, or more at the row ends. Those are the textbook magnitudes.
 
@@ -306,6 +310,24 @@ So it is its own step after the core model has run in shadow. The core model sta
 | Platform heat map, RCI/RTI/SHI | Become meaningful | The point of S2 |
 
 Shadow mode (§6.1) replaces every estimate in this table with measured numbers before anything is published.
+
+### 9.1 Measured: shadow run 2026-10-13, 16:37–20:09 IST (2,370 ticks, sim `b13cca4`)
+
+Per room, mean over the run of the per-tick figures (`logs/air_model_shadow.jsonl`; the log carried mean / p90 / max only, `min` was added afterwards):
+
+| Room | Inlets | Inlet mean, uniform → spatial | Inlet max, uniform → spatial | Spatial p90 − mean | CRAH return, uniform → spatial |
+|---|---|---|---|---|---|
+| DC1 Server Hall A | 148 | 23.26 → 22.28 (−0.98) | 25.0 → 22.60 | 0.18 K | 30.18 → 30.36 |
+| DC1 Server Hall B | 148 | 23.26 → 22.28 (−0.98) | 25.0 → 22.60 | 0.18 K | 30.28 → 30.37 |
+| DC2 Server Hall A | 116 | 23.21 → 22.27 (−0.94) | 25.0 → 22.60 | 0.18 K | 29.15 → 29.33 |
+| DC2 Server Hall B | 116 | 23.19 → 22.27 (−0.92) | 25.0 → 22.60 | 0.18 K | 29.19 → 29.32 |
+
+Read against the table above:
+
+- **Room mean falls ~1 K** — as estimated (the fixed 0–3 K vertical gradient leaves a contained aisle).
+- **Rack-to-rack spread did not appear: ~0.3 K**, against the 0.5–1.5 K estimated. Two reasons, in order of weight. (1) Every CRAH in a DC publishes the one discharge (setpoint + CHW penalty), so without a plenum term every tile reads the same — the A-1 "distance variation" the estimate counted on had nothing to vary. (2) The live halls hold 4–5 racks each, all in row 2 within ~3 m of the x = 0 wall units; there is little geometry to spread across. The 2026-10-14 fix adds the plenum gain (§5.2) and the open-U feed (§5.4); replayed offline on the live topology that gives **0.55–0.6 K spread** per hall (22.8–23.4 °C at 10 kW/rack) and lifts the mean ~0.5 K. The spread will widen on its own as fleet provisioning fills the other rows.
+- **Per-unit return spread: ~0.1 K**, against 1–3 K estimated. All seven units read the same five racks' hot air through the geometric weights; with one row of racks there is no per-unit difference to read. Not a model fault; revisit when the halls fill.
+- No inlet alarm would have moved: every spatial figure sits inside 22.3–23.4 °C.
 
 ---
 

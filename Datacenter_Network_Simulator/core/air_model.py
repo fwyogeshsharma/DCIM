@@ -4,7 +4,8 @@ What a rack breathes, from where the CRAHs stand and what they are doing:
 
   * TILE SUPPLY (§5.2). Each running unit pressurises the plenum most near its
     discharge; its influence on a rack falls off with distance. A rack's tile air
-    is the influence-weighted mix of the units' discharge temperatures.
+    is the influence-weighted mix of the units' discharge temperatures, each
+    warmed by the plenum run between the unit and the tile.
   * COVERAGE (§5.3). Each unit's CURRENT airflow - its rating scaled by how
     fast group control is running its fans - leaves through the tiles by plenum
     pressure (influence) and by how the tiles were provisioned: a tuned hall puts
@@ -32,6 +33,13 @@ from dataclasses import dataclass, field
 #: Influence length, m. UNCERTAIN: published CRAH influence zones run ~3-8 m
 #: depending on plenum depth and obstructions. Tests pin behaviour, not this.
 INFLUENCE_LENGTH_M = 5.0
+#: Plenum heat gain, K per metre of underfloor travel. UNCERTAIN: the tile air
+#: picks up heat from the raised floor above it (the room sits 5-10 K warmer),
+#: from cables and from the slab; CFD and site surveys put the rise at ~1-2 K
+#: over a 10-15 m run, more with a shallow or congested plenum. Without it every
+#: tile in a hall reads the one discharge setpoint and the halls come out flat
+#: (shadow run 2026-10-13: 0.3 K rack-to-rack). Tests pin the ordering, not this.
+PLENUM_GAIN_K_PER_M = 0.10
 #: Share of a unit's discharge that returns to it without passing through IT.
 #: The same 0.15 the room model used (_RETURN_MIX_FRAC = 0.85), now per unit.
 BYPASS_FRAC = 0.15
@@ -150,17 +158,22 @@ def recirc_profile(rack: Rack, containment: str, starve: float) -> tuple[float, 
 
 
 def solve_room(racks: list[Rack], units: list[Unit], containment: str,
-               length_m: float = INFLUENCE_LENGTH_M) -> RoomAir:
+               length_m: float = INFLUENCE_LENGTH_M,
+               plenum_gain: float = PLENUM_GAIN_K_PER_M) -> RoomAir:
     """Tile, coverage, recirculation per rack and return per unit (§5.2-5.5)."""
     out = RoomAir()
     w = {(r.id, u.id): influence(r, u, length_m) for r in racks for u in units}
+    # What arrives at the tile from unit j: its discharge, warmed along the
+    # plenum run (§5.2). A unit's own return bypass (§5.5) stays at discharge.
+    at_tile = {(r.id, u.id): u.supply_c + plenum_gain * math.hypot(r.cold_x - u.x, r.cold_y - u.y)
+               for r in racks for u in units}
 
     # Coverage: each unit's airflow (as cooling at design rise) leaves the tiles
     # by plenum pressure (influence) through tiles provisioned to the load (heat).
     share_den = {u.id: sum(w[(r.id, u.id)] * max(r.heat_w, 0.0) for r in racks) for u in units}
     for r in racks:
         wsum = sum(w[(r.id, u.id)] for u in units)
-        tile = (sum(w[(r.id, u.id)] * u.supply_c for u in units) / wsum) if wsum > 1e-12 else None
+        tile = (sum(w[(r.id, u.id)] * at_tile[(r.id, u.id)] for u in units) / wsum) if wsum > 1e-12 else None
         if r.heat_w > 0:
             got = sum(u.capacity_w * max(0.0, min(1.0, u.fan_frac)) * w[(r.id, u.id)] * r.heat_w
                       / share_den[u.id] for u in units if share_den[u.id] > 0)

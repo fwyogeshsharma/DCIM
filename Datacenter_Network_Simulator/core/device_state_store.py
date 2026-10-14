@@ -57,6 +57,9 @@ _SUPPLY_SETPOINT_C = 22.0
 _RACK_BASE_M = 0.1
 _U_M = 0.04445
 _CABINET_H_M = _RACK_BASE_M + 42 * _U_M
+#: Rack units one IT device occupies, for the open-U (blanking) share the
+#: spatial air model reads. The fleet is 2U throughout (server_2u_fill).
+_IT_DEVICE_U = 2
 #: Where a rack PDU's probe is taken to hang: mid-strip.
 _MID_STRIP_M = _RACK_BASE_M + 21 * _U_M
 
@@ -6606,9 +6609,10 @@ class DeviceStateStore:
         key = (d.rack_row, d.rack_num)
         r = racks.get(key)
         if r is None:
-            r = racks[key] = {"heat": 0.0, "out": 0.0, "n_out": 0, "x": None, "y": None,
+            r = racks[key] = {"heat": 0.0, "out": 0.0, "n_out": 0, "n_it": 0, "x": None, "y": None,
                               "facing": "", "hot": "", "num": int(d.rack_num or 0)}
         r["heat"] += air_w
+        r["n_it"] += 1
         _out = getattr(d, "outlet_temp", None)
         if _out:
             r["out"] += float(_out)
@@ -6678,6 +6682,11 @@ class DeviceStateStore:
                 hot_aisle=r["hot"] or f"row{row}", position=r["num"],
                 row_end=num in (min(nums), max(nums)), heat_w=r["heat"],
                 exhaust_c=(r["out"] / r["n_out"]) if r["n_out"] else None,
+                # Unblanked U (§5.4 o_i): what the fleet's IT does not fill. The
+                # fleet is built from 2U machines (server_2u_fill); a device
+                # height field would replace the constant. No blanking-plate
+                # discipline is modelled - an open U is an open U.
+                open_u=max(0.0, min(1.0, (42 - _IT_DEVICE_U * r["n_it"]) / 42.0)),
                 height_m=_CABINET_H_M))
         if nogeo != self._air_nogeo.get(rk):
             self._air_nogeo[rk] = nogeo
@@ -6737,7 +6746,8 @@ class DeviceStateStore:
 
             def stats(xs):
                 xs = sorted(xs)
-                return {"mean": round(sum(xs) / len(xs), 2), "max": round(xs[-1], 2),
+                return {"mean": round(sum(xs) / len(xs), 2), "min": round(xs[0], 2),
+                        "max": round(xs[-1], 2),
                         "p90": round(xs[min(len(xs) - 1, int(0.9 * len(xs)))], 2)} if xs else None
             rows.append({"t": round(time.time(), 1), "tick": self._air_tick,
                          "dc": rk[0], "room": rk[1],

@@ -65,7 +65,22 @@ def test_a_healthy_hall_starves_nothing():
     racks = hall_racks()
     room = am.solve_room(racks, hall_units(fan=fan_for(racks)), "cold_aisle")
     assert all(r.starve == 0.0 for r in room.racks.values())
-    assert all(r.tile_c == pytest.approx(18.0) for r in room.racks.values())
+    # Tile air is the discharge plus what the plenum run adds - never cooler
+    # than the units, never more than a couple of kelvin above them.
+    assert all(18.0 < r.tile_c < 20.0 for r in room.racks.values())
+    room0 = am.solve_room(racks, hall_units(fan=fan_for(racks)), "cold_aisle", plenum_gain=0.0)
+    assert all(r.tile_c == pytest.approx(18.0) for r in room0.racks.values())
+
+
+def test_tile_air_warms_along_the_plenum_run():
+    """Every unit discharges the same 18 C, so any tile difference is the
+    plenum: a rack mid-row (far from both walls) breathes warmer tile air than
+    the rack beside a wall unit, and the whole row stays within ~1 K."""
+    racks = hall_racks(rows=(2,))
+    room = am.solve_room(racks, hall_units(fan=fan_for(racks)), "cold_aisle")
+    tiles = {r.id: room.racks[r.id].tile_c for r in racks}
+    assert tiles["R2-7"] > tiles["R2-1"] and tiles["R2-7"] > tiles["R2-13"]
+    assert 0.2 < max(tiles.values()) - min(tiles.values()) < 1.0
 
 
 def test_a_trip_starves_the_racks_nearest_it_first_until_the_survivors_ramp():
