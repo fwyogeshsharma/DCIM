@@ -357,6 +357,125 @@ def _rect(x: float, y: float, w: float, d: float) -> list:
     return [[r(x), r(y)], [r(x + w), r(y)], [r(x + w), r(y + d)], [r(x), r(y + d)]]
 
 
+def _free_cells(boxes: list, x0: float, y0: float, x1: float, y1: float) -> list:
+    """The floor of a level's rooms' zone (``x0..x1`` by ``y0..y1``) that no
+    room covers, as rectangles: the zone split on every room edge, each cell
+    no room holds, runs of cells merged along x and then stacked along y where
+    their x-extent matches. Slivers under 0.6 m are not floor anyone walks."""
+    eps = 1e-6
+    xs = sorted({x0, x1, *(b[0] for b in boxes), *(b[2] for b in boxes)})
+    ys = sorted({y0, y1, *(b[1] for b in boxes), *(b[3] for b in boxes)})
+    xs = [x for x in xs if x0 - eps <= x <= x1 + eps]
+    ys = [y for y in ys if y0 - eps <= y <= y1 + eps]
+    rows: list = []
+    for j in range(len(ys) - 1):
+        cy = (ys[j] + ys[j + 1]) / 2
+        run = None
+        for i in range(len(xs) - 1):
+            cx = (xs[i] + xs[i + 1]) / 2
+            free = not any(b[0] < cx < b[2] and b[1] < cy < b[3] for b in boxes)
+            if free and run is not None and abs(run[2] - xs[i]) < eps:
+                run[2] = xs[i + 1]
+            elif free:
+                if run is not None:
+                    rows.append(run)
+                run = [xs[i], ys[j], xs[i + 1], ys[j + 1]]
+            elif run is not None:
+                rows.append(run)
+                run = None
+        if run is not None:
+            rows.append(run)
+    merged: list = []
+    for c in rows:
+        for m in merged:
+            if abs(m[0] - c[0]) < eps and abs(m[2] - c[2]) < eps and abs(m[3] - c[1]) < eps:
+                m[3] = c[3]
+                break
+        else:
+            merged.append(list(c))
+    return [tuple(m) for m in merged if m[2] - m[0] >= 0.6 - eps and m[3] - m[1] >= 0.6 - eps]
+
+
+def _door_opening(k: str, boxes: dict, x0: float, y0: float, x1: float, y1: float) -> tuple:
+    """Where a room's door goes, and whether it is in the building's face.
+
+    The first of the room's south, east, north and west walls with free floor
+    outside it takes a full-width door; if none has room for one, the first
+    with a gap a single 0.9 m leaf fits. The corridor band south of the rooms'
+    zone counts as floor, so a room on it opens onto it as before. The door is
+    centred on the free run of its wall, which is what puts the UPS room's in
+    the gap beside the plant rather than behind the mechanical room's wall. A
+    room with no such wall - landlocked, like a network room boxed in by the
+    hall it serves - opens into its neighbour that is a hall, else the one it
+    shares the longest wall with. A door in the building's outer face is the
+    last resort, and the only external one."""
+    eps = 1e-6
+    bx0, by0, bx1, by1 = boxes[k]
+    others = [(kk, b) for kk, b in boxes.items() if kk != k]
+
+    def free_run(wall: str):
+        # the wall's span, and what stands just outside it along that span
+        if wall in ("S", "N"):
+            lo, hi = bx0, bx1
+            if wall == "S" and abs(by1 - y1) < eps:
+                return (lo, hi)                       # the corridor band
+            out = by1 + 0.25 if wall == "S" else by0 - 0.25
+            if out < y0 or out > y1:
+                return None                           # the building's face
+            taken = [(max(lo, b[0]), min(hi, b[2])) for _, b in others if b[1] < out < b[3]]
+        else:
+            lo, hi = by0, by1
+            out = bx1 + 0.25 if wall == "E" else bx0 - 0.25
+            if out < x0 or out > x1:
+                return None
+            taken = [(max(lo, b[1]), min(hi, b[3])) for _, b in others if b[0] < out < b[2]]
+        best, at = None, lo
+        for a, b in sorted(t for t in taken if t[1] > t[0]):
+            if a - at > (best[1] - best[0] if best else 0):
+                best = (at, a)
+            at = max(at, b)
+        if hi - at > (best[1] - best[0] if best else 0):
+            best = (at, hi)
+        return best
+
+    def opening(wall: str, run: tuple, width: float) -> list:
+        c = (run[0] + run[1]) / 2
+        if wall == "S":
+            return _rect(c - width / 2, by1 - 0.1, width, 0.2)
+        if wall == "N":
+            return _rect(c - width / 2, by0 - 0.1, width, 0.2)
+        if wall == "E":
+            return _rect(bx1 - 0.1, c - width / 2, 0.2, width)
+        return _rect(bx0 - 0.1, c - width / 2, 0.2, width)
+
+    runs = [(wall, free_run(wall)) for wall in ("S", "E", "N", "W")]
+    for width in (DOOR_W_M, 0.9):
+        for wall, run in runs:
+            if run and run[1] - run[0] >= width - eps:
+                return opening(wall, run, width), False
+
+    # Landlocked: into a neighbour, a hall first, else the longest shared wall.
+    shared = []
+    for kk, b in others:
+        if abs(b[0] - bx1) < eps or abs(b[2] - bx0) < eps:
+            lo, hi = max(by0, b[1]), min(by1, b[3])
+            if hi - lo > eps:
+                shared.append((kk, "E" if abs(b[0] - bx1) < eps else "W", (lo, hi)))
+        if abs(b[1] - by1) < eps or abs(b[3] - by0) < eps:
+            lo, hi = max(bx0, b[0]), min(bx1, b[2])
+            if hi - lo > eps:
+                shared.append((kk, "S" if abs(b[1] - by1) < eps else "N", (lo, hi)))
+    if shared:
+        hall = [t for t in shared if "server hall" in t[0].lower()]
+        kk, wall, run = max(hall or shared, key=lambda t: t[2][1] - t[2][0])
+        width = DOOR_W_M if run[1] - run[0] >= DOOR_W_M else 0.9
+        return opening(wall, run, width), False
+
+    # Nothing beside it at all: a door in the building's west face, as before.
+    wall = "W" if abs(bx0 - x0) < eps else "E"
+    return opening(wall, (by0, by1), DOOR_W_M), True
+
+
 def _space(sid: str, level, kind: str, name: str, poly: list, **attrs) -> dict:
     out = {"id": sid, "level": level, "kind": kind, "name": name, "polygon_m": poly}
     if attrs:
@@ -418,26 +537,28 @@ def complete_site(floorplan: dict, devices: Iterable[Any]) -> dict:
                 fab.append(_space(f"{dc}/{lv}/dock-door", lv, "door", "Dock door",
                                   _rect(x0 + LOBBY_W_M + DOCK_W_M / 2 - 1.5, south - 0.2, 3.0, 0.2),
                                   external=True, monitored=False))
-            # One opening per room: on its south wall where the room meets the
-            # corridor, else on its west wall as an external door. Drawing only,
-            # unless the BMS watches that room's door.
+            # The level's rooms as plan rectangles, and the floor between them.
+            # Whatever the rooms' zone holds that no room does is a passage -
+            # the strip south of a hall that stops short of the corridor, the
+            # gap between the plant and the rooms beside it - drawn like the
+            # corridor, and it is what a room's door opens onto.
+            boxes = {}
             for k in keys:
                 r = rooms[k]
                 if r["level"] != lv or not isinstance(r.get("origin"), dict):
                     continue
                 w, d = _plan_extent(r)
                 ox, oy = float(r["origin"]["x"]), float(r["origin"]["y"])
-                name = r.get("room") or k.split("/", 1)[1]
+                boxes[k] = (ox, oy, ox + w, oy + d)
+            for i, (px0, py0, px1, py1) in enumerate(_free_cells(list(boxes.values()), x0, y0, x1, y1)):
+                fab.append(_space(f"{dc}/{lv}/passage-{i + 1}", lv, "corridor", "Passage",
+                                  _rect(px0, py0, px1 - px0, py1 - py0)))
+            # One opening per room, on a wall with floor outside it. Drawing
+            # only, unless the BMS watches that room's door.
+            for k, box in boxes.items():
+                name = rooms[k].get("room") or k.split("/", 1)[1]
                 monitored = any(name.startswith(m) for m in MONITORED_DOOR_ROOMS)
-                if abs((oy + d) - y1) < 1e-6:
-                    poly = _rect(ox + w / 2 - DOOR_W_M / 2, oy + d - 0.1, DOOR_W_M, 0.2)
-                    external = False
-                elif abs(ox - x0) < 1e-6:
-                    poly = _rect(ox - 0.1, oy + d / 2 - DOOR_W_M / 2, 0.2, DOOR_W_M)
-                    external = True
-                else:
-                    poly = _rect(ox + w - 0.1, oy + d / 2 - DOOR_W_M / 2, 0.2, DOOR_W_M)
-                    external = False
+                poly, external = _door_opening(k, boxes, x0, y0, x1, y1)
                 fab.append(_space(f"{k}/door", lv, "door", f"{name} door", poly,
                                   room=k, monitored=monitored, external=external))
         fabric[dc] = fab

@@ -250,3 +250,27 @@ def test_the_export_carries_fabric_and_compound(topo):
     doc = build_floorplan(topo)
     assert set(doc["floorplan"]["fabric"]) == {"DC1", "DC2"} == set(doc["floorplan"]["compound"])
     assert doc["floorplan"]["rooms"]["DC1/Generator Yard"]["class"] == "outdoor"
+
+
+def test_every_room_door_opens_onto_floor_inside_the_building(topo):
+    """A door goes on a wall with floor outside it - the corridor, or the
+    passages the free floor between rooms makes - never in the building's
+    face just because the room does not reach the corridor. A room boxed in
+    on every side opens into the hall beside it."""
+    fab = complete_site(topo["floorplan"], (n["device"] for n in topo["nodes"]))["fabric"]["DC1"]
+    door = {f["attrs"]["room"]: f["polygon_m"] for f in fab if f["kind"] == "door" and "room" in f.get("attrs", {})}
+    mid = lambda poly: ((poly[0][0] + poly[2][0]) / 2, (poly[0][1] + poly[2][1]) / 2)  # noqa: E731
+    # the halls stop 2.7 m short of the corridor: the door is in the south wall, onto that strip
+    assert mid(door["DC1/Server Hall A"])[1] == 12.3 and mid(door["DC1/Server Hall B"])[1] == 12.3
+    # the UPS room's only free wall is the metre beside the plant: a single leaf there
+    x, y = mid(door["DC1/UPS Room"])
+    assert y == 6.0 and 8.0 < x < 9.0 and abs(door["DC1/UPS Room"][2][0] - door["DC1/UPS Room"][0][0] - 0.9) < 1e-6
+    # the mechanical room opens east onto the same gap
+    assert mid(door["DC1/Mechanical Room"])[0] == 8.0
+    # the network room is boxed in: it opens west, into the hall it serves
+    assert mid(door["DC1/Network Room"])[0] == 12.2
+    # no room's door is in the building's outer face
+    assert not any(f["attrs"].get("external") for f in fab if f["kind"] == "door" and "room" in f.get("attrs", {}))
+    # the free floor between rooms is drawn as passages, the gap beside the plant among them
+    passages = [f["polygon_m"] for f in fab if f["kind"] == "corridor" and f["name"] == "Passage"]
+    assert [p[0], p[2]] == [[8.0, 6.0], [9.0, 15.0]] if (p := next(q for q in passages if q[0] == [8.0, 6.0])) else False
