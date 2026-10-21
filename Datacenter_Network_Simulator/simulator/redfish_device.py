@@ -320,7 +320,10 @@ class RedfishDevice:
         # Powered-off chassis has no live sensors to alarm on; just clear.
         current: dict[str, tuple[str, str]] = {}
         if getattr(self.device, "power_state", "On") != "Off":
-            for severity, message in rf._alarms(self.device):
+            # The BMC's own Health and SEL react to what its sensor READS (doc 32
+            # §4.3), which is correct: a BMC only knows its sensor.
+            from core.device_state_store import _fault_view
+            for severity, message in rf._alarms(_fault_view(self.device)):
                 label = message.split(":", 1)[0].strip()
                 current[label] = (severity, message)
         # Newly asserted conditions.
@@ -443,22 +446,26 @@ class RedfishDevice:
         sid = self.member_id
 
         if method == "GET":
+            # Sensor faults (doc 32 §4.3): every document renders the WIRE view;
+            # the BMC only knows what its sensor reads.
+            from core.device_state_store import _fault_view
+            _dv = _fault_view(self.device)
             routes = {
-                "/redfish/v1/Systems":                          lambda: rf.systems_collection(self.device),
+                "/redfish/v1/Systems":                          lambda: rf.systems_collection(_dv),
                 f"/redfish/v1/Systems/{sid}":                   lambda: rf.computer_system(
-                    self.device, self.power_state, self.indicator_led),
-                "/redfish/v1/Chassis":                          lambda: rf.chassis_collection(self.device),
-                f"/redfish/v1/Chassis/{sid}":                   lambda: rf.chassis(self.device),
-                f"/redfish/v1/Chassis/{sid}/Thermal":           lambda: rf.thermal(self.device),
-                f"/redfish/v1/Chassis/{sid}/Power":             lambda: rf.power(self.device, self._topology),
-                f"/redfish/v1/Systems/{sid}/EthernetInterfaces": lambda: rf.ethernet_collection(self.device),
-                f"/redfish/v1/Systems/{sid}/Storage":           lambda: rf.storage_collection(self.device),
-                f"/redfish/v1/Systems/{sid}/Storage/{rf.STORAGE_ID}": lambda: rf.storage(self.device),
-                f"/redfish/v1/Systems/{sid}/LogServices":       lambda: rf.logservices_collection(self.device),
-                f"/redfish/v1/Systems/{sid}/LogServices/SEL":   lambda: rf.logservice_sel(self.device, self.sel),
-                f"/redfish/v1/Systems/{sid}/LogServices/SEL/Entries": lambda: rf.logservice_entries(self.device, self.sel),
+                    _dv, self.power_state, self.indicator_led),
+                "/redfish/v1/Chassis":                          lambda: rf.chassis_collection(_dv),
+                f"/redfish/v1/Chassis/{sid}":                   lambda: rf.chassis(_dv),
+                f"/redfish/v1/Chassis/{sid}/Thermal":           lambda: rf.thermal(_dv),
+                f"/redfish/v1/Chassis/{sid}/Power":             lambda: rf.power(_dv, self._topology),
+                f"/redfish/v1/Systems/{sid}/EthernetInterfaces": lambda: rf.ethernet_collection(_dv),
+                f"/redfish/v1/Systems/{sid}/Storage":           lambda: rf.storage_collection(_dv),
+                f"/redfish/v1/Systems/{sid}/Storage/{rf.STORAGE_ID}": lambda: rf.storage(_dv),
+                f"/redfish/v1/Systems/{sid}/LogServices":       lambda: rf.logservices_collection(_dv),
+                f"/redfish/v1/Systems/{sid}/LogServices/SEL":   lambda: rf.logservice_sel(_dv, self.sel),
+                f"/redfish/v1/Systems/{sid}/LogServices/SEL/Entries": lambda: rf.logservice_entries(_dv, self.sel),
                 "/redfish/v1/Managers":                         lambda: rf.managers_collection(),
-                f"/redfish/v1/Managers/{rf.MANAGER_ID}":        lambda: rf.manager(self.device),
+                f"/redfish/v1/Managers/{rf.MANAGER_ID}":        lambda: rf.manager(_dv),
                 "/redfish/v1/SessionService":                   lambda: rf.session_service(),
                 sessions_url:                                   lambda: rf.sessions_collection(
                     [s["id"] for s in self._sessions.values()]),

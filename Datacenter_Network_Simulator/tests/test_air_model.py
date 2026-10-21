@@ -195,3 +195,53 @@ def test_a_server_hall_keeps_thirteen_racks_and_the_network_room_its_four():
     assert geo.rack_x(1, geo.HALL_X0) - geo.RACK_W / 2 >= geo.CRAH_DEPTH_M + 0.9
     assert geo.racks_for_width(3.0) == 4
     assert geo.room_x0({}) == 0.3 and geo.room_x0({"grid_x0_m": 2.2}) == 2.2
+
+
+# ── influence export (doc 32 §10, S0-10) ─────────────────────────────────────
+
+def test_influence_matrix_normalises_per_rack_and_matches_influence():
+    racks, units = hall_racks(), hall_units()
+    mat = am.influence_matrix(racks, units)
+    assert set(mat) == {r.id for r in racks}
+    for r in racks:
+        live = [mat[r.id][u.id][0] for u in units]
+        geo_w = [mat[r.id][u.id][1] for u in units]
+        assert sum(live) == pytest.approx(1.0, abs=1e-6)
+        assert sum(geo_w) == pytest.approx(1.0, abs=1e-6)
+        raw = [am.influence(r, u) for u in units]
+        for u, w in zip(units, raw):
+            assert mat[r.id][u.id][0] == pytest.approx(w / sum(raw), abs=1e-12)
+
+
+def test_influence_matrix_live_drops_a_stopped_unit_geometric_keeps_it():
+    racks, units = hall_racks(), hall_units(stopped=("C1",))
+    mat = am.influence_matrix(racks, units)
+    for r in racks:
+        assert mat[r.id]["C1"][0] == 0.0
+        assert mat[r.id]["C1"][1] > 0.0
+        assert sum(v[0] for v in mat[r.id].values()) == pytest.approx(1.0, abs=1e-6)
+
+
+def test_influence_matrix_live_is_the_tile_mix_weight():
+    """live is the share solve_room mixes the tile from: with distinct unit
+    supplies, the tile equals the live-weighted mean of what arrives."""
+    import math
+    racks = hall_racks()
+    units = [am.Unit(id=u.id, x=u.x, y=u.y, delivered=u.delivered, supply_c=15.0 + i,
+                     capacity_w=u.capacity_w, fan_frac=u.fan_frac)
+             for i, u in enumerate(hall_units())]
+    room = am.solve_room(racks, units, "cold_aisle")
+    mat = am.influence_matrix(racks, units)
+    for r in racks[:5]:
+        want = sum(mat[r.id][u.id][0] * (u.supply_c + am.PLENUM_GAIN_K_PER_M
+                                         * math.hypot(r.cold_x - u.x, r.cold_y - u.y))
+                   for u in units)
+        assert room.racks[r.id].tile_c == pytest.approx(want, abs=1e-9)
+
+
+def test_a_rack_no_unit_reaches_has_zero_live_weights():
+    racks, units = hall_racks(), hall_units(stopped=tuple(f"C{i}" for i in range(1, 8)))
+    mat = am.influence_matrix(racks, units)
+    r = racks[0]
+    assert all(v[0] == 0.0 for v in mat[r.id].values())
+    assert sum(v[1] for v in mat[r.id].values()) == pytest.approx(1.0, abs=1e-6)

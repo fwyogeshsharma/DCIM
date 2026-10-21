@@ -134,6 +134,23 @@ def influence(rack: Rack, unit: Unit, length_m: float = INFLUENCE_LENGTH_M,
     return f * math.exp(-d / length_m)
 
 
+def influence_matrix(racks: list[Rack], units: list[Unit],
+                     length_m: float = INFLUENCE_LENGTH_M) -> dict[str, dict[str, tuple[float, float]]]:
+    """{rack_id: {unit_id: (w_live_norm, w_geo_norm)}}, normalised PER RACK (doc
+    32 §10, C6). ``live`` is each unit's share of the rack's tile mix NOW (the
+    weights solve_room uses for the tile, which carry ``delivered``);
+    ``geometric`` is the share if every unit were delivering. A rack no running
+    unit reaches has all-zero live weights. Pure, like the rest of this module."""
+    out: dict[str, dict[str, tuple[float, float]]] = {}
+    for r in racks:
+        live = {u.id: influence(r, u, length_m) for u in units}
+        geo = {u.id: influence(r, u, length_m, ignore_state=True) for u in units}
+        ls, gs = sum(live.values()), sum(geo.values())
+        out[r.id] = {u.id: ((live[u.id] / ls) if ls > 1e-12 else 0.0,
+                            (geo[u.id] / gs) if gs > 1e-12 else 0.0) for u in units}
+    return out
+
+
 def _hot_air(rack: Rack, racks: list[Rack]) -> float:
     """Heat-weighted mean exhaust of the racks sharing *rack*'s hot aisle within
     HOT_AISLE_REACH positions; its own exhaust; else tile + default rise (the

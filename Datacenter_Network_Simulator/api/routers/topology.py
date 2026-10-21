@@ -7,6 +7,7 @@ import threading
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from api.state import AppState
+from api.routers import _ledger
 from core.topology_engine import TopologyEngine
 from api.models.schemas import (
     TopologyInfoResponse,
@@ -276,6 +277,15 @@ def clear_topology():
     return OkResponse(message="Topology cleared")
 
 
+def _link_names(s, req) -> dict:
+    dm = s.device_manager
+    out = {}
+    for i in (req.src_id, req.dst_id):
+        d = dm.get_device(i) if dm else None
+        out[i] = getattr(d, "name", None)
+    return out
+
+
 @router.post("/links/break", response_model=OkResponse)
 def break_link(req: LinkActionRequest):
     """Break a link between two devices — sets oper_status=2 on interfaces and sends LINK_DOWN traps."""
@@ -287,6 +297,7 @@ def break_link(req: LinkActionRequest):
                             detail="Only production links are breakable")
     try:
         s.topology.break_link(req.src_id, req.dst_id, req.layer)
+        _ledger.link(req.src_id, req.dst_id, req.layer, True, _link_names(s, req))
         s.notify_ui("link_changed", req.src_id, req.dst_id, True)
         _sync_iface_history(s, req.src_id, req.dst_id)
         _send_link_traps(s, req.src_id, req.dst_id, req.layer, is_down=True)
@@ -311,6 +322,7 @@ def restore_link(req: LinkActionRequest):
                             detail="Only production links are breakable")
     try:
         s.topology.restore_link(req.src_id, req.dst_id, req.layer)
+        _ledger.link(req.src_id, req.dst_id, req.layer, False)
         s.notify_ui("link_changed", req.src_id, req.dst_id, False)
         _sync_iface_history(s, req.src_id, req.dst_id)
         _send_link_traps(s, req.src_id, req.dst_id, req.layer, is_down=False)

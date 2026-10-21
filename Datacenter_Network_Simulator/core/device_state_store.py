@@ -34,6 +34,10 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
 from core.psychrometrics import dew_point_c
+# Per-instrument offsets are a property of the instrument's NAME (doc 32 §9.3):
+# builtin hash() is salted per process and stepped them on every restart.
+from core.sim_seed import stable_hash
+from core import fault_injection as _fault_injection
 from core import air_model as _air
 from core.device_manager import DeviceType, cooling_capacity_w, fan_rpm_range
 
@@ -444,6 +448,59 @@ _ELECTRICAL_ROOM_RH = 45.0
 _ROOM_AIR_WEATHER_K = {"UR": 0.10, "MR": 0.20, "GR": 0.30, "CP": 0.25, "OR": 0.05}
 
 
+_dc_city_dissent_seen: "tuple | None" = None
+
+
+def _dc_city_map(devices, blank_dc: "str | None" = None) -> Dict[str, "str | None"]:
+    """{datacenter: city} by MAJORITY VOTE over the devices of each DC (doc 32
+    §9.1, C2).
+
+    Both derivations used to take the FIRST device seen per DC. On the shipped
+    topology ten DC2 sensors carried "Chicago", so DC2 weather was New York only
+    because a New York router happened to come first in insertion order; a
+    topology re-save or a fleet operation that reordered nodes would have moved
+    a whole site to the wrong sky. One helper, used at both sites, so the two
+    copies cannot drift apart again.
+
+    Devices with no datacenter are skipped, or keyed under *blank_dc* when it is
+    given (the power-flow pass keys them as "?"). Ties go to the city seen first.
+    Dissenters are logged once per distinct set.
+    """
+    global _dc_city_dissent_seen
+    votes: Dict[str, Dict[str, int]] = {}
+    order: Dict[str, list] = {}
+    members: Dict[str, list] = {}
+    for d in devices:
+        dc = getattr(d, "datacenter", None) or blank_dc
+        if not dc:
+            continue
+        city = getattr(d, "datacenter_city", None)
+        votes.setdefault(dc, {})
+        order.setdefault(dc, [])
+        members.setdefault(dc, []).append((getattr(d, "name", "?"), city))
+        if not city:
+            continue
+        if city not in votes[dc]:
+            order[dc].append(city)
+        votes[dc][city] = votes[dc].get(city, 0) + 1
+    out: Dict[str, "str | None"] = {}
+    dissent = []
+    for dc, v in votes.items():
+        if not v:
+            out[dc] = None
+            continue
+        best = max(order[dc], key=lambda c: (v[c], -order[dc].index(c)))
+        out[dc] = best
+        dissent.extend((dc, n, c) for n, c in members[dc] if c and c != best)
+    key = tuple(sorted(dissent))
+    if dissent and key != _dc_city_dissent_seen:
+        log.warning("datacenter_city disagrees with the DC majority for %d device(s): %s",
+                    len(dissent), ", ".join(f"{n} ({c}, {dc} is {out[dc]})"
+                                            for dc, n, c in key))
+    _dc_city_dissent_seen = key if dissent else None
+    return out
+
+
 def _probe_role(device) -> "str | None":
     """The plant-header point a SENSOR device represents, or None if it is an
     ordinary rack environmental probe."""
@@ -530,6 +587,38 @@ def _is_off_wire(device_name: str) -> bool:
 
 def _get_plant_state(device_name: str) -> dict:
     return _plant_state_cache.get(device_name, {})
+
+
+# ── Truth / wire split (doc 32 §4.3) ─────────────────────────────────────────
+# _plant_state_cache, _ext_state_cache and the Device attributes are TRUTH: every
+# physics reader takes its inputs from them. The renderers (SNMP, Modbus, Redfish)
+# read the WIRE through the three accessors below, which apply any active sensor
+# fault to a COPY. With no fault active each returns the truth object itself.
+_plant_wire_cache: Dict[str, dict] = {}
+
+
+def _get_plant_wire_state(device_name: str) -> dict:
+    """What BACnet published for a plant device (wire). Falls back to truth for
+    a device the controller has not published a wire copy for."""
+    v = _plant_wire_cache.get(device_name)
+    return v if v is not None else _plant_state_cache.get(device_name, {})
+
+
+def _get_ext_wire(device_name: str) -> dict:
+    """The ext state a renderer serves: truth through the active FaultBook."""
+    ext = _ext_state_cache.get(device_name, {})
+    fb = _fault_injection.get_active()
+    if fb is None or not fb.has(device_name):
+        return ext
+    return fb.apply_ext(device_name, ext)
+
+
+def _fault_view(device):
+    """A Device as its renderers should see it (a DeviceView when faulted)."""
+    fb = _fault_injection.get_active()
+    if fb is None:
+        return device
+    return fb.view(device)
 
 
 class DeviceStateStore:
@@ -715,6 +804,18 @@ class DeviceStateStore:
         # trips just that one unit, independent of the type-wide Limits-tab lock.
         # Applied by the BACnet controller (matched on device_ip) atop the locks.
         self.plant_alarm_overrides: Dict[str, Dict[str, float]] = {}   # device NAME -> {point: value}
+        # Publish-layer sensor faults (doc 32 §4). One book per store; it is also
+        # the process's ACTIVE book, because the renderers (snmprec generator,
+        # Modbus, Redfish) hold no store reference and read the wire through it.
+        self.faults = _fault_injection.FaultBook()
+        _fault_injection.set_active(self.faults)
+        self._faults_booted = False
+        # CRAH Alarm_HighTemp store-side coupling (doc 32 §9.2): seconds forced,
+        # per unit, driving the same 0.25 -> 1.0 severity ramp the engine uses.
+        self._crah_hightemp_t: Dict[str, float] = {}
+        # Forced-alarm couplings whose target points the store overwrites: logged
+        # once per (device, alarm) so the lost coupling is visible, not silent.
+        self._forced_coupling_logged: set = set()
 
         # Per-DEVICE live-metric overrides for servers / network gear, set from a
         # node's Metric Tick window. {device_id: {metric: value}} — forces a metric
@@ -879,6 +980,9 @@ class DeviceStateStore:
         self._air_mode = _mode if _mode in ("uniform", "spatial", "shadow") else "uniform"
         self._rack_air_in: Dict[tuple, dict] = {}     # (dc, room) -> {rack key: inputs}
         self._air_rooms: Dict[tuple, Any] = {}        # (dc, room) -> RoomAir, this tick
+        # (dc, room) -> (racks, units, containment) the spatial solve used this tick,
+        # held BY REFERENCE for the influence export (doc 32 §10). Replaced each tick.
+        self._air_inputs: Dict[tuple, tuple] = {}
         self._air_tick = -1
         self._room_w_g_kg: Dict[tuple, float] = {}    # (dc, room) -> humidity ratio
         self._room_w_tick: Dict[tuple, int] = {}       # (dc, room) -> tick it was walked
@@ -1125,6 +1229,7 @@ class DeviceStateStore:
         """Deregister BACnet controller."""
         self._bacnet_ctrl = None
         _plant_state_cache.clear()
+        _plant_wire_cache.clear()
         self._log("[StateStore] BACnet telemetry sync disabled.", "info")
 
     def enable_modbus(self, ctrl):
@@ -1150,9 +1255,21 @@ class DeviceStateStore:
         ctrl = self._bacnet_ctrl
         if ctrl is None:
             return
+        _truth_of = getattr(ctrl, "truth_overlay", None)
         for snap in ctrl.get_telemetry_snapshot():
             if str(snap.get("kind", "")).startswith("plant:"):
-                _plant_state_cache[snap["name"]] = snap["values"]
+                wire = snap["values"]
+                # TRUTH for physics (every reader in doc 32 §2.1 is unchanged):
+                # the wire snapshot with each faulted point's pre-fault value laid
+                # back over it. WIRE beside it for the SNMP plant OIDs.
+                over = _truth_of(snap["name"]) if _truth_of else None
+                if over:
+                    truth = dict(wire)
+                    truth.update(over)
+                else:
+                    truth = wire
+                _plant_state_cache[snap["name"]] = truth
+                _plant_wire_cache[snap["name"]] = wire
 
     # ------------------------------------------------------------------ #
     #  Lifecycle                                                           #
@@ -1175,6 +1292,7 @@ class DeviceStateStore:
         )
         self._thread.start()
         self._recovery_thread.start()
+        self._boot_faults()
         self._log(
             f"[StateStore] Started — tick every {self._tick_interval}s, "
             f"SNMP sync every {self._snmp_sync_every} tick(s).",
@@ -1193,6 +1311,7 @@ class DeviceStateStore:
         with self._recovery_lock:
             self._pending_recovery.clear()
         self._boot_times.clear()
+        self._save_faults()
         self._snmp_enabled = False
         self._tick_count   = 0
         # A stopped simulator leaves no device dropped.
@@ -1202,6 +1321,142 @@ class DeviceStateStore:
 
     def is_running(self) -> bool:
         return bool(self._thread and self._thread.is_alive())
+
+    # ------------------------------------------------------------------ #
+    #  Forced-alarm couplings (doc 32 §9.2)                                #
+    # ------------------------------------------------------------------ #
+
+    #: What the plant engine moves when an alarm is forced (BPG
+    #: _apply_alarm_couplings), restricted to the points the STORE publishes
+    #: every tick — on those the engine's shift is overwritten and never reaches
+    #: the wire. Some are represented in physics anyway (AirflowLoss sets
+    #: delivered to 0, so the room warms through that path); the log line makes
+    #: the rest visible instead of silent.
+    _FORCED_COUPLINGS = {
+        "crah": {"Alarm_HighTemp": ("Supply_Air_Temp", "Return_Air_Temp", "CHW_Valve"),
+                 "Alarm_AirflowLoss": ("Supply_Air_Temp", "Return_Air_Temp"),
+                 "Alarm_HighReturnAir": ("Return_Air_Temp", "CHW_Valve"),
+                 "Filter_Dirty": ("Return_Air_Temp", "CHW_Valve")},
+        "cdu": {"Alarm_HighSupplyTemp": ("TCS_Supply_Temp", "Facility_CHW_Valve"),
+                "Alarm_PumpFault": ("TCS_Flow", "TCS_Supply_Temp"),
+                "Alarm_LowFlow": ("TCS_Flow", "TCS_Supply_Temp")},
+        "chiller": {"Alarm_HighCHWSupply": ("CHW_Supply_Temp", "CHW_Return_Temp")},
+    }
+    #: Couplings the store now applies itself (so they are not "lost").
+    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp")}
+
+    def _alarm_forced(self, dtype: str, name: str, alarm: str) -> bool:
+        if float((self.plant_alarm_overrides.get(name) or {}).get(alarm, 0.0) or 0.0) >= 0.5:
+            return True
+        lim = (self.metric_limits or {}).get(f"{dtype}:{alarm}") or {}
+        return bool(lim.get("enabled")) and str(lim.get("lock")) == "on"
+
+    def _crah_hightemp_sev(self, name: str) -> float:
+        """Severity of a forced CRAH Alarm_HighTemp: the engine's ramp,
+        0.25 -> 1.0 over about 45 s, reset when the force is released."""
+        if not self._alarm_forced("crah", name, "Alarm_HighTemp"):
+            self._crah_hightemp_t.pop(name, None)
+            return 0.0
+        t = self._crah_hightemp_t.get(name, 0.0) + float(self._dt or 0.0)
+        self._crah_hightemp_t[name] = t
+        return min(1.0, 0.25 + t / 60.0)
+
+    def _log_lost_couplings(self, operator_map: dict) -> None:
+        """Log, on the first tick it happens, every forced alarm whose engine
+        coupling targets a store-published point and is not applied store-side."""
+        if not operator_map and not self._forced_coupling_logged:
+            return
+        ctx = self._cooling_context()
+        types: Dict[str, str] = {}
+        for names in ctx.get("crah_by_room", {}).values():
+            types.update({n: "crah" for n in names})
+        for names in ctx.get("cdu_by_dc", {}).values():
+            types.update({n: "cdu" for n in names})
+        for kinds in ctx.get("plant_by_dc", {}).values():
+            types.update({n: "chiller" for n in (kinds.get("chiller") or [])})
+        now_forced = set()
+        for name, pts in (operator_map or {}).items():
+            dtype = types.get(name)
+            if dtype is None:
+                continue
+            for alarm, targets in self._FORCED_COUPLINGS.get(dtype, {}).items():
+                if float((pts or {}).get(alarm, 0.0) or 0.0) < 0.5:
+                    continue
+                if (dtype, alarm) in self._STORE_SIDE_COUPLINGS:
+                    continue
+                pub = self._plant_auto_points.get(name, {})
+                lost = [t for t in targets if t in pub]
+                if not lost:
+                    continue
+                now_forced.add((name, alarm))
+                if (name, alarm) not in self._forced_coupling_logged:
+                    log.warning("[StateStore] forced %s on %s: its coupling to %s is "
+                                "overwritten by store-published points and does not "
+                                "reach the wire (doc 32 §9.2)", alarm, name, lost)
+        self._forced_coupling_logged = now_forced
+
+    # ------------------------------------------------------------------ #
+    #  Sensor faults: persistence + ledger at start/stop (doc 32 §7.3)     #
+    # ------------------------------------------------------------------ #
+
+    def _faults_state_path(self) -> Path:
+        return Path(self.faults.ledger.path).parent / "active.json"
+
+    def _boot_faults(self) -> None:
+        """Once per process, on the first start: resume persisted sensor faults,
+        close every other ledger entry still open on disk (overrides, pins,
+        ramps … are in-memory and died with the last process) at the last save
+        time, and ledger the start itself as context."""
+        if self._faults_booted:
+            return
+        self._faults_booted = True
+        try:
+            led = self.faults.ledger
+            saved_at, recs = None, []
+            path = self._faults_state_path()
+            if path.exists():
+                try:
+                    data = json.loads(path.read_text(encoding="utf-8"))
+                    saved_at = data.get("saved_at")
+                    recs = data.get("sensor_faults") or []
+                except (OSError, ValueError) as exc:
+                    log.warning("[StateStore] %s unreadable (%s); no faults resumed", path, exc)
+            got = self.faults.resume(recs, saved_at)
+            led.close_stale(at=saved_at, keep=got["resumed"])
+            # C1 (doc 32 §8): stable hashing stepped every per-instrument offset
+            # ONCE, on the first start of this code. Ledgered as a sim_change so
+            # the platform excludes the window from baselines. Written once.
+            if not any((e.get("params") or {}).get("change") == "c1_stable_hash"
+                       for e in led.query(kind="context", limit=5000)["entries"]):
+                led.instant("context", params={
+                    "context": "sim_change", "change": "c1_stable_hash",
+                    "detail": "per-instrument offsets and plant walk seeds moved to "
+                              "stable hashing (DCIM_SIM_SEED); one-time step"},
+                    expected_kind="none", source="sim_start")
+            led.instant("context", params={"context": "sim_start",
+                                           "air_mode": self._air_mode,
+                                           "resumed": got["resumed"],
+                                           "expired": got["expired"]},
+                        expected_kind="none", source="sim_start")
+        except Exception:
+            log.exception("[StateStore] fault ledger boot failed")
+
+    def _save_faults(self) -> None:
+        """active.json: active sensor faults with their state, tmp + replace
+        (the ev2_energy.json pattern). Only once the ledger has booted, so a
+        store that never started writes nothing."""
+        if not self._faults_booted:
+            return
+        try:
+            path = self._faults_state_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps({"v": 1, "saved_at": time.time(),
+                                       "sensor_faults": self.faults.to_json()}),
+                           encoding="utf-8")
+            os.replace(tmp, path)
+        except Exception as exc:
+            log.warning("[StateStore] could not save active faults: %s", exc)
 
     # ------------------------------------------------------------------ #
     #  Metrics access (called by GNMIServicer per response)               #
@@ -1565,10 +1820,9 @@ class DeviceStateStore:
         np_kw_by_name: Dict[str, float] = {}
         probes_by_dc: Dict[str, list] = {}
         try:
+            city_by_dc.update(_dc_city_map(self._dm.get_all_devices()))
             for d in self._dm.get_all_devices():
                 dt = d.device_type
-                if d.datacenter and d.datacenter not in city_by_dc:
-                    city_by_dc[d.datacenter] = getattr(d, "datacenter_city", None)
                 if dt == DeviceType.SENSOR:
                     _role = _probe_role(d)
                     if _role:
@@ -3667,11 +3921,10 @@ class DeviceStateStore:
             it_nom_by_name: Dict[str, float] = {}
             cdu_loops = self._cdu_loop_servers()        # {cdu name: {server names}}
             _liquid_names = self._liquid_cooled_servers()
+            dc_city.update(_dc_city_map(devices, blank_dc="?"))
             for d in devices:
                 dtv = d.device_type.value
                 _dc = getattr(d, "datacenter", None) or "?"
-                if _dc not in dc_city:
-                    dc_city[_dc] = getattr(d, "datacenter_city", None)
                 if dtv in self._IT_LEAF_TYPES:
                     # An outlet switched off kills its load exactly as a Redfish
                     # power-off does; both end at 0 W through the cord.
@@ -5765,6 +6018,17 @@ class DeviceStateStore:
             # telling one story instead of two.
             pen = self._chw_pen.get(dc, 0.0)
             supply = chw_supply_c(pen, CHW_SETPOINT_C)
+            # affects_control (doc 32 §4.4): a chiller whose leaving-water sensor
+            # reads b high makes its own water b colder. The chillers share one
+            # header, so the header is the mean over the running units; each
+            # unit's own leaving temperature carries its own bias below.
+            _cb_by = {c: self.faults.control_bias(c, "CHW_Supply_Temp")
+                      for c in (kinds.get("chiller") or [])
+                      if c not in self._plant_standby_names
+                      and c not in self._chiller_hp_lockout
+                      and c not in self._plant_unpowered_names}
+            _cb_mean = (sum(_cb_by.values()) / len(_cb_by)) if _cb_by else 0.0
+            supply -= _cb_mean
             # ── PUMPS SET FLOW; LOAD SETS ΔT ─────────────────────────────────
             # The causal order, and it was backwards. Flow used to be the DEMAND
             # figure Q/(cp·ΔT) with ΔT read off a curve, then capped by surviving
@@ -5899,7 +6163,8 @@ class DeviceStateStore:
                     if not ip:
                         continue
                     pts = auto.setdefault(ip, {})
-                    pts.update({"CHW_Supply_Temp": round(supply, 1),
+                    pts.update({"CHW_Supply_Temp": round(
+                                    supply + _cb_mean - _cb_by.get(name, 0.0), 1),
                                 "CHW_Return_Temp": round(ret, 1),
                                 "CHW_Setpoint": round(CHW_SETPOINT_C, 1),
                                 "CHW_Flow": round(per_ch, 1)})
@@ -6129,8 +6394,20 @@ class DeviceStateStore:
                 # on a unit that is off: a stopped machine annunciates STOPPED, and
                 # a high-return alarm underneath that is noise on top of the finding.
                 if self._unit_stopped(name):
+                    self._crah_hightemp_t.pop(name, None)
                     continue
-                pts["Supply_Air_Temp"] = round(_sa, 1)
+                # affects_control (doc 32 §4.4): the unit holds discharge setpoint
+                # on its OWN sensor, so a sensor reading high by b drives the real
+                # discharge b colder. Truth moves by -b; the wire (truth + b) sits on
+                # setpoint, and the extra coil duty shows on the valve.
+                _cb = self.faults.control_bias(name, "Supply_Air_Temp")
+                # Forced Alarm_HighTemp (doc 32 §9.2, C5): "the coil is starving".
+                # The engine's +6 K lands on a point this block overwrites every
+                # tick, so it never reached the wire or the room. Applied here,
+                # store-side, on the engine's own severity ramp (0.25 -> 1.0).
+                _ht = self._crah_hightemp_sev(name)
+                _sa_u = _sa - _cb + 6.0 * _ht
+                pts["Supply_Air_Temp"] = round(_sa_u, 1)
                 # CHILLED-WATER VALVE. A CRAH holds discharge setpoint by modulating
                 # this valve, so its position is the output of a temperature control
                 # loop — not, as it used to be, a restatement of the plant's demand
@@ -6143,8 +6420,9 @@ class DeviceStateStore:
                 # trims for load, and it saturates once the water is a couple of
                 # degrees off. _chw_pen IS that shortfall, already integrated.
                 _load_pos = 30.0 + 50.0 * max(0.0, min(1.0, self._plant_duty.get(dc, 0.0)))
-                _starve = self._chw_pen.get(dc, 0.0) * self._CRAH_VALVE_GAIN
-                pts["CHW_Valve"] = round(min(100.0, _load_pos + _starve), 1)
+                _starve = (self._chw_pen.get(dc, 0.0) + max(0.0, _cb)) * self._CRAH_VALVE_GAIN
+                pts["CHW_Valve"] = (100.0 if _ht > 0.0
+                                    else round(min(100.0, _load_pos + _starve), 1))
                 # Return-air high, NOT discharge high: the unit is holding its
                 # setpoint on the CHW valve, the hot aisle feeding it is too hot.
                 # Raised only (never zeroed) so an operator-forced alarm survives.
@@ -6205,7 +6483,11 @@ class DeviceStateStore:
                 # It takes proportionally more open valve to move the same heat
                 # as the facility water warms toward the coolant setpoint, and
                 # the valve runs out of travel when it closes far enough.
-                _avail = max(1.0, self._CDU_TCS_SETPOINT_C
+                # affects_control (doc 32 §4.4): the facility valve holds the TCS
+                # setpoint on the CDU's own supply sensor, so a sensor b high
+                # drives the coolant b colder — less driving difference, more valve.
+                _cb = self.faults.control_bias(name, "TCS_Supply_Temp")
+                _avail = max(1.0, self._CDU_TCS_SETPOINT_C - _cb
                              - self._chw_supply_c.get(dc, CHW_SETPOINT_C))
                 _avail_design = max(1.0, self._CDU_TCS_SETPOINT_C - CHW_SETPOINT_C)
                 _demand = (self._CDU_VALVE_MIN_PCT
@@ -6213,7 +6495,7 @@ class DeviceStateStore:
                            * (_avail_design / _avail))
                 _unmet = max(0.0, _demand - 100.0) / 100.0
                 _lost = min(_range, _unmet * self._CDU_LOST_AUTHORITY_K)
-                _tcs = (self._CDU_TCS_SETPOINT_C
+                _tcs = (self._CDU_TCS_SETPOINT_C - _cb
                         + _drift * self._CDU_FOLLOW_FRAC
                         + _lost
                         + random.uniform(-self._CDU_TCS_BAND_K, self._CDU_TCS_BAND_K))
@@ -6313,7 +6595,7 @@ class DeviceStateStore:
                 if role != "smoke_aspirating":
                     continue
                 _sfx = str(name).split("-")[-1].upper()
-                _bg = _ASD_BACKGROUND + (hash(name) % 5) / 1000.0
+                _bg = _ASD_BACKGROUND + (stable_hash(name) % 5) / 1000.0
                 _o = asd_step(self._asd_obsc.get(name, _bg),
                               _bg + float(self._smoke_room.get((dc, _sfx), 0.0)), _dt_s)
                 self._asd_obsc[name] = _o
@@ -6695,7 +6977,73 @@ class DeviceStateStore:
                             "room-wide air", rk, nogeo)
         if not racks:
             return None
-        return _air.solve_room(racks, units, self._room_containment(rk))
+        _cont = self._room_containment(rk)
+        # Held by reference for the influence export (doc 32 §10); replaced every
+        # solve, so a reader always gets one tick's consistent triple.
+        self._air_inputs[rk] = (racks, units, _cont)
+        return _air.solve_room(racks, units, _cont)
+
+    def get_air_influence(self, datacenter: Optional[str] = None,
+                          room: Optional[str] = None) -> Optional[dict]:
+        """The rack <-> CRAH influence weights the spatial model actually used
+        (doc 32 §10, C6), for scoring the platform's fitted matrix against truth.
+        None in uniform mode: there is no influence structure to export.
+
+        Read-only from an API thread: it reads the per-room inputs the ticker
+        stashed by reference and never solves a room itself."""
+        if self._air_mode == "uniform":
+            return None
+        from datetime import datetime, timezone
+        devs = self._dm.get_all_devices() if self._dm else []
+        in_rack: Dict[tuple, list] = {}
+        for d in devs:
+            if getattr(d, "rack_row", None) is None or getattr(d, "rack_num", None) is None:
+                continue
+            key = (getattr(d, "datacenter", None), getattr(d, "room", "") or "",
+                   f"{d.rack_row}/{d.rack_num}")
+            in_rack.setdefault(key, []).append(d.name)
+
+        def _match(want, have) -> bool:
+            if not want:
+                return True
+            return str(want).strip().lower() == str(have or "").strip().lower()
+
+        rooms_out = []
+        for rk, triple in sorted(self._air_inputs.items(), key=lambda kv: (str(kv[0][0]), str(kv[0][1]))):
+            if not _match(datacenter, rk[0]) or not _match(room, rk[1]):
+                continue
+            racks, units, cont = triple
+            solved = self._air_rooms.get(rk)
+            mat = _air.influence_matrix(racks, units)
+            r_out = []
+            for r in racks:
+                ra = solved.racks.get(r.id) if solved else None
+                rmid = float(ra.recirc[1]) if ra else 0.0
+                weights = {}
+                for u in units:
+                    lv, gv = mat[r.id][u.id]
+                    weights[u.id] = {"live": round(lv, 6), "geometric": round(gv, 6),
+                                     "d_inlet_d_supply": round((1.0 - rmid) * lv, 6)}
+                r_out.append({"rack": r.id, "x": round(r.cold_x, 2), "y": round(r.cold_y, 2),
+                              "devices": sorted(in_rack.get((rk[0], rk[1], r.id), [])),
+                              "recirc_mid": round(rmid, 6),
+                              "starve": round(float(ra.starve), 6) if ra else 0.0,
+                              "weights": weights})
+            rooms_out.append({
+                "datacenter": rk[0], "room": rk[1], "containment": cont,
+                "units": [{"name": u.id, "x": round(u.x, 2), "y": round(u.y, 2),
+                           "delivered": round(u.delivered, 4), "fan_frac": round(u.fan_frac, 4),
+                           "supply_c": round(u.supply_c, 2)} for u in units],
+                "racks": r_out})
+        out = {"mode": self._air_mode, "tick": self._tick_count,
+               "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "length_m": _air.INFLUENCE_LENGTH_M,
+               "plenum_gain_k_per_m": _air.PLENUM_GAIN_K_PER_M,
+               "rooms": rooms_out}
+        if self._air_mode == "shadow":
+            # The computed field is not what the inlets show in shadow mode.
+            out["published"] = False
+        return out
 
     def _air_inlet(self, device: "Device", z_m: float, uniform_c: float) -> float:
         """Inlet air for *device* at height *z_m*. Uniform mode never solves the
@@ -6813,6 +7161,16 @@ class DeviceStateStore:
 
         self._tick_count += 1
 
+        # Sensor faults, AFTER physics and BEFORE any renderer: expire, then put
+        # every attribute/ext fault on the wire once, so SNMP, Modbus and Redfish
+        # serving one instrument this tick agree (doc 32 §4.3).
+        try:
+            self.faults.step(devices, _ext_state_cache)
+            if self._tick_count % 300 == 0:
+                self._save_faults()
+        except Exception:
+            log.exception("[StateStore] fault step error")
+
         if self._snmp_enabled and (self._tick_count % self._snmp_sync_every == 0):
             self._sync_snmp(devices)
 
@@ -6843,6 +7201,7 @@ class DeviceStateStore:
                     self._ovr_seen_by_tick = _ovr_now
                     log.warning("[StateStore] ticker sees operator overrides: %s",
                                 _ovr_now or "{}")
+                self._log_lost_couplings(_plant_ovr)
                 if self._plant_auto_points:
                     _plant_ovr = {ip: dict(pts) for ip, pts in _plant_ovr.items()}
                     for _nm, _pts in self._plant_auto_points.items():
@@ -6859,7 +7218,8 @@ class DeviceStateStore:
                                        plant_heat_by_name=self._cdu_loop_heat_kw,
                                        plant_duty_by_name=self._plant_duty_by_name,
                                        plant_standby_names=self._plant_standby_names,
-                                       plant_unpowered_names=self._plant_unpowered_names)
+                                       plant_unpowered_names=self._plant_unpowered_names,
+                                       faults=self.faults)
                 self._publish_plant_state()
             except Exception:
                 log.exception("[StateStore] BACnet tick error")
@@ -7443,11 +7803,11 @@ class DeviceStateStore:
                 # small plant are close, not identical, and a pair of probes
                 # reading the same number to the decimal is a tell that neither
                 # is measuring anything.
-                _off = ((hash(device.name) % 13) - 6) / 10.0
+                _off = ((stable_hash(device.name) % 13) - 6) / 10.0
                 device.inlet_temp = round(_val + _off
                                           + random.uniform(-0.1, 0.1), 1)
                 device.humidity = round(
-                    _ELECTRICAL_ROOM_RH + ((hash(device.name) % 7) - 3)
+                    _ELECTRICAL_ROOM_RH + ((stable_hash(device.name) % 7) - 3)
                     + random.uniform(-0.3, 0.3), 1)
                 device.airflow = 0.0
             elif _role in _POINT_ROLES:
@@ -8534,7 +8894,7 @@ class DeviceStateStore:
             elif _role in ("fire_panel", "smoke_aspirating", "gas_release"):
                 st.update(self._fire_pub.get(name, {}))
             elif _role == "battery_temp":
-                st["battery_temp_c"] = round(float(_val) + ((hash(name) % 5) - 2) / 10.0, 1)
+                st["battery_temp_c"] = round(float(_val) + ((stable_hash(name) % 5) - 2) / 10.0, 1)
             elif _role in ("fuel_level", "water_level"):
                 _cap = _BULK_FUEL_L if _role == "fuel_level" else _MAKEUP_WATER_L
                 st["tank_level_pct"] = round(float(_val), 1)
@@ -8618,7 +8978,11 @@ class DeviceStateStore:
                 if (device.device_type in self._POWER_DEAD_TYPES
                         and not self._energized.get(device.id, True)):
                     continue
-                ext = self._ext_states.get(device.name, {})
+                # The device's own alarms see the READING (doc 32 §4.3): a real
+                # controller annunciates on what its sensor reads, so the rule
+                # engine gets the wire view. Physics keeps reading the Device.
+                device = self.faults.view(device)
+                ext = self.faults.apply_ext(device.name, self._ext_states.get(device.name, {}))
                 mem_pct = (device.memory_used / max(1, device.memory_total)) * 100.0
                 disk_pct = (device.disk_used / max(1, device.disk_total)) * 100.0
                 # Facility electrical gear reports its bus loading and health under a

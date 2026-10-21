@@ -285,6 +285,17 @@ def thermal(device: "Device") -> dict:
     if device.outlet_temp > 0:
         temps.append(_temperature(cid, 2, "Exhaust Temp", device.outlet_temp,
                                    "Exhaust", 60.0, warn=55.0))
+    # Sensor-fault dropout (doc 32 §4.5): a DMTF sensor that has lost its
+    # reading serves Reading null and State UnavailableOffline. A plain Device
+    # has no _dropped_attrs, so this is a no-op off the fault path.
+    _dropped = getattr(device, "_dropped_attrs", ()) or ()
+    if _dropped:
+        _idx = {"cpu_temp": 0, "inlet_temp": 1, "outlet_temp": 2}
+        for _attr in _dropped:
+            i = _idx.get(_attr)
+            if i is not None and i < len(temps):
+                temps[i]["ReadingCelsius"] = None
+                temps[i]["Status"] = {"State": "UnavailableOffline"}
     return {
         "@odata.type": "#Thermal.v1_7_0.Thermal",
         "@odata.id": f"/redfish/v1/Chassis/{cid}/Thermal",

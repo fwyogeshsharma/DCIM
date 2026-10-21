@@ -318,7 +318,11 @@ class PlantTelemetryEngine:
         spec = PLANT_SPEC[device_type]
         self._points: List[tuple] = []   # (name, base, amp, is_load, is_hours)
         self._values: Dict[str, float] = {}
+        # The engine owns its RNG (doc 32 §9.3): the walk noise below draws from
+        # it rather than the global `random`, so one device's noise sequence is
+        # independent of how other threads interleave into the global stream.
         rng = random.Random(seed)
+        self._rng = rng
         for name, _u, base, amp in spec["ai"]:
             bv = rated_kw if base is None else base
             av = (amp * bv) if base is None else amp
@@ -462,7 +466,7 @@ class PlantTelemetryEngine:
                 continue
             if live_power is not None and name == self._power_point:
                 # Load-/weather-coupled draw + a little metering jitter.
-                raw = max(0.0, live_power) + random.uniform(-0.02, 0.02) * max(1.0, live_power)
+                raw = max(0.0, live_power) + self._rng.uniform(-0.02, 0.02) * max(1.0, live_power)
                 self._values[name] = self._ema(raw, self._values[name], 0.3)
                 out[name] = round(max(0.0, self._values[name]), 2)
                 _pwr_out = out[name]
@@ -514,7 +518,7 @@ class PlantTelemetryEngine:
                 out[name] = round(base, 2)                  # constant (setpoint/nameplate)
                 continue
             target = base * mul if is_load else base
-            raw = target + random.uniform(-amp, amp) * 0.35
+            raw = target + self._rng.uniform(-amp, amp) * 0.35
             self._values[name] = self._ema(raw, self._values[name], 0.2)
             lo, hi = target - amp, target + amp
             self._values[name] = max(lo, min(hi, self._values[name]))
@@ -615,7 +619,7 @@ class PlantTelemetryEngine:
             cmd = 10.0 + 85.0 * frac
             for _vp in self._valve_pos_pts:
                 a = 0.5 if _vp == "Commanded_Position" else 0.3
-                tgt = cmd + random.uniform(-1.0, 1.0)
+                tgt = cmd + self._rng.uniform(-1.0, 1.0)
                 self._values[_vp] = self._ema(tgt, self._values.get(_vp, tgt), a)
                 out[_vp] = round(max(0.0, min(100.0, self._values[_vp])), 2)
 

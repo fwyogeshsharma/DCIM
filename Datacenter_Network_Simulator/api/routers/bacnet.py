@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from api.state import AppState
 from api.routers._bind_guard import bound_set, require_bound
+from api.routers import _ledger
 from api.models.schemas import OkResponse, EV2DeviceSnapshot, EV2PanelMetrics, EV2CircuitMetrics
 
 router = APIRouter(prefix="/bacnet", tags=["BACnet"])
@@ -70,6 +71,7 @@ def set_utility(body: UtilityOutage):
     if st is None:
         raise HTTPException(503, "simulator not running")
     st.set_utility_outage(body.datacenter, body.failed)
+    _ledger.utility(body.datacenter, body.failed)
     return OkResponse(ok=True)
 
 
@@ -82,6 +84,8 @@ def set_ats(body: ATSFault):
     if st is None:
         raise HTTPException(503, "simulator not running")
     st.set_ats_failed(body.device_id, body.failed)
+    _dm = _state().device_manager
+    _ledger.ats(_dm.get_device(body.device_id) if _dm else None, body.device_id, body.failed)
     return OkResponse(ok=True)
 
 
@@ -522,14 +526,22 @@ def ev2_metrics():
 
 
 @router.get("/plant/metrics")
-def plant_metrics():
+def plant_metrics(view: str = "wire"):
     """Current BACnet present-values for all running chiller-plant devices
-    (chiller / pump / cooling_tower / valve). Empty list when not running."""
+    (chiller / pump / cooling_tower / valve). Empty list when not running.
+
+    ``?view=wire`` (default) is what the BACnet plane serves; ``?view=truth`` is
+    what the physics reads, i.e. the wire with every active sensor fault taken
+    back out (doc 32 D11). They differ only on faulted points."""
+    if view not in ("wire", "truth"):
+        raise HTTPException(status_code=422, detail="view must be 'wire' or 'truth'")
     s = _state()
     if s.bacnet is None or not s.bacnet.is_running():
         return []
     out = []
-    for snap in s.bacnet.get_telemetry_snapshot():
+    snaps = (s.bacnet.get_truth_snapshot() if view == "truth"
+             else s.bacnet.get_telemetry_snapshot())
+    for snap in snaps:
         kind = snap.get("kind", "ev2")
         if not kind.startswith("plant:"):
             continue
@@ -600,6 +612,8 @@ def set_plant_override(body: PlantOverride):
     if nm is None:
         raise HTTPException(status_code=404, detail=f"Device '{body.device}' not found")
     ov = st.plant_alarm_overrides
+    _ledger.plant_override(_state().device_manager.get_device(body.device),
+                           body.point, body.value, ov)
     dev = ov.setdefault(nm, {})
     if body.value is None:
         dev.pop(body.point, None)

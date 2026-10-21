@@ -13,6 +13,7 @@ from api.auth import require_auth
 from api.routers import topology, binding, snmp, gnmi, rules, traps, devices, sflow, bacnet, redfish
 from api.routers import modbus
 from api.routers import events, jobs, tick, fleet, floorplan
+from api.routers import faults as faults_router
 from api.routers import provider as provider_router
 from api.routers import auth as auth_router
 from api.routers import graph as graph_router
@@ -45,6 +46,19 @@ async def _force_connection_close(request, call_next):
     response.headers["Connection"] = "close"
     return response
 
+
+@app.middleware("http")
+async def _ledger_protocol_events(request, call_next):
+    """Injection ledger (doc 32 §7.1): protocol start/stop, reload, clear and
+    dataset regeneration are context events the platform must exclude from
+    scoring and baselines. One middleware covers every protocol router, so none
+    can be forgotten; it only looks at the path and status, never the body."""
+    response = await call_next(request)
+    if request.method == "POST":
+        from api.routers import _ledger
+        _ledger.protocol_event(request.url.path, request.method, response.status_code)
+    return response
+
 # Login is OPEN — it is how clients obtain a token. Everything else below
 # requires a valid bearer token via the require_auth dependency.
 app.include_router(auth_router.router, prefix="/api")
@@ -68,6 +82,8 @@ app.include_router(jobs.router, prefix="/api", dependencies=_AUTH)
 app.include_router(tick.router, prefix="/api", dependencies=_AUTH)
 app.include_router(fleet.router, prefix="/api", dependencies=_AUTH)
 app.include_router(floorplan.router, prefix="/api", dependencies=_AUTH)
+# Anomaly ground truth (doc 32): /faults/*, /air/influence.
+app.include_router(faults_router.router, prefix="/api", dependencies=_AUTH)
 # The colo-provider mock authenticates its own way (OAuth2 client-credentials,
 # a real Equinix-style tenant's own auth) - this app's own admin bearer auth
 # must NOT gate it, or a collector could only reach it by also holding this

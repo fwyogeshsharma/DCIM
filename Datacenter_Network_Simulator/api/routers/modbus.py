@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from api.models.schemas import OkResponse
 from api.routers._bind_guard import bound_set
+from api.routers import _ledger
 from api.state import AppState
 
 router = APIRouter(prefix="/modbus", tags=["Modbus"])
@@ -69,6 +70,7 @@ def smoke_in_room(body: SmokeAction):
     st.set_smoke(body.datacenter, body.room, body.pct_per_m)
     if body.airflow_fault is not None:
         st.set_asd_flow_fault(f"ASD-{body.datacenter}-{body.room.upper()}", body.airflow_fault)
+    _ledger.fire_smoke(body.datacenter, body.room, body.pct_per_m)
     what = "cleared" if body.pct_per_m is None else f"{body.pct_per_m} % obs/m"
     return OkResponse(message=f"{body.datacenter} {body.room.upper()} smoke {what}")
 
@@ -77,6 +79,7 @@ def smoke_in_room(body: SmokeAction):
 def gas_abort(body: AbortAction):
     """Scenario: somebody holding the abort switch by the door."""
     _store().hold_gas_abort(body.datacenter, body.room, body.held)
+    _ledger.fire_abort(body.datacenter, body.room, body.held)
     return OkResponse(message=f"{body.datacenter} {body.room.upper()} abort {'held' if body.held else 'released'}")
 
 
@@ -84,6 +87,7 @@ def gas_abort(body: AbortAction):
 def fire_reset(body: FireReset):
     """Reset a site's fire panels: smoke cleared, cylinders replaced."""
     _store().reset_fire(body.datacenter)
+    _ledger.fire_reset(body.datacenter)
     return OkResponse(message=f"{body.datacenter} fire panels reset")
 
 

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from api.state import AppState
+from api.routers import _ledger
 
 router = APIRouter(prefix="/tick", tags=["Tick Settings"])
 
@@ -63,6 +64,9 @@ def apply_tick_settings(body: TickUpdate):
 
     if body.paused is not None and store.is_running():
         store.set_paused(body.paused)
+        _ledger.tick(paused=body.paused)
+    if body.interval is not None:
+        _ledger.tick(interval=max(1, body.interval))
 
     if body.metric_flags:
         for k, v in body.metric_flags.items():

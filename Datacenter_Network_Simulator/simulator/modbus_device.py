@@ -118,7 +118,11 @@ class ModbusSlave:
                     # already become the point's default, and "absent" is
                     # indistinguishable from "genuinely zero".
                     if p.presence_of:
-                        bits[space][p.addr] = 1 if p.presence_of in ext else 0
+                        # A sensor-fault dropout (doc 32 §4.5) holds the register
+                        # and clears its validity bit: ext lists it as invalid.
+                        bits[space][p.addr] = (
+                            1 if (p.presence_of in ext and p.presence_of
+                                  not in (ext.get("__invalid__") or ())) else 0)
                     # A coil with no key is a command point: it has no telemetry
                     # to render, so it keeps whatever was last written to it.
                     elif space == SPACE_COIL and not p.key:

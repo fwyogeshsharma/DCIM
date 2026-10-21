@@ -35,6 +35,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from core.sim_seed import stable_seed
 from core.bacnet_object_model import (
     BACNET_PORT, OBJ_DEVICE,
     BVLL_TYPE, BVLC_ORIGINAL_UNICAST, BVLC_ORIGINAL_BROADCAST,
@@ -85,6 +86,13 @@ class BACnetController:
 
         # Devices: keyed by device_instance (int) for quick PDU routing
         self._devices:     Dict[int, EV2BACnetDevice]      = {}
+        # Truth/wire split (doc 32 §4.3): for a plant device with an active sensor
+        # fault, the PRE-FAULT values of this tick, keyed by device name. The
+        # objects carry the wire; physics reads truth through truth_overlay().
+        self._truth: Dict[str, Dict[str, float]] = {}
+        # Points whose Reliability/FAULT flag a dropout window set, per device
+        # name, so they are restored when the window ends OR the fault is removed.
+        self._qflagged: Dict[str, set] = {}
         # Also keyed by IP for Who-Is broadcast
         self._devices_by_ip: Dict[str, EV2BACnetDevice]    = {}
         # MS/TP trunks: router IP -> {mac: device}. These devices own no address
@@ -308,7 +316,7 @@ class BACnetController:
             self._devices[next_instance] = dev
             self._devices_by_ip[ip]      = dev
             self._telemetry[next_instance] = PlantTelemetryEngine(
-                dtype, rated_kw=rkw, seed=(hash(name) & 0xFFFFFFFF),
+                dtype, rated_kw=rkw, seed=stable_seed(name),
                 rated_cooling_kw=rckw,
             )
             next_instance += 1
@@ -449,7 +457,7 @@ class BACnetController:
             self._devices_by_ip[ip]  = dev
             self._telemetry[inst]    = PlantTelemetryEngine(
                 device_type, rated_kw=float(rated_kw or 0.0),
-                seed=(hash(name) & 0xFFFFFFFF),
+                seed=stable_seed(name),
                 rated_cooling_kw=float(rated_cooling_kw or 0.0))
             self._sockets_dirty = True
         self._log(f"[BACnet] hot-added {device_type} {name} @ {ip} (instance {inst})",
@@ -532,7 +540,7 @@ class BACnetController:
             trunk[mac] = dev
             self._telemetry[inst] = PlantTelemetryEngine(
                 device_type, rated_kw=float(rated_kw or 0.0),
-                seed=(hash(name) & 0xFFFFFFFF))
+                seed=stable_seed(name))
         self._log(f"[BACnet] MS/TP {device_type} {name} @ {router_ip} "
                   f"net {net} MAC {mac} (instance {inst})", "success")
         return True
@@ -665,7 +673,8 @@ class BACnetController:
              plant_duty_by_name: dict | None = None,
              plant_standby_names: set | None = None,
              plant_oa_by_name: dict | None = None,
-             plant_unpowered_names: set | None = None) -> None:
+             plant_unpowered_names: set | None = None,
+             faults=None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -833,7 +842,35 @@ class BACnetController:
                 #
                 # Logged on CHANGE only, so a standing fault costs one line rather
                 # than one per tick.
+                #
+                # SENSOR FAULTS (doc 32 §4.3) apply HERE: after every override and
+                # store-published point has merged (so the store cannot overwrite
+                # the lie) and before the objects are written. `values` is truth;
+                # the objects get a transformed COPY. COV then fires on wire
+                # changes only, so a stuck point produces no COV, as on site.
+                _fnm = getattr(dev, "device_name", "")
+                _dropq = None
+                if (faults is not None and kind.startswith("plant:")
+                        and faults.has(_fnm)):
+                    self._truth[_fnm] = dict(values)
+                    values = faults.apply_bacnet(_fnm, values)
+                    _dropq = faults.dropped(_fnm)
+                elif _fnm in self._truth:
+                    self._truth.pop(_fnm, None)
                 dev.update_present_values(values)
+                _prevq = self._qflagged.get(_fnm)
+                if _dropq or _prevq:
+                    _setq = getattr(dev, "set_point_fault", None)
+                    _now_q = {p for p, d in (_dropq or {}).items() if d}
+                    if _setq is not None:
+                        for _qp in (_prevq or set()) - _now_q:
+                            _setq(_qp, False)
+                        for _qp in _now_q:
+                            _setq(_qp, True)
+                    if _now_q:
+                        self._qflagged[_fnm] = _now_q
+                    else:
+                        self._qflagged.pop(_fnm, None)
                 # Only when an OPERATOR point is present. `ovr` is the merged map —
                 # the store's own auto-published points land in it too, so it is
                 # non-empty for nearly every plant device on every tick, and reading
@@ -857,7 +894,10 @@ class BACnetController:
                     #   3. update_present_values: the object itself is missing
                     # Anything still wrong after that is the snapshot or a writer
                     # racing us, which is what "value differs" means below.
-                    _snap = dev.get_snapshot() or {}
+                    _snap = dict(dev.get_snapshot() or {})
+                    # A sensor fault on a forced point is a reading, not a lost
+                    # force: judge the force against truth.
+                    _snap.update(self._truth.get(_fnm, {}))
                     _why = {}
                     for _p in _op_forced:
                         _v = ovr[_p]
@@ -1252,6 +1292,26 @@ class BACnetController:
                 "status":   "Active" if self._running else "Stopped",
             })
         return result
+
+    def truth_overlay(self, name: str) -> Optional[Dict[str, float]]:
+        """Pre-fault values of a faulted plant device this tick (None when the
+        device has no active sensor fault). Laid over the wire snapshot, they
+        give the truth physics must read."""
+        return self._truth.get(name)
+
+    def get_truth_snapshot(self) -> List[dict]:
+        """get_telemetry_snapshot() with every faulted point at its TRUTH value.
+        Additive beside the wire snapshot (doc 32 §4.3)."""
+        out = []
+        for snap in self.get_telemetry_snapshot():
+            over = self._truth.get(snap.get("name", ""))
+            if over:
+                snap = dict(snap)
+                vals = dict(snap["values"])
+                vals.update(over)
+                snap["values"] = vals
+            out.append(snap)
+        return out
 
     def get_telemetry_snapshot(self) -> List[dict]:
         """Return per-device snapshot of all current BACnet present values.

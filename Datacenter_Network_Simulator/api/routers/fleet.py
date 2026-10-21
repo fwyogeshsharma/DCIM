@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from api.state import AppState
+from api.routers import _ledger
 from api.models.schemas import OkResponse
 
 log = logging.getLogger("fleet")
@@ -84,6 +85,7 @@ def fleet_start(body: FleetConfigBody | None = None):
         eng.start()
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    _ledger.fleet("start")
     msg = f"Fleet lifecycle started ({eng.cfg.minutes_per_day} min/day)"
     return OkResponse(message=f"{msg}. {warn}" if warn else msg)
 
@@ -92,6 +94,7 @@ def fleet_start(body: FleetConfigBody | None = None):
 def fleet_stop():
     """Stop the scheduler. The current fleet stays as-is (in-memory)."""
     _engine().stop()
+    _ledger.fleet("stop")
     return OkResponse(message="Fleet lifecycle stopped")
 
 
@@ -103,6 +106,7 @@ def fleet_advance():
     if _state().device_manager is None or _state().topology is None:
         raise HTTPException(status_code=503, detail="Topology not loaded")
     summ = eng.advance_day()
+    _ledger.fleet("advance", f"day {summ.day}: +{len(summ.added)} -{len(summ.removed)}")
     return OkResponse(message=f"Day {summ.day}: +{len(summ.added)} -{len(summ.removed)} "
                               f"(servers={summ.total_servers})")
 

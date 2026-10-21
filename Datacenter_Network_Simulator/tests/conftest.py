@@ -8,6 +8,18 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
+@pytest.fixture(autouse=True)
+def _isolated_fault_ledger(tmp_path):
+    """Every test gets its own injection ledger (doc 32 §7) in its tmp dir, so a
+    hooked endpoint or a store start can never append to the repo's
+    datasets/faults/ledger.jsonl. The active FaultBook is reset with it."""
+    from core import fault_injection, fault_ledger
+    fault_ledger.set_ledger(fault_ledger.FaultLedger(tmp_path / "faults" / "ledger.jsonl"))
+    yield
+    fault_ledger.set_ledger(None)
+    fault_injection.set_active(None)
+
+
 @pytest.fixture
 def plant_cache():
     """The module-level BACnet present-value cache the store reads plant health from.

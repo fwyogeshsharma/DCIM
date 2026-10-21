@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from api.state import AppState
 from api.routers._bind_guard import require_bound
+from api.routers import _ledger
 from api.models.schemas import OkResponse
 
 router = APIRouter(prefix="/redfish", tags=["Redfish"])
@@ -144,6 +145,8 @@ def redfish_action(req: RedfishAction):
                 f"[Redfish] {res['device']} ← {req.action}: {res['message']}",
                 "success" if res["ok"] else "warning")
     s.notify_ui("sync_redfish")
+    if res.get("ok", True):
+        _ledger.redfish_action(req.ip, req.action, res)
     return res
 
 

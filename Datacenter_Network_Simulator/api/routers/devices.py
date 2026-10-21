@@ -10,6 +10,7 @@ from api.state import AppState
 from core.device_state_store import _get_ext_state
 from core.redfish_data_generator import _live_watts
 from api.routers._snmp_view import snmp_agent_ips
+from api.routers import _ledger
 from api.models.schemas import (
     DeviceInfo,
     IfaceStats,
@@ -1144,21 +1145,31 @@ def get_outlets(device_id: str):
     ]}
 
 
-@router.post("/{device_id}/outlet", response_model=OkResponse)
-def switch_outlet(device_id: str, body: OutletSwitch):
-    """Switch ONE outlet on a rack PDU, the way a switched SKU's relay does.
+class OutletRefused(ValueError):
+    """The outlet cannot be switched. The message says why, for whoever asked -
+    a REST caller (as a 400) or an SNMP SET (as noSuchName)."""
+
+
+#: How long a "cycle" holds the outlet open. APC's rPDU2OutletSwitchedConfig
+#: RebootDuration defaults to 5 s; Raritan's cycle delay is configurable and
+#: also defaults to a few seconds. Long enough for a PSU's hold-up to run out.
+CYCLE_OFF_S = 5.0
+
+
+def apply_outlet(s, dev, outlet: int, state: str) -> str:
+    """Open or close ONE outlet on a rack PDU, the way a switched SKU's relay
+    does, and annunciate it. Shared by the REST route and the SNMP management
+    agent's outlet-control OIDs, so both refuse and both announce the same.
 
     Distinct from the strip-level "Outlet Off" fault, which models the whole PDU
-    losing its feed. Opening one receptacle drops only the load on it — and a
-    dual-corded server keeps running on its other cord, which is the behaviour that
-    makes an A/B test meaningful rather than an outage.
+    losing its feed. Opening one receptacle drops only the load on it - and a
+    dual-corded server keeps running on its other cord, which is the behaviour
+    that makes an A/B test meaningful rather than an outage.
     """
-    s = _state()
-    dev = s.device_manager.get_device(device_id) if s.device_manager else None
     if dev is None or dev.device_type.value not in ("pdu", "floor_pdu"):
-        raise HTTPException(status_code=404, detail=f"No rack PDU '{device_id}'")
-    if body.state not in ("on", "off"):
-        raise HTTPException(status_code=400, detail="state must be 'on' or 'off'")
+        raise OutletRefused("not a rack PDU")
+    if state not in ("on", "off"):
+        raise OutletRefused("state must be 'on' or 'off'")
     # A metered strip has no relay to operate. The tier is the whole difference:
     # rPDU2OutletSwitchedControlCommand simply does not exist on one, so real
     # gear answers a switch attempt with noSuchObject rather than an error about
@@ -1167,26 +1178,23 @@ def switch_outlet(device_id: str, body: OutletSwitch):
     # annunciates an outletOff trap that strip could never have sent.
     from core.device_manager import pdu_outlet_switching
     if pdu_outlet_switching(dev.device_type, dev.model_name) is False:
-        raise HTTPException(
-            status_code=400,
-            detail=f"{dev.name} is a {dev.model_name}, which is metered rather "
-                   f"than switched - its outlets have no relay to open. Switched "
-                   f"SKUs on this estate: APC AP8941, APC AP8959, Raritan PX2/PX3.")
+        raise OutletRefused(
+            f"{dev.name} is a {dev.model_name}, which is metered rather "
+            f"than switched - its outlets have no relay to open. Switched "
+            f"SKUs on this estate: APC AP8941, APC AP8959, Raritan PX2/PX3.")
     valid = {o.index for o in (dev.outlets or [])}
-    if valid and body.outlet not in valid:
-        raise HTTPException(
-            status_code=400,
-            detail=f"{dev.name} has no outlet {body.outlet} "
-                   f"(1-{max(valid)}) — outlet numbers are 1-based, as silk-screened")
+    if valid and outlet not in valid:
+        raise OutletRefused(
+            f"{dev.name} has no outlet {outlet} "
+            f"(1-{max(valid)}) - outlet numbers are 1-based, as silk-screened")
     st = getattr(s, "state_store", None)
     if st is None:
-        raise HTTPException(status_code=503, detail="State store not initialized")
+        raise OutletRefused("state store not initialized")
     ext = st.ext_state_for(dev)
     off = {int(o) for o in (ext.get("pdu_outlets_off") or [])}
-    off.discard(body.outlet) if body.state == "on" else off.add(body.outlet)
+    off.discard(outlet) if state == "on" else off.add(outlet)
     ext["pdu_outlets_off"] = sorted(off)
-    s.notify_ui("console_log",
-                f"[PDU] {dev.name} outlet {body.outlet} -> {body.state}", "info")
+    s.notify_ui("console_log", f"[PDU] {dev.name} outlet {outlet} -> {state}", "info")
     # A switched rack PDU ANNUNCIATES a relay change - APC rPDU2 outlet traps,
     # Raritan outletSensorStateChange - and names the outlet in the notification.
     # Without this the relay moved, the load dropped, and the NMS saw nothing at
@@ -1194,9 +1202,35 @@ def switch_outlet(device_id: str, body: OutletSwitch):
     if s.trap_engine is not None:
         from core.trap_definitions import TrapType as _TT
         s.trap_engine.send_trap(
-            dev, _TT.PDU_OUTLET_ON if body.state == "on" else _TT.PDU_OUTLET_OFF,
-            outlet_label=f"Outlet {body.outlet}")
-    return OkResponse(message=f"{dev.name} outlet {body.outlet} {body.state}")
+            dev, _TT.PDU_OUTLET_ON if state == "on" else _TT.PDU_OUTLET_OFF,
+            outlet_label=f"Outlet {outlet}")
+    return f"{dev.name} outlet {outlet} {state}"
+
+
+def apply_outlet_command(s, dev, outlet: int, action: str) -> str:
+    """on | off | cycle. A cycle opens the outlet now and closes it again after
+    CYCLE_OFF_S, as the relay's own reboot timer does."""
+    if action == "cycle":
+        msg = apply_outlet(s, dev, outlet, "off")
+        import threading
+        t = threading.Timer(CYCLE_OFF_S, lambda: apply_outlet(s, dev, outlet, "on"))
+        t.daemon = True
+        t.start()
+        return msg + f", back on in {CYCLE_OFF_S:g} s"
+    return apply_outlet(s, dev, outlet, action)
+
+
+@router.post("/{device_id}/outlet", response_model=OkResponse)
+def switch_outlet(device_id: str, body: OutletSwitch):
+    """Switch ONE outlet on a rack PDU (see apply_outlet)."""
+    s = _state()
+    dev = s.device_manager.get_device(device_id) if s.device_manager else None
+    if dev is None or dev.device_type.value not in ("pdu", "floor_pdu"):
+        raise HTTPException(status_code=404, detail=f"No rack PDU '{device_id}'")
+    try:
+        return OkResponse(message=apply_outlet(s, dev, body.outlet, body.state))
+    except OutletRefused as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
 
 
 @router.get("/{device_id}/overridable")
@@ -1239,6 +1273,7 @@ def set_device_override(device_id: str, body: DeviceOverride):
         dov.pop(body.metric, None)
         if not dov:
             ov.pop(device_id, None)
+        _ledger.device_pin(dev, body.metric, None)
         return OkResponse(message=f"Cleared {body.metric}")
     if m["kind"] == "state":
         val: float | str = str(body.value)
@@ -1247,6 +1282,7 @@ def set_device_override(device_id: str, body: DeviceOverride):
     else:
         val = max(float(m["min"]), min(float(m["max"]), float(body.value)))
     dov[body.metric] = val
+    _ledger.device_pin(dev, body.metric, val)
     return OkResponse(message=f"Set {body.metric}={val}")
 
 
@@ -1664,6 +1700,8 @@ def set_device_fault(device_id: str, body: FaultRequest):
         # opened and leaves the real one standing. Dropping it here did exactly
         # that: every raise said "Outlet 12" and the clear said nothing.
         # It stays until the next outlet-scoped fault names a different one.
+    _ledger.device_fault(dev, body.fault, spec, on,
+                         st.pdu_fault_outlet.get(device_id) if spec.get("scope") == "outlet" else None)
     # State conditions (latching ATS faults) toggle a modeled state rather than
     # ramping a metric; the store fires the raise/clear trap and runs any cascade.
     if "state" in spec:

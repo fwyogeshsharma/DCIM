@@ -481,7 +481,8 @@ class ModbusController:
         if not self._running:
             return
         try:
-            from core.device_state_store import _get_ext_state
+            # The WIRE copy (doc 32 §4.3): truth through any active sensor fault.
+            from core.device_state_store import _get_ext_wire as _get_ext_state
         except Exception:
             return
 

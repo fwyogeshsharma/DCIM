@@ -26,6 +26,7 @@ from core.trap_definitions import (
 )
 from core import vendor_oids
 from core import sim_settings
+from core.sim_seed import stable_hash
 from core.vendor_oids import APC, CISCO, DELL, HPE, LENOVO, LIEBERT, RARITAN, PET
 # Convenience aliases used in _build_extra_varbinds / _format_details
 _HUMIDITY_ALERT = TrapType.HUMIDITY_ALERT
@@ -1159,7 +1160,7 @@ class TrapEngine(QObject):
                     _s(DELL["alertMessageID"], msg_id),
                     _s(DELL["alertMessage"], msg),
                     _i(DELL["alertCurrentStatus"], status),
-                    _s(DELL["alertServiceTag"], f"SVC{abs(hash(device.name)) % 10**7:07d}"),
+                    _s(DELL["alertServiceTag"], f"SVC{stable_hash(device.name) % 10**7:07d}"),
                 ]
             return None
 

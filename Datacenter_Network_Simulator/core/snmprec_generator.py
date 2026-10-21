@@ -800,6 +800,8 @@ class SNMPRecGenerator:
         filepath = self.output_dir / f"{ip}.snmprec"
         if not filepath.exists():
             return str(filepath)
+        from core.device_state_store import _fault_view   # wire (doc 32 §4.3)
+        device = _fault_view(device)
 
         new_content = "\n".join("|".join(e) for e in self._bmc_entries(device))
         lock = _get_write_lock(str(filepath.resolve()))
@@ -843,6 +845,9 @@ class SNMPRecGenerator:
         filepath = self.output_dir / f"{self.snmp_address(device)}.snmprec"
         if not filepath.exists():
             return str(filepath)
+        # Sensor faults (doc 32 §4.3): render the WIRE view of the device.
+        from core.device_state_store import _fault_view
+        device = _fault_view(device)
 
         # Serialize all reads and writes for this file so that a stale
         # background-thread read cannot overwrite a fresher main-thread write.
@@ -1022,7 +1027,7 @@ class SNMPRecGenerator:
                         updates[f"{_RARITAN_SENSOR}.4.1.4"] = ("2", str(humid_t10))
                     elif device.model_name == "Raritan DPX2-CC2":
                         try:
-                            from core.device_state_store import _get_ext_state
+                            from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
                             _cc2_ext = _get_ext_state(device.name)
                         except Exception:
                             _cc2_ext = {}
@@ -1045,7 +1050,7 @@ class SNMPRecGenerator:
             if device.device_type == DeviceType.UPS:
                 ext = {}
                 try:
-                    from core.device_state_store import _get_ext_state
+                    from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
                     ext = _get_ext_state(device.name)
                 except Exception:
                     pass
@@ -1145,7 +1150,7 @@ class SNMPRecGenerator:
             if device.device_type in (DeviceType.PDU, DeviceType.FLOOR_PDU):
                 ext = {}
                 try:
-                    from core.device_state_store import _get_ext_state
+                    from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
                     ext = _get_ext_state(device.name)
                 except Exception:
                     pass
@@ -1285,7 +1290,7 @@ class SNMPRecGenerator:
             if device.device_type == DeviceType.GENERATOR:
                 ext = {}
                 try:
-                    from core.device_state_store import _get_ext_state
+                    from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
                     ext = _get_ext_state(device.name)
                 except Exception:
                     pass
@@ -1314,7 +1319,7 @@ class SNMPRecGenerator:
                                       DeviceType.ATS, DeviceType.MCC, DeviceType.MPP):
                 ext = {}
                 try:
-                    from core.device_state_store import _get_ext_state
+                    from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
                     ext = _get_ext_state(device.name)
                 except Exception:
                     pass
@@ -1328,7 +1333,7 @@ class SNMPRecGenerator:
             if device.device_type in (DeviceType.CDU, DeviceType.CRAH):
                 pv = {}
                 try:
-                    from core.device_state_store import _get_plant_state
+                    from core.device_state_store import _get_plant_wire_state as _get_plant_state  # wire (doc 32 §4.3)
                     pv = _get_plant_state(device.name)
                 except Exception:
                     pv = {}
@@ -1417,7 +1422,7 @@ class SNMPRecGenerator:
                 if device.device_type in (DeviceType.ROUTER, DeviceType.FIREWALL):
                     bgp_ext = {}
                     try:
-                        from core.device_state_store import _get_ext_state
+                        from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
                         bgp_ext = _get_ext_state(device.name)
                     except Exception:
                         pass
@@ -1727,7 +1732,11 @@ class SNMPRecGenerator:
                 _oid_entry(f"{ifx_base}.1.{i}",  "4",  iface.name),          # ifName
                 _oid_entry(f"{ifx_base}.6.{i}",  "70", str(in_oct * 4)),  # ifHCInOctets
                 _oid_entry(f"{ifx_base}.10.{i}", "70", str(out_oct * 4)), # ifHCOutOctets
-                _oid_entry(f"{ifx_base}.15.{i}", "66", "1000"),               # ifHighSpeed (Mbps)
+                # ifHighSpeed is the port's speed in Mb/s and the only place a
+                # 25G or 100G port can say so: ifSpeed is a Gauge32 and caps at
+                # 4.29 Gb/s (RFC 2863). It read 1000 on every port, so a poller
+                # saw a Nexus leaf as a 1G box whatever its ifDescr said.
+                _oid_entry(f"{ifx_base}.15.{i}", "66", str(max(1, iface.speed // 1_000_000))),  # ifHighSpeed (Mbps)
                 _oid_entry(f"{ifx_base}.18.{i}", "4",  iface.name),           # ifAlias
             ]
 
@@ -2473,7 +2482,8 @@ class SNMPRecGenerator:
         try:
             return int(device.id, 16)
         except (ValueError, TypeError):
-            return abs(hash(device.name))
+            from core.sim_seed import stable_hash   # restart-stable (doc 32 §9.3)
+            return stable_hash(device.name)
 
     def _chiller_entries(self, device: Device) -> List[OidEntry]:
         """Water-cooled chiller telemetry — CHW/condenser temps, load, kW, alarms."""
@@ -2709,7 +2719,7 @@ class SNMPRecGenerator:
         which is what a real BMS front end does and why ENTITY-SENSOR-MIB (one
         instrument, one value, vendor-neutral) was the right MIB all along.
         """
-        from core.device_state_store import _get_ext_state
+        from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
 
         st = _get_ext_state(name)
         b = _ENTITY_SENSOR
@@ -2725,6 +2735,11 @@ class SNMPRecGenerator:
             value, oper = 0, "2"          # nothing published yet — unavailable
         else:
             value, oper = int(round(float(raw) * scale)), "1"
+            # Sensor-fault dropout (doc 32 §4.5): hold the value, report
+            # entPhySensorOperStatus unavailable(2).
+            if (("water_flow_lps" if role == "chw_flow" else "water_temp")
+                    in (st.get("__invalid__") or ())):
+                oper = "2"
         return [
             _oid_entry(f"{b}.1.{i}", "2", stype),        # entPhySensorType
             _oid_entry(f"{b}.2.{i}", "2", "9"),          # entPhySensorScale = units
@@ -2781,7 +2796,7 @@ class SNMPRecGenerator:
         vendor uses without knowing what kind of probe it is.
         """
         from core.device_manager import probe_channels
-        from core.device_state_store import _get_ext_state
+        from core.device_state_store import _get_ext_wire as _get_ext_state  # wire (doc 32 §4.3)
 
         children = list(getattr(device, "sensor_children", []) or [])
         if not children:

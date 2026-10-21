@@ -164,3 +164,54 @@ def test_a_rack_pdu_probe_keeps_its_walk_in_uniform_mode(pdu_hall, plant_cache):
     if "pdu_humidity" in st:
         assert 35.0 <= st["pdu_humidity"] <= 65.0
     assert RK not in pdu_hall.store._room_w_g_kg
+
+
+# ── influence export (doc 32 §10, S0-10) ─────────────────────────────────────
+
+def test_influence_export_in_spatial_mode(hall, plant_cache):
+    from core import air_model as am
+    warm(hall, plant_cache, "spatial")
+    hall.store._air_inlet(server(hall, 2, 1), 0.5, 23.0)     # the tick's solve
+    out = hall.store.get_air_influence(datacenter=DC, room=ROOM)
+    assert out["mode"] == "spatial" and "published" not in out
+    assert out["length_m"] == am.INFLUENCE_LENGTH_M
+    assert out["plenum_gain_k_per_m"] == am.PLENUM_GAIN_K_PER_M
+    (room,) = out["rooms"]
+    assert room["datacenter"] == DC and room["room"] == ROOM
+    assert room["containment"] == "cold_aisle"
+    assert {u["name"] for u in room["units"]} == set(units(hall))
+    racks, us, _c = hall.store._air_inputs[RK]
+    by_id = {r.id: r for r in racks}
+    for rk in room["racks"]:
+        live = sum(w["live"] for w in rk["weights"].values())
+        geo_w = sum(w["geometric"] for w in rk["weights"].values())
+        assert live == pytest.approx(1.0, abs=1e-5) and geo_w == pytest.approx(1.0, abs=1e-5)
+        raw = {u.id: am.influence(by_id[rk["rack"]], u) for u in us}
+        tot = sum(raw.values())
+        for n, w in rk["weights"].items():
+            assert w["live"] == pytest.approx(raw[n] / tot, abs=1e-6)
+            assert w["d_inlet_d_supply"] == pytest.approx((1 - rk["recirc_mid"]) * w["live"],
+                                                          abs=1e-5)
+        assert len(rk["devices"]) == 2               # the two servers in each rack
+    assert hall.store.get_air_influence(datacenter="DC9")["rooms"] == []
+
+
+def test_influence_export_refuses_uniform_and_flags_shadow(hall, plant_cache, tmp_path, monkeypatch):
+    warm(hall, plant_cache, "uniform")
+    assert hall.store.get_air_influence() is None
+    monkeypatch.setattr(type(hall.store), "_AIR_SHADOW_PATH", str(tmp_path / "shadow.jsonl"))
+    warm(hall, plant_cache, "shadow")
+    hall.store._air_inlet(server(hall, 2, 1), 0.5, 23.0)
+    out = hall.store.get_air_influence()
+    assert out["mode"] == "shadow" and out["published"] is False
+
+
+def test_influence_api_answers_in_spatial(hall, plant_cache, monkeypatch):
+    from types import SimpleNamespace
+    from api.state import AppState
+    from api.routers.faults import air_influence
+    warm(hall, plant_cache, "spatial")
+    hall.store._air_inlet(server(hall, 2, 1), 0.5, 23.0)
+    monkeypatch.setattr(AppState, "get", classmethod(
+        lambda cls: SimpleNamespace(state_store=hall.store)))
+    assert air_influence(datacenter=DC)["rooms"][0]["racks"]

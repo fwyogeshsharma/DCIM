@@ -490,6 +490,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # DCIM_SIM_SEED (doc 32 §9.3): seed the global random once, before any store
+    # is built. Unset keeps the old unseeded behaviour.
+    from core.sim_seed import seed_global_random
+    seed_global_random()
     if "--headless" in sys.argv:
         _run_headless()
     else:

@@ -328,6 +328,23 @@ class EV2BACnetDevice:
                     if o.reliability != 0:
                         o.reliability = 0
 
+    def set_point_fault(self, name: str, faulted: bool) -> None:
+        """Sensor-fault dropout on one point (doc 32 §4.5): many controllers
+        hold the last value and set Reliability NO_SENSOR with the FAULT bit in
+        Status_Flags. Restored when the dropout window ends. Status_Flags here is
+        in_alarm|fault|overridden|out_of_service from bit 3 down, so FAULT = 0b0100."""
+        key = self._name_to_key.get(name)
+        obj = self._objects.get(key) if key is not None else None
+        if obj is None:
+            return
+        if faulted:
+            obj.reliability = 1                  # NO_SENSOR
+            obj.status_flags |= 0b0100
+        else:
+            if obj.reliability == 1:
+                obj.reliability = 0
+            obj.status_flags &= ~0b0100
+
     def dispatch_cov_notifications(self, send_sock_fallback=None):
         """
         Check all subscribed objects for COV threshold crossings.
