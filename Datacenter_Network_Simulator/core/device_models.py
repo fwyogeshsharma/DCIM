@@ -728,6 +728,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Cisco Catalyst 1000-24T", Vendor.CISCO_SYSTEMS, DeviceType.OOB_SWITCH,
                     [_g(_GE, 24), _g(_10G, 4)],
                     "24 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+        DeviceModel("Cisco Catalyst 9300-48T", Vendor.CISCO_SYSTEMS, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 48), _g(_10G, 8)],
+                    "48 × 1GE + 8 × 10GE SFP+ network module, OOB management"),
     ],
 
     # ── HPE — OOB Management Switches ────────────────────────────────────────
@@ -748,6 +751,9 @@ DEVICE_MODELS: Dict[Tuple[DeviceType, Vendor], List[DeviceModel]] = {
         DeviceModel("Dell N1124T-ON", Vendor.DELL, DeviceType.OOB_SWITCH,
                     [_g(_GE, 24), _g(_10G, 4)],
                     "24 × 1GE + 4 × 10GE SFP+ uplinks, OOB management"),
+        DeviceModel("Dell N3248TE-ON", Vendor.DELL, DeviceType.OOB_SWITCH,
+                    [_g(_GE, 48), _g(_10G, 4), _g(_100G, 2)],
+                    "48 × 1GE + 4 × 10GE SFP+ + 2 × 100GE QSFP28 uplinks, OOB management"),
     ],
 
     # ── Raritan — Environmental Sensors ──────────────────────────────────────

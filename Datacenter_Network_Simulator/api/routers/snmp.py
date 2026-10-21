@@ -220,11 +220,18 @@ def start_snmp_simulator(req: SnmpStartRequest = None):
                     except Exception:
                         pass
 
+                def _outlet(device, outlet, action):
+                    # OutletRefused is a ValueError: the agent answers it as
+                    # noSuchName, as a metered strip would.
+                    from api.routers.devices import apply_outlet_command
+                    apply_outlet_command(s, device, outlet, action)
+
                 agent = SnmpSetAgent(
                     s.rule_engine,
                     port=mgmt_port,
                     device_lookup=_lookup,
                     on_device_updated=_on_updated,
+                    outlet_cb=_outlet,
                 )
                 agent.start()
                 s.snmp_set_agent = agent

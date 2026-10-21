@@ -120,6 +120,42 @@ _ALL_OID_SORTED: List[str] = sorted(
 )
 
 
+# ── PDU outlet control ─────────────────────────────────────────────────────────
+#
+# The control columns real switched rack PDUs expose. A SET names the outlet in
+# the last sub-identifier and the action in the value:
+#
+#   APC    rPDU2OutletSwitchedControlCommand  .318.1.1.26.9.2.4.1.5.<outlet>
+#            1 immediateOn   2 immediateOff   3 immediateReboot
+#   Raritan PX2 outletSwitchingOperation      .13742.6.4.1.2.1.2.<pdu>.<outlet>
+#            0 off           1 on             2 cycle
+#
+# Both are accepted on any switched PDU, whichever vendor it claims to be: a
+# DCIM picks the OID by the make it has on record, and the make is the one thing
+# that may be wrong.
+_APC_OUTLET_CTL = (1, 3, 6, 1, 4, 1, 318, 1, 1, 26, 9, 2, 4, 1, 5)
+_RARITAN_OUTLET_OP = (1, 3, 6, 1, 4, 1, 13742, 6, 4, 1, 2, 1, 2)
+_APC_ACTIONS = {1: "on", 2: "off", 3: "cycle"}
+_RARITAN_ACTIONS = {0: "off", 1: "on", 2: "cycle"}
+
+
+def outlet_command(oid_str: str, value: int) -> Optional[Tuple[int, str]]:
+    """(outlet, 'on' | 'off' | 'cycle') for a PDU outlet-control SET, or None
+    when the OID is not one. A recognised OID with a value the MIB does not
+    define raises ValueError, which the caller answers as wrongValue."""
+    oid = _oid_tuple(oid_str)
+    if oid[:len(_APC_OUTLET_CTL)] == _APC_OUTLET_CTL and len(oid) == len(_APC_OUTLET_CTL) + 1:
+        table, outlet = _APC_ACTIONS, oid[-1]
+    elif (oid[:len(_RARITAN_OUTLET_OP)] == _RARITAN_OUTLET_OP
+          and len(oid) == len(_RARITAN_OUTLET_OP) + 2):
+        table, outlet = _RARITAN_ACTIONS, oid[-1]     # (pdu id, outlet): one strip per agent
+    else:
+        return None
+    if value not in table:
+        raise ValueError(f"{value} is not a defined outlet command")
+    return outlet, table[value]
+
+
 # ── Condition field accessors ──────────────────────────────────────────────────
 
 def _path_get(rule, field_path: str) -> float:
@@ -148,11 +184,26 @@ class _SnmpHandler:
     """Decodes an SNMP request, processes it, encodes and returns the response."""
 
     def __init__(self, rule_engine, on_change_cb: Optional[Callable],
-                 device_lookup=None, on_device_updated=None):
+                 device_lookup=None, on_device_updated=None, outlet_cb=None):
         self._re               = rule_engine
         self._on_change        = on_change_cb
         self._device_lookup    = device_lookup    # Callable[[str], Optional[Device]]
         self._on_device_updated = on_device_updated  # Callable[[Device], None]
+        # Callable[[Device, int, str], None] - switch one outlet; raises
+        # ValueError with the reason when the device cannot (metered strip, no
+        # such outlet), which is answered as noSuchName, as real gear does.
+        self._outlet_cb        = outlet_cb
+
+    def _threshold_key(self, device_ip: str) -> str:
+        """What the rule engine keys a device's thresholds on.
+
+        Facts are built with the device's NAME as `device_id`, and the engine
+        looks an override up by it. The community string is the device's IP, so
+        storing an override under the IP - as this did - made every threshold
+        SET readable over SNMP and invisible to alarm evaluation: it answered
+        the SET and changed nothing."""
+        device = self._device_lookup(device_ip) if self._device_lookup else None
+        return getattr(device, "name", None) or device_ip
 
     def handle(self, data: bytes) -> Optional[bytes]:
         try:
@@ -231,7 +282,8 @@ class _SnmpHandler:
             if rule is None:
                 result.append((oid, univ.OctetString(b"noSuchObject")))
                 continue
-            override = self._re.get_device_threshold(device_ip, rule_name, field_path)
+            override = self._re.get_device_threshold(
+                self._threshold_key(device_ip), rule_name, field_path)
             raw = override if override is not None else _path_get(rule, field_path)
             result.append((oid, univ.Integer(round(raw * multiplier))))
         return _ERR_NO_ERROR, 0, result
@@ -277,7 +329,8 @@ class _SnmpHandler:
             if rule is None:
                 result.append((next_oid_obj, univ.OctetString(b"noSuchObject")))
                 continue
-            override = self._re.get_device_threshold(device_ip, rule_name, field_path)
+            override = self._re.get_device_threshold(
+                self._threshold_key(device_ip), rule_name, field_path)
             raw = override if override is not None else _path_get(rule, field_path)
             result.append((next_oid_obj, univ.Integer(round(raw * multiplier))))
         return _ERR_NO_ERROR, 0, result
@@ -331,6 +384,27 @@ class _SnmpHandler:
                         log.warning("[SnmpSetAgent] on_device_updated error: %s", exc)
                 continue
 
+            try:
+                outlet_cmd = outlet_command(oid_str, int(val))
+            except ValueError:
+                return _ERR_WRONG_TYPE, i, vbs
+            except TypeError:
+                outlet_cmd = None
+            if outlet_cmd is not None:
+                device = self._device_lookup(device_ip) if self._device_lookup else None
+                if device is None or self._outlet_cb is None:
+                    return _ERR_NO_SUCH, i, vbs
+                outlet, action = outlet_cmd
+                try:
+                    self._outlet_cb(device, outlet, action)
+                except ValueError as exc:
+                    # A metered strip has no relay and no such column: real
+                    # gear answers noSuchName, not a permissions error.
+                    log.info("[SnmpSetAgent] outlet SET refused device=%s: %s", device_ip, exc)
+                    return _ERR_NO_SUCH, i, vbs
+                log.info("[SnmpSetAgent] SET device=%s outlet %d -> %s", device_ip, outlet, action)
+                continue
+
             entry = _OID_TABLE.get(oid_str)
             if entry is None:
                 return _ERR_NO_SUCH, i, vbs
@@ -345,7 +419,8 @@ class _SnmpHandler:
             except (TypeError, ValueError):
                 return _ERR_WRONG_TYPE, i, vbs
 
-            self._re.set_device_threshold(device_ip, rule_name, field_path, new_float)
+            self._re.set_device_threshold(
+                self._threshold_key(device_ip), rule_name, field_path, new_float)
             log.info("[SnmpSetAgent] SET device=%s %s → %s = %.2f",
                      device_ip, rule_name, label, new_float)
 
@@ -406,7 +481,9 @@ class SnmpSetAgent:
         on_change_cb: Optional[Callable[[str, str], None]] = None,
         device_lookup=None,
         on_device_updated=None,
+        outlet_cb=None,
     ):
+        self._outlet_cb        = outlet_cb
         self._re               = rule_engine
         self._host             = host
         self._port             = port
@@ -472,7 +549,8 @@ class SnmpSetAgent:
 
     def _serve(self):
         handler = _SnmpHandler(self._re, self._on_change,
-                               self._device_lookup, self._on_device_updated)
+                               self._device_lookup, self._on_device_updated,
+                               self._outlet_cb)
         log.info("[SnmpSetAgent] Listening on %s:%d", self._host, self._port)
         while self._running:
             try:

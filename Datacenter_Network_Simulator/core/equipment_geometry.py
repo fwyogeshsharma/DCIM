@@ -45,6 +45,9 @@ CORE_W_M = 3.0
 LOBBY_W_M = 6.0
 DOCK_W_M = 6.0
 DOOR_W_M = 1.2
+#: Clear floor a door needs on the room side: nothing stands within this of the
+#: wall along the opening, or the door opens onto the side of a cabinet.
+DOOR_CLEAR_M = 1.0
 #: Rooms whose door the BMS watches (a contact and a held-open alarm). Drawn
 #: as a monitored door; every other opening is drawing only.
 MONITORED_DOOR_ROOMS = ("Server Hall", "Network Room", "UPS Room", "Meet-Me Room")
@@ -272,10 +275,24 @@ def complete_building(floorplan: dict, devices: Iterable[Any]) -> dict:
     if not floorplan or not floorplan.get("rooms"):
         return floorplan
     floors: dict = defaultdict(Counter)
+    # (room key, row) -> rack numbers that hold rack-mounted gear, and the facing
+    # and aisles that gear carries (for the empty cabinets that complete the row).
+    occupied: dict = defaultdict(set)
+    row_face: dict = defaultdict(Counter)
     for d in devices:
         dc, room = _get(d, "datacenter", ""), _get(d, "room", "")
         if dc and room:
             floors[f"{dc}/{room}"][str(_get(d, "floor", "") or "")] += 1
+            row, num = _get(d, "rack_row"), _get(d, "rack_num")
+            mount = effective_mount(d) if row is not None and num is not None else ""
+            # A slot is taken by rack gear, or by a floor unit standing IN the row
+            # line (an in-row RPP is one rack position wide). Panels and wall
+            # sensors filed under a row take no floor.
+            if mount in RACK_MOUNTS or mount == "floor":
+                occupied[(f"{dc}/{room}", int(row))].add(int(num))
+            if mount in RACK_MOUNTS:
+                row_face[(f"{dc}/{room}", int(row))][(_get(d, "rack_facing"), _get(d, "cold_aisle"),
+                                                      _get(d, "hot_aisle"))] += 1
     for c in floors.values():
         c.pop("", None)
 
@@ -345,8 +362,56 @@ def complete_building(floorplan: dict, devices: Iterable[Any]) -> dict:
             b["outline_m"] = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
             b["extent_m"] = {"width": round(x1 - x0, 3), "depth": round(y1 - y0, 3)}
 
+    for k, r in rooms.items():
+        # Derived every time, never trusted from a saved file: a slot filled
+        # since the save must stop being an empty cabinet.
+        r.pop("empty_racks", None)
+        cab = empty_cabinets(k, r, occupied, row_face)
+        if cab:
+            r["empty_racks"] = cab
+
     out["rooms"] = rooms
     out["buildings"] = buildings
+    return out
+
+
+
+def empty_cabinets(key: str, room: dict, occupied: dict, row_face: dict) -> list:
+    """The installed-but-empty cabinets that complete a white-space row.
+
+    A row that holds any gear is cabineted end to end, the way a hall is built
+    out: the operator stands the whole row on day one and fills it over years.
+    In a contained row it is also what keeps the containment whole - a gap is
+    where hot air wraps round into the cold aisle, so every empty position is a
+    cabinet with full blanking. Rows with nothing in them stay open floor for a
+    later phase. The cabinets carry no PDUs and no devices, so they are
+    inventory and space, not endpoints. Each takes the row's grid position
+    (hall_geometry, the same grid the curated racks sit on) and the facing and
+    aisles the row's own gear carries."""
+    from core.hall_geometry import racks_for_width, rack_x, row_y, room_x0
+    if room.get("class") != "white_space":
+        return []
+    cap = racks_for_width(float(room.get("width_m") or 0), room_x0(room))
+    x0 = room_x0(room)
+    out = []
+    for row in room.get("rows") or []:
+        taken = occupied.get((key, int(row)))
+        if not taken:
+            continue
+        faces = row_face.get((key, int(row)))
+        facing, cold, hot = faces.most_common(1)[0][0] if faces else (None, None, None)
+        if room.get("containment") not in (None, "", "none"):
+            # A contained hall's aisles follow the grid; fill what the gear left out.
+            from core.hall_geometry import row_aisles
+            g_hot, g_cold, g_face = row_aisles(int(row))
+            facing, cold, hot = facing or g_face, cold or g_cold, hot or g_hot
+        for num in range(1, cap + 1):
+            if num in taken:
+                continue
+            out.append({"rack_row": int(row), "rack_num": num,
+                        "floor_x": rack_x(num, x0), "floor_y": row_y(int(row)),
+                        "rack_facing": facing, "cold_aisle": cold, "hot_aisle": hot,
+                        "blanking": "full"})
     return out
 
 
@@ -396,7 +461,8 @@ def _free_cells(boxes: list, x0: float, y0: float, x1: float, y1: float) -> list
     return [tuple(m) for m in merged if m[2] - m[0] >= 0.6 - eps and m[3] - m[1] >= 0.6 - eps]
 
 
-def _door_opening(k: str, boxes: dict, x0: float, y0: float, x1: float, y1: float) -> tuple:
+def _door_opening(k: str, boxes: dict, x0: float, y0: float, x1: float, y1: float,
+                  standing: dict | None = None) -> tuple:
     """Where a room's door goes, and whether it is in the building's face.
 
     The first of the room's south, east, north and west walls with free floor
@@ -408,35 +474,74 @@ def _door_opening(k: str, boxes: dict, x0: float, y0: float, x1: float, y1: floa
     room with no such wall - landlocked, like a network room boxed in by the
     hall it serves - opens into its neighbour that is a hall, else the one it
     shares the longest wall with. A door in the building's outer face is the
-    last resort, and the only external one."""
+    last resort, and the only external one.
+
+    `standing` maps each room to what stands on its floor (racks, cabinets,
+    plant), in the same plan coordinates. A door needs clear floor on BOTH
+    sides: anything within DOOR_CLEAR_M of the wall along the opening blocks
+    it - in this room, so a network room's door opens onto the aisle between
+    its rows, and, for a door into a neighbouring room, in that room too, so
+    it never opens onto the side of the hall's air handler."""
     eps = 1e-6
     bx0, by0, bx1, by1 = boxes[k]
     others = [(kk, b) for kk, b in boxes.items() if kk != k]
+    standing = standing or {}
+    inside = standing.get(k) or []
 
-    def free_run(wall: str):
-        # the wall's span, and what stands just outside it along that span
-        if wall in ("S", "N"):
-            lo, hi = bx0, bx1
-            if wall == "S" and abs(by1 - y1) < eps:
-                return (lo, hi)                       # the corridor band
-            out = by1 + 0.25 if wall == "S" else by0 - 0.25
-            if out < y0 or out > y1:
-                return None                           # the building's face
-            taken = [(max(lo, b[0]), min(hi, b[2])) for _, b in others if b[1] < out < b[3]]
-        else:
-            lo, hi = by0, by1
-            out = bx1 + 0.25 if wall == "E" else bx0 - 0.25
-            if out < x0 or out > x1:
-                return None
-            taken = [(max(lo, b[1]), min(hi, b[3])) for _, b in others if b[0] < out < b[2]]
+    def blocked_beyond(kk: str, wall: str) -> list:
+        """Spans of *wall* that something in neighbour *kk* stands within
+        DOOR_CLEAR_M of, on the far side."""
+        c, out = DOOR_CLEAR_M, standing.get(kk) or []
+        if wall == "S":
+            return [(b[0], b[2]) for b in out if b[1] < by1 + c and b[3] > by1]
+        if wall == "N":
+            return [(b[0], b[2]) for b in out if b[3] > by0 - c and b[1] < by0]
+        if wall == "E":
+            return [(b[1], b[3]) for b in out if b[0] < bx1 + c and b[2] > bx1]
+        return [(b[1], b[3]) for b in out if b[2] > bx0 - c and b[0] < bx0]
+
+    def blocked(wall: str) -> list:
+        """Spans of *wall* that something inside stands within DOOR_CLEAR_M of."""
+        c = DOOR_CLEAR_M
+        if wall == "S":
+            return [(b[0], b[2]) for b in inside if b[3] > by1 - c]
+        if wall == "N":
+            return [(b[0], b[2]) for b in inside if b[1] < by0 + c]
+        if wall == "E":
+            return [(b[1], b[3]) for b in inside if b[2] > bx1 - c]
+        return [(b[1], b[3]) for b in inside if b[0] < bx0 + c]
+
+    def best_gap(lo: float, hi: float, taken: list):
         best, at = None, lo
-        for a, b in sorted(t for t in taken if t[1] > t[0]):
+        for a, b in sorted((max(lo, a), min(hi, b)) for a, b in taken):
+            if b <= a:
+                continue
             if a - at > (best[1] - best[0] if best else 0):
                 best = (at, a)
             at = max(at, b)
         if hi - at > (best[1] - best[0] if best else 0):
             best = (at, hi)
         return best
+
+    def free_run(wall: str):
+        # the wall's span, what stands just outside it along that span, and
+        # what stands just inside it
+        if wall in ("S", "N"):
+            lo, hi = bx0, bx1
+            if wall == "S" and abs(by1 - y1) < eps:
+                taken = []                            # the corridor band
+            else:
+                out = by1 + 0.25 if wall == "S" else by0 - 0.25
+                if out < y0 or out > y1:
+                    return None                       # the building's face
+                taken = [(b[0], b[2]) for _, b in others if b[1] < out < b[3]]
+        else:
+            lo, hi = by0, by1
+            out = bx1 + 0.25 if wall == "E" else bx0 - 0.25
+            if out < x0 or out > x1:
+                return None
+            taken = [(b[1], b[3]) for _, b in others if b[0] < out < b[2]]
+        return best_gap(lo, hi, taken + blocked(wall))
 
     def opening(wall: str, run: tuple, width: float) -> list:
         c = (run[0] + run[1]) / 2
@@ -467,13 +572,64 @@ def _door_opening(k: str, boxes: dict, x0: float, y0: float, x1: float, y1: floa
                 shared.append((kk, "S" if abs(b[1] - by1) < eps else "N", (lo, hi)))
     if shared:
         hall = [t for t in shared if "server hall" in t[0].lower()]
-        kk, wall, run = max(hall or shared, key=lambda t: t[2][1] - t[2][0])
+        def clear(t):
+            kk, wall, (lo, hi) = t
+            return best_gap(lo, hi, blocked(wall) + blocked_beyond(kk, wall)) or (lo, lo)
+
+        def span(t):
+            r = clear(t)
+            return r[1] - r[0]
+        # A hall first, but only one a door actually fits into, clear both sides.
+        for pool in (hall, shared):
+            fits = [t for t in pool if span(t) >= 0.9 - eps]
+            if fits:
+                t = max(fits, key=span)
+                break
+        else:
+            t = max(shared, key=span)
+        wall, run = t[1], clear(t)
         width = DOOR_W_M if run[1] - run[0] >= DOOR_W_M else 0.9
         return opening(wall, run, width), False
 
     # Nothing beside it at all: a door in the building's west face, as before.
     wall = "W" if abs(bx0 - x0) < eps else "E"
     return opening(wall, (by0, by1), DOOR_W_M), True
+
+
+def _standing_boxes(rooms: dict, devices: list) -> dict:
+    """Room key -> plan rectangles of what stands on its floor: each rack once
+    (its gear shares one cabinet), each floor-standing unit at its footprint
+    turned the way it stands, and the empty cabinets that complete its rows.
+    Plan coordinates (room origin added); rooms are not rotated."""
+    out: dict = defaultdict(list)
+    seen: set = set()
+    def put(k, cx, cy, w, d):
+        o = rooms[k].get("origin") or {}
+        ox, oy = float(o.get("x", 0)), float(o.get("y", 0))
+        out[k].append((ox + cx - w / 2, oy + cy - d / 2, ox + cx + w / 2, oy + cy + d / 2))
+    for dv in devices:
+        k = f"{_get(dv, 'datacenter', '')}/{_get(dv, 'room', '')}"
+        fx, fy = _get(dv, "floor_x"), _get(dv, "floor_y")
+        if k not in rooms or fx is None or fy is None:
+            continue
+        m = effective_mount(dv)
+        if m in RACK_MOUNTS:
+            key = (k, _get(dv, "rack_row"), _get(dv, "rack_num"))
+            if key not in seen:
+                seen.add(key)
+                put(k, float(fx), float(fy), 0.6, 1.2)
+        elif m == "floor":
+            f = footprint(dv)
+            if not f:
+                continue
+            w, d = float(f["width"]), float(f["depth"])
+            if round(((facing_deg(dv) or 0) % 180) / 90) == 1:
+                w, d = d, w
+            put(k, float(fx), float(fy), w, d)
+    for k, r in rooms.items():
+        for c in r.get("empty_racks") or []:
+            put(k, float(c["floor_x"]), float(c["floor_y"]), 0.6, 1.2)
+    return out
 
 
 def _space(sid: str, level, kind: str, name: str, poly: list, **attrs) -> dict:
@@ -503,9 +659,11 @@ def complete_site(floorplan: dict, devices: Iterable[Any]) -> dict:
     state and are never coloured by it; a yard that holds equipment is also an
     outdoor ROOM (level "Site"), and that room is what carries the alarms.
     Pure: the input is never modified."""
+    devices = list(devices)
     out = complete_building(floorplan, devices)
     if not out or not out.get("rooms"):
         return out
+    standing = _standing_boxes(out["rooms"], devices)
     rooms = out["rooms"]
     buildings = {dc: dict(b) for dc, b in (out.get("buildings") or {}).items()}
     fabric: dict = {}
@@ -558,7 +716,7 @@ def complete_site(floorplan: dict, devices: Iterable[Any]) -> dict:
             for k, box in boxes.items():
                 name = rooms[k].get("room") or k.split("/", 1)[1]
                 monitored = any(name.startswith(m) for m in MONITORED_DOOR_ROOMS)
-                poly, external = _door_opening(k, boxes, x0, y0, x1, y1)
+                poly, external = _door_opening(k, boxes, x0, y0, x1, y1, standing)
                 fab.append(_space(f"{k}/door", lv, "door", f"{name} door", poly,
                                   room=k, monitored=monitored, external=external))
         fabric[dc] = fab

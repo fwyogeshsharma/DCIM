@@ -274,3 +274,74 @@ def test_every_room_door_opens_onto_floor_inside_the_building(topo):
     # the free floor between rooms is drawn as passages, the gap beside the plant among them
     passages = [f["polygon_m"] for f in fab if f["kind"] == "corridor" and f["name"] == "Passage"]
     assert [p[0], p[2]] == [[8.0, 6.0], [9.0, 15.0]] if (p := next(q for q in passages if q[0] == [8.0, 6.0])) else False
+
+
+# ── empty cabinets that complete a row ──────────────────────────────────────
+
+def test_a_row_in_use_is_cabineted_end_to_end(topo):
+    """Every white-space row that holds gear is completed with empty cabinets,
+    on the hall grid, with the row's own facing; rows with nothing stay open."""
+    from core.hall_geometry import racks_for_width, rack_x, room_x0, row_y
+    fp = complete_site(topo["floorplan"], [n["device"] for n in topo["nodes"] if n["device"]])
+    hall = fp["rooms"]["DC1/Server Hall B"]
+    cab = {(c["rack_row"], c["rack_num"]): c for c in hall["empty_racks"]}
+    cap = racks_for_width(hall["width_m"], room_x0(hall))
+    taken = defaultdict(set)
+    for n in topo["nodes"]:
+        d = n["device"]
+        if d and d["datacenter"] == "DC1" and d["room"] == "Server Hall B" and d.get("rack_row") is not None \
+                and (effective_mount(d) in RACK_MOUNTS or effective_mount(d) == "floor"):
+            taken[d["rack_row"]].add(d["rack_num"])
+    for row in hall["rows"]:
+        if not taken[row]:
+            assert not any(r == row for r, _ in cab), f"row {row} holds nothing and must stay open floor"
+            continue
+        assert taken[row] | {n for r, n in cab if r == row} == set(range(1, cap + 1)), f"row {row} has a gap"
+        assert not taken[row] & {n for r, n in cab if r == row}, "an empty cabinet stands on occupied floor"
+    c = cab[(1, 5)]
+    assert (c["floor_x"], c["floor_y"]) == (rack_x(5, room_x0(hall)), row_y(1))
+    assert c["rack_facing"] == "S" and c["cold_aisle"] == "CA1" and c["hot_aisle"] == "HA0"
+    assert c["blanking"] == "full"
+
+
+def test_an_in_row_rpp_keeps_its_slot(topo):
+    """The in-row RPP at slot 4 of row 1 is floor, not an empty cabinet."""
+    fp = complete_site(topo["floorplan"], [n["device"] for n in topo["nodes"] if n["device"]])
+    nums = {c["rack_num"] for c in fp["rooms"]["DC1/Server Hall B"]["empty_racks"] if c["rack_row"] == 1}
+    assert 4 not in nums and 13 not in nums and 5 in nums
+
+
+def test_empty_cabinets_are_rederived_not_reloaded(topo):
+    """A stale list in a saved file is dropped, not carried forward."""
+    fp = copy.deepcopy(topo["floorplan"])
+    fp["rooms"]["DC1/Network Room"]["empty_racks"] = [{"rack_row": 9, "rack_num": 9}]
+    out = complete_site(fp, [n["device"] for n in topo["nodes"] if n["device"]])
+    assert all(c["rack_row"] != 9 for c in out["rooms"]["DC1/Network Room"].get("empty_racks", []))
+
+
+def test_no_room_door_opens_onto_what_stands_inside(topo):
+    """Every door has its clear approach on both sides: nothing standing in
+    the room or in the room it opens into - a rack, an empty cabinet, a floor
+    unit - within DOOR_CLEAR_M of the wall along the opening (the network
+    room's door was on a rack's end, then on the hall CRAH's side)."""
+    from core.equipment_geometry import DOOR_CLEAR_M, _standing_boxes
+    devs = [n["device"] for n in topo["nodes"] if n["device"]]
+    fp = complete_site(topo["floorplan"], devs)
+    standing = _standing_boxes(fp["rooms"], devs)
+    for fab in fp["fabric"].values():
+        for s in fab:
+            room = (s.get("attrs") or {}).get("room")
+            if s["kind"] != "door" or not room or s["attrs"].get("external"):
+                continue
+            xs = [p[0] for p in s["polygon_m"]]
+            ys = [p[1] for p in s["polygon_m"]]
+            x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+            # grow the opening by the clearance on both sides of the wall
+            if x1 - x0 < y1 - y0:
+                x0, x1 = x0 - DOOR_CLEAR_M, x1 + DOOR_CLEAR_M
+            else:
+                y0, y1 = y0 - DOOR_CLEAR_M, y1 + DOOR_CLEAR_M
+            same_level = [k for k, r in fp["rooms"].items() if r.get("level") == s["level"]]
+            for b in (b for k in same_level for b in standing.get(k, [])):
+                overlap = b[0] < x1 - 1e-6 and b[2] > x0 + 1e-6 and b[1] < y1 - 1e-6 and b[3] > y0 + 1e-6
+                assert not overlap, f"{room}: door {s['polygon_m']} opens onto {b}"
