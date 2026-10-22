@@ -1,3 +1,8 @@
+import type {
+  ActiveFault, FaultPointsResponse, SensorFaultRequest, DegradationRequest,
+  LedgerEntry, LedgerPage, WeatherSite, WeatherRequest,
+} from './types'
+
 // In dev mode (Vite), bypass the proxy and hit uvicorn directly.
 // The Vite proxy stalls during IP binding (Windows routing table churn
 // disrupts the proxy's keep-alive connection), causing 30–120s hangs.
@@ -264,6 +269,42 @@ export const api = {
   chillerTrips:     ()                    => get('/bacnet/plant/chiller-trips'),
   resetChillerTrip: (device: string)      => post('/bacnet/plant/chiller-reset', { device }),
   plantStandby:     ()                    => get('/bacnet/plant/standby'),
+
+  // fault injection / anomaly ground truth (doc 32, api/routers/faults.py).
+  // Sensor faults make a READING lie; degradations change the MACHINE. Every
+  // call here is ledgered server-side.
+  faultsActive:    ()                     => get<{ active: ActiveFault[] }>('/faults'),
+  faultPoints:     (deviceId: string)     =>
+    get<FaultPointsResponse>('/faults/points?device=' + encodeURIComponent(deviceId)),
+  addSensorFault:  (b: SensorFaultRequest) => post<LedgerEntry>('/faults/sensor', b),
+  addDegradation:  (b: DegradationRequest) =>
+    post<LedgerEntry & { eta_target: string | null }>('/faults/degradation', b),
+  // A degradation delete STOPS the wear and leaves the unit degraded; only
+  // restore=true (maintenance) returns it to healthy. A held entry needs restore.
+  deleteFault:     (id: string, restore = false) =>
+    del<LedgerEntry>(`/faults/${encodeURIComponent(id)}${restore ? '?restore=true' : ''}`),
+  ledger:          (q: { kind?: string; device?: string; campaign?: string;
+                         since?: string; until?: string; limit?: number; cursor?: string | null } = {}) => {
+    const p = new URLSearchParams()
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== null && v !== '') p.set(k, String(v))
+    const qs = p.toString()
+    return get<LedgerPage>('/faults/ledger' + (qs ? '?' + qs : ''))
+  },
+  ledgerContext:   (b: { context: string; params?: Record<string, unknown>;
+                         campaign?: string | null; close_id?: string | null }) =>
+    post<LedgerEntry>('/faults/context', b),
+  weather:         ()                     => get<{ weather: WeatherSite[] }>('/weather'),
+  setWeather:      (b: WeatherRequest)    => post('/weather/override', b),
+  clearWeather:    (datacenter?: string)  =>
+    del<{ cleared: LedgerEntry[] }>('/weather/override'
+      + (datacenter ? '?datacenter=' + encodeURIComponent(datacenter) : '')),
+  airInfluence:    (datacenter?: string, room?: string) => {
+    const p = new URLSearchParams()
+    if (datacenter) p.set('datacenter', datacenter)
+    if (room) p.set('room', room)
+    const qs = p.toString()
+    return get('/air/influence' + (qs ? '?' + qs : ''))
+  },
 
   // modbus — facility electrical plane (utility feed / switchgear / MCC / MPP /
   // generator / ATS / UPS). No trap or COV endpoints: Modbus has no unsolicited

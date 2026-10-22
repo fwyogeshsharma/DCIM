@@ -1218,3 +1218,165 @@ select option { background: var(--bg-card); color: var(--text); }
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
+
+/* ─── Fault Injection panel (RightPanel/FaultsPanel.tsx, doc 32 S2-1) ───────
+   One idea carries the panel: the left rail of every active row says WHAT
+   is lying. A sensor fault (--info) is a reading that departs from a true
+   process; a degradation (--warn) is the machine itself changing; context
+   (weather, setpoints, ramps) is grey because the platform must exclude it,
+   not score it. The rail colour is always paired with a text kind label. */
+.fx-seg {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.fx-seg button {
+  flex: 1 1 auto;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.fx-seg button:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); border-color: transparent; }
+.fx-seg button[aria-selected="true"] {
+  background: var(--bg-selected);
+  color: var(--text);
+  border-color: var(--accent-border);
+}
+.fx-seg .fx-count {
+  display: inline-block;
+  min-width: 14px;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--bg-well);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: 9px;
+}
+
+.fx-body { flex: 1; overflow: auto; min-height: 0; }
+.fx-pad  { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+
+.fx-row {
+  position: relative;
+  padding: 8px 10px 8px 13px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fx-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--fx-rail, var(--text-dim));
+}
+.fx-row.k-sensor      { --fx-rail: var(--info); }
+.fx-row.k-degradation { --fx-rail: var(--warn); }
+.fx-row.k-context     { --fx-rail: var(--text-dim); }
+.fx-row-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.fx-kind {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.3px;
+  color: var(--fx-rail, var(--text-muted));
+  flex-shrink: 0;
+}
+.fx-row.k-context .fx-kind { color: var(--text-muted); }
+.fx-target {
+  font-size: 11px; color: var(--text); min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fx-target .pt { color: var(--text-muted); font-family: Consolas, 'SF Mono', monospace; font-size: 10px; }
+.fx-live { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.fx-live b { color: var(--text); font-weight: 600; }
+.fx-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.fx-actions button { font-size: 10px; padding: 3px 9px; }
+.fx-note { font-size: 10px; color: var(--text-muted); line-height: 1.45; }
+.fx-note.warn { color: var(--warn); }
+
+.fx-meter { height: 3px; background: var(--bg-well); border-radius: 2px; overflow: hidden; }
+.fx-meter > span { display: block; height: 100%; background: var(--fx-rail, var(--accent)); }
+
+.fx-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.fx-field > .lbl { font-size: 10px; color: var(--text-muted); }
+.fx-field > .help { font-size: 9px; color: var(--text-dim); line-height: 1.4; }
+.fx-field input:not([type="checkbox"]), .fx-field select { width: 100%; min-width: 0; }
+.fx-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fx-unit { display: flex; align-items: center; gap: 5px; }
+.fx-unit > input { flex: 1; min-width: 0; }
+.fx-unit > .u { font-size: 10px; color: var(--text-muted); flex-shrink: 0; min-width: 22px; }
+.fx-check { display: flex; align-items: flex-start; gap: 6px; font-size: 10px; color: var(--text); cursor: pointer; }
+.fx-check input { margin-top: 1px; }
+.fx-check input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.fx-callout {
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-radius: 5px;
+  padding: 7px 9px;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.fx-callout.crit { border-color: var(--crit-border); background: var(--crit-bg); color: var(--crit); }
+.fx-callout.ok   { border-color: var(--ok-border);   background: var(--ok-bg);   color: var(--ok); }
+.fx-callout.info { border-color: var(--info-border); background: var(--info-bg); color: var(--info); }
+
+.fx-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 7px; border-radius: 999px;
+  font-size: 9px; font-weight: 600; text-transform: none; letter-spacing: 0;
+  border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-faint);
+  white-space: nowrap;
+}
+.fx-chip.warn { border-color: var(--warn-border); color: var(--warn); background: var(--warn-bg); }
+.fx-chip.ok   { border-color: var(--ok-border);   color: var(--ok);   background: var(--ok-bg); }
+
+.fx-empty { padding: 24px 14px; text-align: center; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+.fx-empty .fx-actions { justify-content: center; margin-top: 10px; }
+
+.fx-ledger { width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }
+.fx-ledger thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg-panel); color: var(--text-muted);
+  text-align: left; font-weight: 600; font-size: 9px;
+  padding: 5px 6px; border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.fx-ledger tbody td {
+  padding: 4px 6px; border-bottom: 1px solid var(--border-soft);
+  color: var(--text); vertical-align: top;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fx-ledger tbody tr.fx-lrow { cursor: pointer; }
+.fx-ledger tbody tr.fx-lrow:hover td { background: var(--bg-hover); }
+.fx-ledger tbody tr.fx-lrow:focus-visible td { background: var(--bg-hover); box-shadow: inset 0 0 0 1px var(--accent); }
+.fx-ledger td.mono { font-family: Consolas, 'SF Mono', monospace; }
+.fx-ledger td.dim  { color: var(--text-muted); }
+.fx-ledger td.open { color: var(--ok); }
+.fx-ledger pre {
+  margin: 0; padding: 6px 8px; white-space: pre-wrap; overflow-wrap: anywhere;
+  font-family: Consolas, 'SF Mono', monospace; font-size: 9px; color: var(--text-muted);
+  background: var(--bg-inset); border-radius: 4px;
+}
+.fx-pager { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.fx-pager .grow { flex: 1; }
+.fx-pager span { font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.fx-pager button { font-size: 10px; padding: 3px 9px; }
+
+.fx-sites { width: 100%; border-collapse: collapse; font-size: 10px; }
+.fx-sites th { text-align: left; color: var(--text-muted); font-weight: 600; font-size: 9px; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.fx-sites td { padding: 5px 6px; border-bottom: 1px solid var(--border-soft); color: var(--text); font-variant-numeric: tabular-nums; vertical-align: top; }
+.fx-sites td.off { color: var(--warn); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-meter > span { transition: none; }
+}

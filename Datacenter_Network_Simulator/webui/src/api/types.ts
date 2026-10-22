@@ -406,3 +406,90 @@ export interface LogEntry {
   level: string
   ts: number
 }
+
+// ── Fault injection / anomaly ground truth (doc 32; api/routers/faults.py) ──
+// Shapes copied from the router, not invented: see GET /api/faults,
+// /api/faults/points, /api/faults/ledger and /api/weather.
+
+export type FaultKind = 'sensor' | 'degradation' | 'ramp' | 'setpoint' | 'weather'
+
+export interface ActiveFault {
+  id: string | null              // ramps/setpoints may have no ledger id
+  kind: FaultKind
+  device: string | null          // device NAME (the store's key)
+  device_id?: string | null      // topology id; null on a held degradation
+  point: string | null
+  city?: string                  // weather only
+  start: string | null           // UTC ISO
+  params: Record<string, unknown>
+  current?: {
+    // sensor
+    bias?: number; stuck?: boolean; held?: number | boolean | null
+    in_dropout?: boolean; last_wire?: number | null
+    // degradation / ramp
+    value?: number | null; reached?: boolean; eta_ts?: number | null
+    // weather
+    until?: string
+  }
+}
+
+export interface FaultPoint {
+  point: string
+  surface: 'bacnet' | 'attr' | 'ext'
+  protocols: string[]
+  binary: boolean
+  control: boolean               // in a store control loop: affects_control allowed
+  store_published: boolean
+  metric_hint: { metric: string; instance: string } | null
+}
+
+export interface FaultPointsResponse {
+  device: string; name: string; device_type: string; points: FaultPoint[]
+}
+
+export interface SensorFaultRequest {
+  device: string; point: string
+  bias?: number; drift_per_h?: number; noise_mult?: number
+  stuck?: boolean; stuck_value?: number | null
+  dropout_pct?: number; dropout_window_s?: number
+  duration_s?: number | null; affects_control?: boolean; campaign?: string | null
+}
+
+export interface DegradationRequest {
+  device: string; kind: string; rate_per_h: number; target: number; campaign?: string | null
+}
+
+export interface LedgerEntry {
+  id: string
+  kind: string
+  device: string | null
+  device_id?: string | null
+  point: string | null
+  start: string | null
+  end: string | null
+  end_reason: string | null
+  params: Record<string, unknown>
+  expected_kind?: string
+  metric_hint?: { metric: string; instance: string }
+  source?: string
+  campaign?: string
+  sim?: { seed?: number; air_mode?: string; head?: string }
+  marks?: unknown[]
+  resumes?: unknown[]
+}
+
+export interface LedgerPage { entries: LedgerEntry[]; next_cursor: string | null }
+
+export interface WeatherSite {
+  datacenter: string; city: string; dry_bulb_c: number; wet_bulb_c: number
+  override: null | { id?: string; dry_bulb_offset_c: number; wet_bulb_offset_c: number; until: string }
+}
+
+export interface WeatherRequest {
+  datacenter?: string | null
+  dry_bulb_offset_c: number
+  wet_bulb_offset_c?: number | null
+  until?: string | null
+  duration_s?: number | null
+  campaign?: string | null
+}

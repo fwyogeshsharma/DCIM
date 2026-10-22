@@ -11,6 +11,7 @@ import TrapsPanel   from './TrapsPanel'
 import RulesPanel   from './RulesPanel'
 import TickPanel    from './TickPanel'
 import FleetPanel   from './FleetPanel'
+import FaultsPanel  from './FaultsPanel'
 
 const MIN_WIDTH     = 200
 const MAX_WIDTH     = 900
@@ -32,6 +33,8 @@ interface Tab {
   iconWidth?:   number    // explicit width; with iconHeight, scales NON-uniformly
   iconHeight?:  number    // explicit height (objectFit switches to 'fill')
   iconColor?:   string    // override inactive text color
+  iconNode?:    React.ReactNode  // inline SVG drawn in currentColor, so it follows the
+                                 // active/inactive text colour like a glyph does
   label:        string
   component:    React.ReactNode
 }
@@ -63,7 +66,19 @@ const TABS: Tab[] = [
   { id: 'rules',   icon: '⚙️',  iconSrc: '/assets/icons/rules.png', iconInvert: true, iconSize: 20, label: 'Rules', component: <RulesPanel /> },
   { id: 'tick',    icon: '🔃',  iconSrc: '/assets/icons/tick.png', iconInvert: true, iconSize: 20, label: 'Metrics Tick', component: <TickPanel />    },
   { id: 'fleet',   icon: '📈',  label: 'Fleet Lifecycle', component: <FleetPanel /> },
+  // Anomaly ground truth (doc 32 S2-1): sensor faults, degradations, weather, ledger.
+  { id: 'faults',  icon: '',    iconNode: <FaultsGlyph />, label: 'Fault Injection', component: <FaultsPanel /> },
 ]
+
+// A signal trace with one excursion: the reading that departs from the process.
+function FaultsGlyph() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="2 14 6 14 8 11 10 14 12.5 14 15 4 17.5 20 19.5 14 22 14" />
+    </svg>
+  )
+}
 
 function TabButton({
   tab, active, onClick, badge,
@@ -71,6 +86,8 @@ function TabButton({
   return (
     <button
       title={tab.label}
+      aria-label={tab.label}
+      aria-pressed={active}
       onClick={onClick}
       style={{
         position: 'relative',
@@ -93,7 +110,9 @@ function TabButton({
           background: 'var(--accent)',
         }} />
       )}
-      {tab.iconSrc
+      {tab.iconNode
+        ? tab.iconNode
+        : tab.iconSrc
         ? tab.iconWhiteBg
           ? <div style={{
               width: tab.iconSize ?? 30, height: tab.iconSize ?? 30,
