@@ -38,7 +38,10 @@ def test_the_air_side_books_only_the_air_share(tmp_path):
     # Every server in the second hall is on a loop, so the room keeps only the
     # residual share of the same load.
     assert with_plates < air_only
-    assert abs(with_plates - air_only * DTC_AIR_FRACTION) < 0.05 * air_only
+    # 7 %, not exact: server fan power follows inlet air, the two halls do not
+    # sit at identical temperatures, and the CRAH discharge ripples a few tenths
+    # round setpoint. The defect this guards against is a 2x double booking.
+    assert abs(with_plates - air_only * DTC_AIR_FRACTION) < 0.07 * air_only
 
 
 def test_the_liquid_side_books_only_the_cold_plate_share(tmp_path):

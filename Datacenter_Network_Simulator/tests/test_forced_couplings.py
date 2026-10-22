@@ -43,7 +43,8 @@ def test_forced_hightemp_reaches_the_wire_and_warms_the_room(hall):
     pen = r.store._chw_pen.get("DC1", 0.0)
     room0 = _room_supply(r)
     sa0 = _wire(r, name)
-    assert sa0 == pytest.approx(SP + pen, abs=0.2)
+    # The discharge loop ripples a few tenths round setpoint (sigma ~0.1 C).
+    assert sa0 == pytest.approx(SP + pen, abs=0.5)
     r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighTemp"] = 1.0
     r.tick(60)                                         # within 60 s
     assert _wire(r, name) >= SP + pen + 5.5
@@ -53,7 +54,7 @@ def test_forced_hightemp_reaches_the_wire_and_warms_the_room(hall):
     # Clearing restores the previous state.
     r.store.plant_alarm_overrides.pop(name, None)
     r.tick(5)
-    assert _wire(r, name) == pytest.approx(sa0, abs=0.2)
+    assert _wire(r, name) == pytest.approx(sa0, abs=0.5)   # control ripple, both ends
     assert _room_supply(r) == pytest.approx(room0, abs=0.1)
     assert _wire(r, name, "CHW_Valve") < 100.0
 
@@ -143,3 +144,16 @@ def test_forced_cdu_high_supply_temp_reaches_the_wire_and_the_loop(tmp_path):
     r.tick(3)
     assert _wire(r, cdu, "TCS_Supply_Temp") == pytest.approx(tcs0, abs=0.5)
     assert r.store._forced_t == {}
+
+
+def test_a_healthy_crah_supply_ripples_round_setpoint_not_on_it(hall):
+    """A real discharge loop hunts a little round setpoint: an hour at exactly
+    22.0 is a flatline no sensor gives, and DQ-5 rightly flags it as stuck."""
+    r = hall
+    name = r.crah(2).name
+    seen = []
+    for _ in range(40):
+        r.tick(1)
+        seen.append(_wire(r, name))
+    assert len(set(seen)) > 1, "supply air sat on one value for 40 ticks"
+    assert all(abs(v - SP) <= 0.5 for v in seen), "ripple stays a few tenths"

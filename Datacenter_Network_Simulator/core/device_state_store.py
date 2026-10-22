@@ -6943,7 +6943,25 @@ class DeviceStateStore:
                 # store-side, on the engine's own severity ramp (0.25 -> 1.0).
                 _ht = self._crah_hightemp_sev(name)
                 _sp_u = self._crah_sp(name)
-                _sa_u = _sp_u + _pen_dc - _cb + 6.0 * _ht
+                # Control ripple. A real discharge loop never sits on setpoint to
+                # the tenth: the PID hunts a little round it as the coil load and
+                # the valve move, so a healthy CRAH's supply wanders a few tenths
+                # of a degree. Holding it at exactly 22.0 for hours is a reading no
+                # real sensor gives, and a data-quality check rightly calls it a
+                # flatline. An AR(1) walk per unit (sigma ~0.1 C, held within
+                # +-0.4 C), seeded, on the TRUTH: the air itself ripples.
+                # Its own stream, so no other point's random sequence shifts.
+                _rp = getattr(self, "_crah_ripple", None)
+                if _rp is None:
+                    _rp = self._crah_ripple = {}
+                    self._crah_ripple_rng = {}
+                _rr = self._crah_ripple_rng.get(name)
+                if _rr is None:
+                    _rr = self._crah_ripple_rng[name] = random.Random(stable_seed(name) ^ 0xC0DE)
+                _e = 0.85 * _rp.get(name, 0.0) + _rr.gauss(0.0, 0.06)
+                _e = max(-0.4, min(0.4, _e))
+                _rp[name] = _e
+                _sa_u = _sp_u + _pen_dc - _cb + 6.0 * _ht + _e
                 pts["Supply_Air_Temp"] = round(_sa_u, 1)
                 # FILTER dP (doc 32 §5.3, S1-5), in Pa: 60 Pa x (1 + 3L) at
                 # rated airflow, and dP ~ Q^2 so it reads at the airflow the
