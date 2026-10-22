@@ -7,6 +7,10 @@
 * ``GET    /api/faults/points?device=`` — injectable points for one device
 * ``GET    /api/faults/{id}``         — one entry, active or historical
 * ``GET    /api/air/influence``       — the spatial model's rack <-> CRAH weights
+* ``POST   /api/faults/degradation``  — a slow process fault in the MACHINE (S1-1)
+* ``POST   /api/weather/override``    — move one site's (or every site's) sky (S1-9)
+* ``DELETE /api/weather/override``    — clear it early
+* ``GET    /api/weather``             — live dry / wet bulb per DC with any override
 
 Devices are ADDRESSED by topology id and KEYED by name internally, the
 identity rule of ``POST /api/bacnet/plant/overrides`` (doc 32 §1.2).
@@ -22,7 +26,8 @@ from pydantic import BaseModel
 from api.state import AppState
 from core import fault_ledger as _fl
 from core import fault_points as _fp
-from core.fault_injection import FaultConflict, SensorFault, sigma_for
+from core.fault_injection import (DEGRADATION_KINDS, Degradation, FaultConflict,
+                                  SensorFault, degradation_healthy, sigma_for)
 
 router = APIRouter(tags=["Faults"])
 
@@ -139,15 +144,123 @@ def add_sensor_fault(body: SensorFaultBody):
     return _entry_shape(e, f, info["protocols"])
 
 
+# ── degradations (C7) ────────────────────────────────────────────────────────
+
+class DegradationBody(BaseModel):
+    device: str                       # topology device id
+    kind: str                         # cop | tower_approach | hx_approach | filter_loading | pump_derate
+    rate_per_h: float                 # magnitude, kind's unit per hour (> 0)
+    target: float                     # final value, kind's unit
+    campaign: Optional[str] = None
+
+
+@router.post("/faults/degradation", status_code=201)
+def add_degradation(body: DegradationBody):
+    """Degrade the MACHINE: physics changes (truth), and every protocol shows
+    the consequence. Advances on the simulator's own clock toward *target*,
+    then holds; the entry stays open (a fouled coil does not unfoul)."""
+    st = _store()
+    dev = _device(body.device)
+    spec = DEGRADATION_KINDS.get(body.kind)
+    dtype = getattr(dev.device_type, "value", str(dev.device_type))
+    if spec is None:
+        raise HTTPException(status_code=422,
+                            detail=f"unknown degradation kind '{body.kind}'; one of "
+                                   f"{sorted(DEGRADATION_KINDS)}")
+    if dtype not in spec["types"]:
+        raise HTTPException(status_code=422,
+                            detail=f"'{body.kind}' does not apply to a {dtype}; "
+                                   f"valid for {list(spec['types'])}")
+    if not body.rate_per_h > 0.0:
+        raise HTTPException(status_code=422, detail="rate_per_h must be > 0")
+    lo, hi = spec["band"]
+    if not lo <= float(body.target) <= hi:
+        raise HTTPException(status_code=422,
+                            detail=f"target {body.target} outside the physical band "
+                                   f"{lo}-{hi} for {body.kind} ({spec['unit']})")
+    cur = st.faults.machine_value(dev.name, body.kind)
+    healthy = degradation_healthy(body.kind)
+    if abs(float(body.target) - healthy) < abs(cur - healthy) - 1e-9:
+        raise HTTPException(status_code=422,
+                            detail=f"target {body.target} is healthier than the machine "
+                                   f"({cur:.4g}); equipment does not heal itself — clean "
+                                   f"it with DELETE /api/faults/{{id}}?restore=true")
+    now = st.faults.clock()
+    d = Degradation(id=_fl.new_fault_id(now), device=dev.name, device_id=dev.id,
+                    kind=body.kind, rate_per_h=float(body.rate_per_h),
+                    target=float(body.target), start_ts=now)
+    try:
+        st.faults.add_degradation(d, ledger_entry={
+            "source": "POST /api/faults/degradation", "campaign": body.campaign,
+            "expected_kind": "process"})
+    except FaultConflict as exc:
+        raise HTTPException(status_code=409,
+                            detail=f"{exc}. One degradation per (device, kind): DELETE "
+                                   f"it first.")
+    e = st.faults.ledger.get(d.id) or {"id": d.id, "device": d.device,
+                                        "device_id": d.device_id, "point": None,
+                                        "start": _fl.utc_iso(now), "params": d.params()}
+    out = _entry_shape(e)
+    out["kind"] = "degradation"
+    out["point"] = None
+    eta = d.eta_ts()
+    out["eta_target"] = _fl.utc_iso(eta) if eta is not None else None
+    return out
+
+
+def _active_ramps(st) -> list:
+    """Ramps, oscillations and setpoint holds on plant overrides, for the list."""
+    from core.fault_points import SETPOINT_POINTS
+    out = []
+    led = st.faults.ledger
+    ramps = getattr(st, "plant_ramps", {}) or {}
+    for name, pts in list(ramps.items()):
+        for point, r in list((pts or {}).items()):
+            fid = led.open_id(("override", name, point))
+            e = led.get(fid) if fid else None
+            out.append({"id": fid, "kind": "setpoint" if point in SETPOINT_POINTS else "ramp",
+                        "device": name, "device_id": (e or {}).get("device_id"),
+                        "point": point, "start": (e or {}).get("start"),
+                        "params": (e or {}).get("params", {}),
+                        "current": {"value": (st.plant_alarm_overrides.get(name) or {})
+                                    .get(point), "reached": bool(r.get("reached"))}})
+    for name, pts in list((st.plant_alarm_overrides or {}).items()):
+        for point, v in list((pts or {}).items()):
+            if point in SETPOINT_POINTS and point not in (ramps.get(name) or {}):
+                fid = led.open_id(("override", name, point))
+                e = led.get(fid) if fid else None
+                out.append({"id": fid, "kind": "setpoint", "device": name,
+                            "device_id": (e or {}).get("device_id"), "point": point,
+                            "start": (e or {}).get("start"),
+                            "params": (e or {}).get("params", {}),
+                            "current": {"value": v}})
+    return out
+
+
+def _active_weather() -> list:
+    from core import cooling_model as cm
+    out = []
+    for city, w in list(cm._WEATHER.items()):
+        out.append({"id": w.get("id"), "kind": "weather", "device": None, "point": None,
+                    "city": city, "start": None,
+                    "params": {"dry_bulb_offset_c": w["dry"], "wet_bulb_offset_c": w["wet"]},
+                    "current": {"until": _fl.utc_iso(w["until"])}})
+    return out
+
+
 @router.get("/faults")
 def list_faults():
-    """Active sensor faults with their live state (``current``)."""
+    """Everything active: sensor faults, degradations (with their current
+    value), ramps, setpoint events and weather overrides."""
     st = _store()
     out = []
     for a in st.faults.active():
         a = dict(a)
-        a["start"] = _fl.utc_iso(a.pop("start_ts"))
+        ts = a.pop("start_ts")
+        a["start"] = _fl.utc_iso(ts) if ts is not None else None
         out.append(a)
+    out.extend(_active_ramps(st))
+    out.extend(_active_weather())
     return {"active": out}
 
 
@@ -183,14 +296,129 @@ def get_fault(fault_id: str):
 
 @router.delete("/faults/{fault_id}")
 def delete_fault(fault_id: str, restore: bool = False):
-    """Remove an active fault and return its closed ledger entry. ``restore``
-    is for degradations (S1: a fouled coil stays fouled until cleaned); a
-    sensor fault simply ends."""
+    """Remove an active fault and return its closed ledger entry.
+
+    A sensor fault simply ends. Deleting a DEGRADATION stops the ramp and does
+    NOT heal the equipment: the machine keeps its value and a ``held``
+    degradation entry stays open over it. ``?restore=true`` cleans it (filter
+    changed, tubes brushed), resets the machine and ledgers a separate
+    ``maintenance`` entry. A held entry can only be ended by a restore (409)."""
     st = _store()
-    if st.faults.get(fault_id) is None:
+    held = st.faults.held_key(fault_id)
+    if st.faults.get(fault_id) is None and held is None:
         raise HTTPException(status_code=404, detail=f"No active fault '{fault_id}'")
-    closed = st.faults.remove(fault_id, "deleted")
+    if held is not None and not restore:
+        raise HTTPException(status_code=409,
+                            detail=f"{held[0]} stays degraded ({held[1]}) until it is "
+                                   f"restored: DELETE /api/faults/{fault_id}?restore=true")
+    closed = st.faults.remove(fault_id, "deleted", restore=restore)
     return _entry_shape(closed or {"id": fault_id})
+
+
+# ── weather override (C10) ───────────────────────────────────────────────────
+
+def _dc_cities() -> dict:
+    from core.device_state_store import _dc_city_map
+    dm = _state().device_manager
+    return _dc_city_map(dm.get_all_devices() if dm else [])
+
+
+class WeatherBody(BaseModel):
+    datacenter: Optional[str] = None      # default: every site
+    dry_bulb_offset_c: float = 0.0
+    # The wet-bulb SHIFT; omitted, it follows the dry bulb (constant depression).
+    wet_bulb_offset_c: Optional[float] = None
+    until: Optional[str] = None           # ISO-8601; or duration_s
+    duration_s: Optional[float] = None
+    campaign: Optional[str] = None
+
+
+@router.post("/weather/override", status_code=201)
+def set_weather(body: WeatherBody):
+    """Offset one site's (or every site's) outdoor dry and wet bulb until
+    *until*. Everything that reads the climate follows: chiller kW, the
+    economiser, condenser water, the tower OA points. A context event, not a
+    fault (expected_kind none)."""
+    from core import cooling_model as cm
+    st = _store()
+    now = st.faults.clock()
+    until = _fl.parse_iso(body.until) if body.until else None
+    if until is None and body.duration_s is not None:
+        until = now + float(body.duration_s)
+    if until is None or until <= now:
+        raise HTTPException(status_code=422,
+                            detail="until (ISO-8601, in the future) or duration_s > 0 required")
+    wet = (float(body.wet_bulb_offset_c) if body.wet_bulb_offset_c is not None
+           else float(body.dry_bulb_offset_c))
+    for v, nm in ((body.dry_bulb_offset_c, "dry_bulb_offset_c"), (wet, "wet_bulb_offset_c")):
+        if not -25.0 <= float(v) <= 25.0:
+            raise HTTPException(status_code=422, detail=f"{nm} must be within ±25 K")
+    if body.dry_bulb_offset_c == 0.0 and wet == 0.0:
+        raise HTTPException(status_code=422, detail="no-op override: set an offset")
+    cities = _dc_cities()
+    if body.datacenter is not None:
+        if body.datacenter not in cities:
+            raise HTTPException(status_code=404,
+                                detail=f"datacenter '{body.datacenter}' not found")
+        targets = {body.datacenter: cities[body.datacenter]}
+    else:
+        targets = dict(cities)
+    entries = []
+    led = st.faults.ledger
+    seen = set()
+    for dc, city in sorted(targets.items()):
+        ck = cm._city_key(city)
+        if ck in seen:
+            continue
+        seen.add(ck)
+        params = {"datacenter": dc, "city": ck,
+                  "dry_bulb_offset_c": float(body.dry_bulb_offset_c),
+                  "wet_bulb_offset_c": wet,
+                  "until": _fl.utc_iso(until)}
+        e = led.open("weather", params=params, expected_kind="none",
+                     source="POST /api/weather/override", campaign=body.campaign,
+                     key=("weather", ck), start=now)
+        cm.set_weather_override(city, body.dry_bulb_offset_c, wet,
+                                until, fault_id=e["id"])
+        entries.append({"id": e["id"], "kind": "weather", "datacenter": dc, "city": ck,
+                        "start": e["start"], "until": _fl.utc_iso(until), "params": params})
+    if body.datacenter is not None and entries:
+        return entries[0]
+    return {"kind": "weather", "entries": entries}
+
+
+@router.delete("/weather/override")
+def clear_weather(datacenter: Optional[str] = None):
+    from core import cooling_model as cm
+    st = _store()
+    cities = _dc_cities()
+    if datacenter is not None and datacenter not in cities:
+        raise HTTPException(status_code=404, detail=f"datacenter '{datacenter}' not found")
+    targets = [cities[datacenter]] if datacenter is not None else list(cities.values())
+    closed = []
+    for city in targets:
+        w = cm.clear_weather_override(city)
+        if w and w.get("id"):
+            e = st.faults.ledger.close(w["id"], "cleared")
+            if e:
+                closed.append(e)
+    return {"cleared": closed}
+
+
+@router.get("/weather")
+def get_weather():
+    """Live outdoor dry and wet bulb per DC, with any override in force."""
+    from core import cooling_model as cm
+    out = []
+    for dc, city in sorted(_dc_cities().items()):
+        w = cm.weather_override(city)
+        out.append({"datacenter": dc, "city": cm._city_key(city),
+                    "dry_bulb_c": round(cm.ambient_c(city), 2),
+                    "wet_bulb_c": round(cm.wet_bulb_c(city), 2),
+                    "override": None if w is None else {
+                        "id": w.get("id"), "dry_bulb_offset_c": w["dry"],
+                        "wet_bulb_offset_c": w["wet"], "until": _fl.utc_iso(w["until"])}})
+    return {"weather": out}
 
 
 # ── air influence (C6) ───────────────────────────────────────────────────────
@@ -205,3 +433,29 @@ def air_influence(datacenter: Optional[str] = None, room: Optional[str] = None):
         raise HTTPException(status_code=409,
                             detail="air model is 'uniform' — no influence structure exists")
     return out
+
+
+# ── context events from campaign tooling (doc 32 §13.1) ─────────────────────
+
+class ContextBody(BaseModel):
+    context: str                       # e.g. "detector_enabled", "campaign_run"
+    params: dict = {}
+    campaign: Optional[str] = None
+    close_id: Optional[str] = None     # close an entry this endpoint opened
+
+
+@router.post("/faults/context", status_code=201)
+def ledger_context(body: ContextBody):
+    """Ledger a context window the platform must exclude, not score: a
+    detector enabled for one campaign run, a run boundary. Opens an entry (or
+    closes ``close_id``). Physics is untouched."""
+    led = _fl.get_ledger()
+    if body.close_id:
+        e = led.close(body.close_id, "cleared")
+        if e is None:
+            raise HTTPException(status_code=404, detail=f"No open entry '{body.close_id}'")
+        return e
+    params = dict(body.params or {})
+    params["context"] = body.context
+    return led.open("context", params=params, expected_kind="none",
+                    source="POST /api/faults/context", campaign=body.campaign)

@@ -30,11 +30,13 @@ SNMP_PLANT_TYPES = {"crah", "cdu"}
 STORE_PUBLISHED: Dict[str, set] = {
     "chiller": {"CHW_Supply_Temp", "CHW_Return_Temp", "CHW_Setpoint", "CHW_Flow",
                 "Cond_Supply_Temp", "Cond_Return_Temp", "COP", "Active_Power",
-                "Compressor_Load", "Cooling_Capacity"},
-    "crah": {"Return_Air_Temp", "Supply_Air_Temp", "CHW_Valve"},
+                "Compressor_Load", "Cooling_Capacity", "Cond_Pressure",
+                "Cond_Approach_Temp", "Evap_Approach_Temp"},
+    "crah": {"Return_Air_Temp", "Supply_Air_Temp", "CHW_Valve", "Filter_DP"},
     "cdu": {"TCS_Supply_Temp", "TCS_Return_Temp", "TCS_Setpoint", "Facility_CHW_Valve",
-            "TCS_Flow"},
-    "pump": {"Flow", "Speed", "Diff_Pressure"},
+            "TCS_Flow", "Approach_Temp", "Filter_DP"},
+    "pump": {"Flow", "Speed", "Diff_Pressure", "Suction_Pressure", "Discharge_Pressure",
+             "VFD_Frequency"},
     "cooling_tower": {"Makeup_Flow", "Cond_Water_In", "Cond_Water_Out", "Basin_Temp",
                       "OA_Dry_Bulb_Temp", "OA_Wet_Bulb_Temp"},
     "valve": set(),
@@ -50,6 +52,8 @@ BACNET_HINTS: Dict[str, Dict[str, tuple]] = {
         "Cooling_Capacity": ("cooling_capacity", ""), "COP": ("cop", ""),
         "Evap_Pressure": ("water_pressure", "EVAP"), "Cond_Pressure": ("water_pressure", "COND"),
         "Run_Hours": ("run_hours", ""), "Chiller_Running": ("equipment_state", "Chiller_Running"),
+        "Cond_Approach_Temp": ("approach_temp", "COND"),
+        "Evap_Approach_Temp": ("approach_temp", "EVAP"),
     },
     "pump": {
         "Speed": ("pump_speed_pct", ""), "Flow": ("water_flow", ""),
@@ -90,8 +94,16 @@ BACNET_HINTS: Dict[str, Dict[str, tuple]] = {
         "Fan_Power": ("power_draw", ""), "Run_Hours": ("run_hours", ""),
         "Unit_Running": ("equipment_state", "Unit_Running"),
         "Filter_Dirty": ("alarm_state", "Filter_Dirty"),
+        # Published in Pa; the platform mapping scales by 0.001 to kPa.
+        "Filter_DP": ("filter_diff_pressure", ""),
     },
 }
+
+#: Setpoint points: holdable and rampable (doc 32 §6.2), ledgered as context.
+SETPOINT_POINTS = {"Setpoint", "CHW_Setpoint", "TCS_Setpoint"}
+#: Physical band an operator setpoint must sit in (refused with 422 outside).
+SETPOINT_BAND = {"Setpoint": (15.0, 30.0), "CHW_Setpoint": (4.0, 16.0),
+                 "TCS_Setpoint": (12.0, 45.0)}
 
 #: Device attributes a renderer serves, per device type.
 ATTR_POINTS: Dict[str, List[str]] = {

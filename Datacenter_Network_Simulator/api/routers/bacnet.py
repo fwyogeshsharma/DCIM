@@ -557,10 +557,25 @@ def plant_metrics(view: str = "wire"):
 
 # ── Per-device plant alarm overrides (Metric Tick window) ────────────────────
 
+class OverrideRamp(BaseModel):
+    rate_per_s: float             # magnitude, point units per second (> 0)
+    target: float                 # moves toward this and holds there
+
+
+class OverrideOscillate(BaseModel):
+    period_s: float               # > 0
+    amplitude: float              # point units, about the ramp/start value
+
+
 class PlantOverride(BaseModel):
     device: str               # topology device id (stable across renames)
     point:  str               # binary point, e.g. "Alarm_FlowLoss" or "Chiller_Running"
     value:  float | None = None   # None = clear; alarm-on = 1.0; unit-off = 0.0
+    # Additive (doc 32 §6.1, S1-7): a ramp and/or a sine on a HOLDABLE point.
+    # With either, `value` is the start (default: the point's current truth).
+    ramp: OverrideRamp | None = None
+    oscillate: OverrideOscillate | None = None
+    campaign: str | None = None
 
 
 def _device_name(device_id: str) -> str | None:
@@ -611,17 +626,96 @@ def set_plant_override(body: PlantOverride):
     nm = _device_name(body.device)
     if nm is None:
         raise HTTPException(status_code=404, detail=f"Device '{body.device}' not found")
+    dm = _state().device_manager
+    device = dm.get_device(body.device)
+    dtype = getattr(device.device_type, "value", str(device.device_type))
+    from core.fault_points import SETPOINT_BAND, SETPOINT_POINTS, STORE_PUBLISHED
+    from core.fault_injection import is_binary, point_span
+    shaped = body.ramp is not None or body.oscillate is not None
+    is_sp = body.point in SETPOINT_POINTS
+    if shaped:
+        from core.bacnet_plant_generator import PLANT_SPEC
+        names = {p[0] for p in PLANT_SPEC.get(dtype, {}).get("ai", [])}
+        if is_binary(body.point) or body.point in set(PLANT_SPEC.get(dtype, {}).get("bi", [])):
+            raise HTTPException(status_code=422,
+                                detail=f"{body.point} is binary: a ramp needs an analog point")
+        if body.point not in names:
+            raise HTTPException(status_code=422,
+                                detail=f"{body.point} is not an analog point of a {dtype}")
+        if body.point in STORE_PUBLISHED.get(dtype, set()) and not is_sp:
+            raise HTTPException(
+                status_code=409,
+                detail=(f"{body.point} on a {dtype} is published by the store every tick: "
+                        f"a ramp would be overwritten and never reach the wire. For a "
+                        f"lying reading use POST /api/faults/sensor; for a real process "
+                        f"change use POST /api/faults/degradation."))
+        if body.ramp is not None and not body.ramp.rate_per_s > 0:
+            raise HTTPException(status_code=422, detail="ramp.rate_per_s must be > 0")
+        if body.oscillate is not None and not body.oscillate.period_s > 0:
+            raise HTTPException(status_code=422, detail="oscillate.period_s must be > 0")
+    if is_sp and (body.value is not None or body.ramp is not None):
+        lo, hi = SETPOINT_BAND[body.point]
+        for v in (body.value, body.ramp.target if body.ramp else None):
+            if v is not None and not lo <= float(v) <= hi:
+                raise HTTPException(status_code=422,
+                                    detail=f"{body.point} {v} outside {lo}-{hi} C")
+    # The chillers share one CHW header, so a CHW reset is written to every
+    # chiller of the DC (doc 32 §6.2): physics reads the DC's setpoint.
+    targets = [device]
+    if body.point == "CHW_Setpoint" and dtype == "chiller":
+        dc = getattr(device, "datacenter", None)
+        targets = sorted((d for d in dm.get_all_devices()
+                          if getattr(d.device_type, "value", "") == "chiller"
+                          and getattr(d, "datacenter", None) == dc),
+                         key=lambda d: d.name) or [device]
     ov = st.plant_alarm_overrides
-    _ledger.plant_override(_state().device_manager.get_device(body.device),
-                           body.point, body.value, ov)
-    dev = ov.setdefault(nm, {})
+    ramps = getattr(st, "plant_ramps", None)
+    if ramps is None:
+        ramps = {}
+        try:
+            st.plant_ramps = ramps
+        except Exception:
+            pass
+    for tdev in targets:
+        tnm = tdev.name
+        if not shaped:
+            _ledger.plant_override(tdev, body.point, body.value, ov, campaign=body.campaign)
+            (ramps.get(tnm) or {}).pop(body.point, None)
+            if tnm in ramps and not ramps[tnm]:
+                ramps.pop(tnm, None)
+            dev = ov.setdefault(tnm, {})
+            if body.value is None:
+                dev.pop(body.point, None)
+                if not dev:
+                    ov.pop(tnm, None)
+            else:
+                dev[body.point] = float(body.value)
+            continue
+        from core.device_state_store import _plant_state_cache
+        start = body.value
+        if start is None:
+            start = (ov.get(tnm) or {}).get(body.point)
+        if start is None:
+            start = (_plant_state_cache.get(tnm) or {}).get(body.point)
+        if start is None:
+            raise HTTPException(status_code=422,
+                                detail=f"no current value for {tnm}/{body.point} to start "
+                                       f"from; pass value")
+        r = {"start": float(start), "t": 0.0, "reached": False,
+             "rate_per_s": body.ramp.rate_per_s if body.ramp else None,
+             "target": body.ramp.target if body.ramp else None,
+             "osc": ({"period_s": body.oscillate.period_s,
+                      "amplitude": body.oscillate.amplitude} if body.oscillate else None),
+             "span": point_span(body.point)}
+        r["id"] = _ledger.plant_ramp(tdev, body.point, r, ov, campaign=body.campaign)
+        ramps.setdefault(tnm, {})[body.point] = r
+        ov.setdefault(tnm, {})[body.point] = float(start)
+    names = ", ".join(d.name for d in targets)
+    if shaped:
+        return OkResponse(message=f"Ramping {body.point} on {names}")
     if body.value is None:
-        dev.pop(body.point, None)
-        if not dev:
-            ov.pop(nm, None)
-        return OkResponse(message=f"Cleared {body.point}")
-    dev[body.point] = float(body.value)
-    return OkResponse(message=f"Set {body.point}={body.value}")
+        return OkResponse(message=f"Cleared {body.point} on {names}")
+    return OkResponse(message=f"Set {body.point}={body.value} on {names}")
 
 
 class ChillerReset(BaseModel):

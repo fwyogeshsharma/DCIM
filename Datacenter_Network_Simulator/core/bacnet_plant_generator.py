@@ -18,13 +18,14 @@ from typing import Dict, Tuple, List
 from core.bacnet_object_model import (
     BACnetObject, OBJ_ANALOG_INPUT, OBJ_BINARY_INPUT,
     UNIT_DEGREES_CELSIUS, UNIT_LITERS_PER_SECOND, UNIT_LITERS_PER_MINUTE,
-    UNIT_KILOPASCALS, UNIT_HOURS, UNIT_MILLIMETERS_PER_SECOND,
+    UNIT_KILOPASCALS, UNIT_PASCALS, UNIT_HOURS, UNIT_MILLIMETERS_PER_SECOND,
     UNIT_PERCENT, UNIT_KILOWATTS, UNIT_HERTZ, UNIT_NO_UNITS,
 )
 
 _C, _LPS, _LPM = UNIT_DEGREES_CELSIUS, UNIT_LITERS_PER_SECOND, UNIT_LITERS_PER_MINUTE
 _KPA, _H, _MMS = UNIT_KILOPASCALS, UNIT_HOURS, UNIT_MILLIMETERS_PER_SECOND
 _PCT, _KW, _HZ, _NO = UNIT_PERCENT, UNIT_KILOWATTS, UNIT_HERTZ, UNIT_NO_UNITS
+_PA = UNIT_PASCALS
 
 # Analog point: (name, units, base, amplitude)
 #   base = None  -> use the device's rated_kw (electrical draw), amp is a fraction
@@ -46,6 +47,17 @@ PLANT_SPEC: Dict[str, dict] = {
             ("Evap_Pressure",     _KPA,350.0,20.0),
             ("Cond_Pressure",     _KPA,900.0,40.0),
             ("Run_Hours",         _H, 25000.0,0.0),
+            # Heat-exchanger approaches, appended LAST so no existing AI instance
+            # moves (doc 32 §5.3, S1-2). Condenser approach = saturated condensing
+            # temperature − leaving condenser water; evaporator approach = leaving
+            # chilled water − saturated evaporating temperature. Every modern
+            # centrifugal controller exposes them (Trane Tracer AdaptiView shows
+            # both directly; York/Carrier publish the saturated temperatures the
+            # BMS subtracts). Tube fouling and scale show here first, as a rising
+            # condenser approach at the same load. Amplitude 0: the store drives
+            # them (_compute_cond_loop); a walk would be a broken transmitter.
+            ("Cond_Approach_Temp", _C,   2.0,  0.0),
+            ("Evap_Approach_Temp", _C,   1.5,  0.0),
         ],
         # Alarm_HighCHWSupply is appended LAST on purpose: BI instances are assigned
         # in list order, so adding to the end leaves every existing point's instance
@@ -160,6 +172,13 @@ PLANT_SPEC: Dict[str, dict] = {
             ("Airflow",           _PCT, 80.0, 12.0),
             ("Fan_Power",         _KW,  None, 0.15),
             ("Run_Hours",         _H, 18000.0, 0.0),
+            # Filter differential pressure, in PASCALS, appended LAST (doc 32
+            # §5.3, S1-5). Newer Liebert/Stulz/Vertiv units carry an analog ΔP
+            # transmitter across the filter bank; older ones only a ΔP switch
+            # (that is Filter_Dirty). ~60 Pa clean at rated airflow, "change
+            # filter" at ~240 Pa. Driven by the store from the filter-loading
+            # state and the airflow actually moving (ΔP ∝ Q²); amplitude 0.
+            ("Filter_DP",         _PA,  60.0,  0.0),
         ],
         # Alarm_HighReturnAir is appended LAST so existing BI instances don't move.
         #
@@ -245,6 +264,11 @@ def apply_stopped(values: Dict[str, float], dt: float = 1.0,
         values["Diff_Pressure"] = 0.0
     if "Discharge_Pressure" in values and "Suction_Pressure" in values:
         values["Discharge_Pressure"] = values["Suction_Pressure"]
+    # No flow, no drop across the filter or strainer; no heat moving, no approach
+    # (both sides of a stopped exchanger soak to one temperature).
+    for pt in ("Filter_DP", "Approach_Temp", "Cond_Approach_Temp", "Evap_Approach_Temp"):
+        if pt in values:
+            values[pt] = 0.0
     # A stopped motor cools toward mechanical-room ambient.
     if "Motor_Temp" in values:
         values["Motor_Temp"] = 25.0

@@ -1,0 +1,2768 @@
+{
+ "version": 1,
+ "doc": "dcim-platform docs/32-anomaly-simulator-changes.md \u00a713; docs/33 \u00a74",
+ "units": {
+  "window_s": "seconds from onset (ledger start)",
+  "hold_s": "seconds"
+ },
+ "scenarios": [
+  {
+   "name": "all-chillers",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": "tests/test_fault_campaign.py::test_exhaustion_scenario_stays_inside_the_envelope",
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "all"
+     },
+     "body": {
+      "point": "Chiller_Running",
+      "value": 0.0
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CR-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 900,
+      "max": 1020,
+      "calibrated": false
+     },
+     "note": "CHW-starved branch; a diagnosis, not a lead"
+    },
+    {
+     "detector": "RM-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 480,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-3",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 900,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CD-1",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 300,
+      "max": 1200,
+      "calibrated": false
+     },
+     "note": "as an L5 symptom of the chiller root"
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_HighCHWSupply}",
+    "expect_lead_s": {
+     "max": 0
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": {
+    "root": "chiller_plant",
+    "max_incidents": 1
+   }
+  },
+  {
+   "name": "all-chwp",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "pump",
+      "datacenter": "DC1",
+      "pick": "all",
+      "name_prefix": "CHWP"
+     },
+     "body": {
+      "point": "Alarm_Fault",
+      "value": 1.0
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CR-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 900,
+      "max": 1020,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "RM-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 480,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-3",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 900,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_FlowLoss}",
+    "expect_lead_s": {
+     "max": 0
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": {
+    "root": "pump_train",
+    "max_incidents": 1
+   }
+  },
+  {
+   "name": "all-towers",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cooling_tower",
+      "datacenter": "DC1",
+      "pick": "all"
+     },
+     "body": {
+      "point": "Fan_Status",
+      "value": 0.0
+     },
+     "hold_s": 1800
+    }
+   ],
+   "expected": [
+    {
+     "detector": "RM-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 1200,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [
+    "CH-5"
+   ],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "CH-5 cannot lead: ~34 s from 30 to 42 C at full loss is about one BACnet poll"
+  },
+  {
+   "name": "tower-cell-partial",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cooling_tower",
+      "datacenter": "DC1",
+      "pick": "first_running"
+     },
+     "body": {
+      "point": "Fan_Status",
+      "value": 0.0
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CH-5",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 60,
+      "max": 600,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CT-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1200,
+      "max": 1500,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CH-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 300,
+      "max": 1800,
+      "calibrated": false
+     },
+     "note": "unloading leaves CHW above setpoint at load < 95 %"
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_CondPressLimit}",
+    "expect_lead_s": {
+     "min": 180
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [
+    "CT-2"
+   ],
+   "incident": null,
+   "note": "needs > 60 % plant load; one tower per DC (run per DC)"
+  },
+  {
+   "name": "all-cwp",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "pump",
+      "datacenter": "DC1",
+      "pick": "all",
+      "name_prefix": "CWP"
+     },
+     "body": {
+      "point": "Alarm_Fault",
+      "value": 1.0
+     },
+     "hold_s": 1800
+    }
+   ],
+   "expected": [
+    {
+     "detector": "RM-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 1200,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [
+    "CH-5"
+   ],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "hall-crahs",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": "tests/test_fault_campaign.py::test_the_air_side_going_dark_leaves_the_plant_healthy",
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "all",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Unit_Running",
+      "value": 0.0
+     },
+     "hold_s": 1800
+    }
+   ],
+   "expected": [
+    {
+     "detector": "RM-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 480,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-3",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 480,
+      "max": 720,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "PD-1",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 600,
+      "max": 2100,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CR-1",
+    "CR-2",
+    "CR-3",
+    "CR-4",
+    "CR-5",
+    "CR-6"
+   ],
+   "enable_for_run": [],
+   "incident": {
+    "root": "crah_group",
+    "max_incidents": 1
+   }
+  },
+  {
+   "name": "crah-single-trip",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Unit_Running",
+      "value": 0.0
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "RM-3",
+     "kind": "process",
+     "root": "zone",
+     "window_s": {
+      "min": 900,
+      "max": 1200,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "RM-4",
+     "kind": "process",
+     "root": "zone",
+     "window_s": {
+      "min": 900,
+      "max": 1800,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-1",
+     "kind": "process",
+     "root": "zone",
+     "window_s": {
+      "min": 900,
+      "max": 2400,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-2",
+     "kind": "process",
+     "root": "zone",
+     "window_s": {
+      "min": 900,
+      "max": 2400,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "PD-1",
+     "kind": "process",
+     "root": "zone",
+     "window_s": {
+      "min": 1800,
+      "max": 2100,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "Phase 4 gate: zone attribution to that CRAH beats room-level grouping"
+  },
+  {
+   "name": "crah-coil-starve",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S0-9"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Alarm_HighTemp",
+      "value": 1.0
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CR-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 900,
+      "max": 960,
+      "calibrated": false
+     },
+     "note": "CHW-starved branch"
+    },
+    {
+     "detector": "CR-5",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1500,
+      "max": 2100,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "RM-3",
+     "kind": "process",
+     "root": "zone",
+     "window_s": {
+      "min": 900,
+      "max": 1500,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_HighTemp}",
+    "expect_lead_s": {
+     "max": 0
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "lead-chiller-stop",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": "tests/test_fault_campaign.py::test_twin_lead_chiller_stop",
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "lead"
+     },
+     "body": {
+      "point": "Chiller_Running",
+      "value": 0.0
+     },
+     "hold_s": 1200
+    }
+   ],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CH-4",
+    "CR-1",
+    "CH-1"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "negative control: clean failover; only the L1 state change. [Finding, offline twin] with ONE train staged a silent lead stop is a total loss for the 90 s run-proof dwell: CHW runs to the +12 K cap before the standby is promoted, so CH-1/CR-1 may fire legitimately. Clean only where the remaining staged trains cover the load; check staging before scoring."
+  },
+  {
+   "name": "valve-actuator-stuck",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "valve",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "VCHW"
+     },
+     "body": {
+      "point": "Alarm_ActuatorFault",
+      "value": 1.0
+     }
+    },
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "valve",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "VCHW"
+     },
+     "body": {
+      "point": "Position",
+      "value": 35.0
+     },
+     "hold_s": 1200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "VA-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 600,
+      "max": 660,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_ActuatorFault}",
+    "expect_lead_s": {
+     "max": 0
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "valve-feedback-stuck",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "valve",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "VCHW"
+     },
+     "body": {
+      "point": "Position",
+      "value": 35.0
+     },
+     "hold_s": 1200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "VA-1",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 600,
+      "max": 660,
+      "calibrated": false
+     },
+     "note": "physics unrestricted without Alarm_ActuatorFault: a lying feedback"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "chiller-short-cycle",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "non_lead"
+     },
+     "body": {
+      "point": "Chiller_Running"
+     },
+     "hold_s": 3600,
+     "schedule": {
+      "every_s": 480,
+      "sequence": [
+       {
+        "value": 1.0
+       },
+       {
+        "value": 0.0
+       }
+      ],
+      "for_s": 3600
+     }
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CH-4",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "[uncertain] forcing Chiller_Running=1 on a staged-off machine is a wire-level run status (the store keeps it in standby): the signal SHAPE CH-4 counts, not real compressor starts. An S4 Start_Command point would make it a process."
+  },
+  {
+   "name": "pump-proof-lost",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "pump",
+      "datacenter": "DC1",
+      "pick": "first_running",
+      "name_prefix": "CHWP"
+     },
+     "body": {
+      "point": "Run_Status",
+      "stuck": true,
+      "stuck_value": 0.0,
+      "duration_s": 1200
+     },
+     "hold_s": 1200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "PU-3",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 60,
+      "max": 90,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "failed current switch: status reads 0 while the pump turns"
+  },
+  {
+   "name": "pump-shaft-coupling",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": "s4",
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [],
+   "expected": [
+    {
+     "detector": "PU-3",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 60,
+      "max": 90,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "needs S4 pump_decouple: status 1 and speed hold while flow falls below 5 %"
+  },
+  {
+   "name": "cdu-leak",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Alarm_Leak",
+      "value": 1.0
+     },
+     "hold_s": 1200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "SV-1",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 300,
+      "max": 1200,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-3",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 480,
+      "max": 720,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_Leak}",
+    "expect_lead_s": {
+     "max": 0
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": {
+    "root": "cdu",
+    "max_incidents": 1
+   }
+  },
+  {
+   "name": "cdu-condensation",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-8"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "TCS_Setpoint",
+      "value": 32.0,
+      "ramp": {
+       "rate_per_s": 0.01,
+       "target": 16.0
+      }
+     },
+     "hold_s": 3600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CD-6",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 600,
+      "max": 720,
+      "calibrated": false
+     },
+     "note": "window measured from TCS - dew point < 2 K, not from onset"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "utility-flap",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/electrical/utility",
+     "target": {
+      "datacenter": "DC1"
+     },
+     "body": {
+      "datacenter": "DC1"
+     },
+     "hold_s": 1800,
+     "schedule": {
+      "every_s": 225,
+      "sequence": [
+       {
+        "failed": true
+       },
+       {
+        "failed": false
+       }
+      ],
+      "for_s": 1800
+     }
+    }
+   ],
+   "expected": [
+    {
+     "detector": "AT-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 300,
+      "max": 1800,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [
+    "AT-1"
+   ],
+   "incident": null,
+   "note": "GN-* fire as context; ATS alarms are L1"
+  },
+  {
+   "name": "pdu-imbalance",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/devices/{id}/fault",
+     "target": {
+      "device_type": "pdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "fault": "pdu_imbalance",
+      "action": "start"
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "PD-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 2400,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "valve-hunting",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-7"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "valve",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "VCHW"
+     },
+     "body": {
+      "point": "Commanded_Position",
+      "oscillate": {
+       "period_s": 240,
+       "amplitude": 15
+      }
+     }
+    },
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "valve",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "VCHW"
+     },
+     "body": {
+      "point": "Position",
+      "oscillate": {
+       "period_s": 240,
+       "amplitude": 15
+      }
+     },
+     "hold_s": 3600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "VA-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 2100,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "VA-1"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "each of the 4 valve devices in turn (VCHW first); physics uncoupled: no flow follows"
+  },
+  {
+   "name": "rpp-trip-crah",
+   "tier": "abrupt",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-11"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 3,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/devices/{id}/fault",
+     "target": {
+      "device_type": "mpp",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "MPPA",
+      "name_contains": "-HA"
+     },
+     "body": {
+      "fault": "mpp_breaker_trip",
+      "action": "start"
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [
+    {
+     "detector": "RM-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 240,
+      "max": 480,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "RM-3",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 900,
+      "max": 1200,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "SV-3",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 480,
+      "max": 1200,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "PD-1",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 600,
+      "max": 2100,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CR-1",
+    "CR-2",
+    "CR-3",
+    "CR-5",
+    "CR-6"
+   ],
+   "enable_for_run": [],
+   "incident": {
+    "root": "MPPA-DC1-HA",
+    "max_incidents": 1,
+    "within_s": 1200
+   },
+   "note": "rooted at the mechanical panel, not an RPP: CRAHs are on MCC -> MPP distribution"
+  },
+  {
+   "name": "chiller-cop-decay",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-2"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": "tests/test_fault_campaign.py::test_twin_chiller_cop_decay",
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "kind": "cop",
+      "rate_per_h": 0.01,
+      "target": 0.8
+     },
+     "hold_s": 79200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CH-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 10800,
+      "max": 36000,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CH-3"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "variants": {
+    "realistic": {
+     "injections": [
+      {
+       "body": {
+        "rate_per_h": 0.0006
+       },
+       "hold_s": 1296000
+      }
+     ],
+     "expected": [
+      {
+       "detector": "CH-2",
+       "window_s": {
+        "min": 172800,
+        "max": 604800,
+        "calibrated": false
+       }
+      }
+     ]
+    }
+   },
+   "note": "CH-3 must-not is scored only once CH-3 is enabled (pending point availability); PL-2 not seeded"
+  },
+  {
+   "name": "chiller-condenser-fouling",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-2"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": "point_availability",
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "kind": "hx_approach",
+      "rate_per_h": 0.25,
+      "target": 4.0
+     },
+     "hold_s": 64800
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CH-3",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 43200,
+      "max": 57600,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CH-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 14400,
+      "max": 43200,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_CondPressLimit}",
+    "expect_lead_s": {
+     "min": 3600
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "CH-5 only on a hot afternoon"
+  },
+  {
+   "name": "tower-fill-fouling",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-3"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "cooling_tower",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "kind": "tower_approach",
+      "rate_per_h": 0.1,
+      "target": 3.0
+     },
+     "hold_s": 115200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CT-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 14400,
+      "max": 54000,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CT-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 21600,
+      "max": 108000,
+      "calibrated": false
+     },
+     "note": "at high load"
+    },
+    {
+     "detector": "CH-2",
+     "kind": "process",
+     "root": "incident",
+     "window_s": {
+      "min": 21600,
+      "max": 108000,
+      "calibrated": false
+     },
+     "note": "downstream symptom"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [
+    "CT-2"
+   ],
+   "incident": {
+    "root": "injected_device",
+    "max_incidents": 1
+   },
+   "note": "L5 root = the TOWER, not the chiller"
+  },
+  {
+   "name": "crah-filter-loading",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-5"
+    ],
+    "allow_fire": false,
+    "fleet_paused": true
+   },
+   "pending": "point_availability",
+   "runs": 1,
+   "offline_twin": "tests/test_fault_campaign.py::test_twin_crah_filter_loading",
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "kind": "filter_loading",
+      "rate_per_h": 0.02,
+      "target": 1.0
+     },
+     "hold_s": 180000
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CR-4",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 21600,
+      "max": 72000,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CR-3",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 36000,
+      "max": 108000,
+      "calibrated": false
+     },
+     "note": "regressed on room load"
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Filter_Dirty}",
+    "expect_lead_s": {
+     "min": 72000
+    }
+   },
+   "expected_misses": [],
+   "must_not": [
+    "CR-1",
+    "CR-2"
+   ],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "cdu-strainer-loading",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-5"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "cdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "kind": "filter_loading",
+      "rate_per_h": 0.04,
+      "target": 1.0
+     },
+     "hold_s": 97200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CD-3",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 10800,
+      "max": 43200,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CD-4",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 28800,
+      "max": 72000,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": {
+    "signal": "alarm_state{Alarm_LowFlow}",
+    "expect_lead_s": {
+     "min": 3600
+    }
+   },
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "cdu-hx-fouling",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-4"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "cdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "kind": "hx_approach",
+      "rate_per_h": 0.2,
+      "target": 5.0
+     },
+     "hold_s": 97200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CD-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 14400,
+      "max": 43200,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CD-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": null,
+     "note": "5 min after the facility valve saturates"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "chwp-impeller-wear",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-6"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/degradation",
+     "target": {
+      "device_type": "pump",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "CHWP"
+     },
+     "body": {
+      "kind": "pump_derate",
+      "rate_per_h": 0.005,
+      "target": 0.85
+     },
+     "hold_s": 115200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "PU-1",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 21600,
+      "max": 72000,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "PU-2",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 21600,
+      "max": 72000,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "pump-bearing-heat",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-7"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "pump",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "CHWP"
+     },
+     "body": {
+      "point": "Motor_Temp",
+      "ramp": {
+       "rate_per_s": 0.000139,
+       "target": 62.0
+      }
+     },
+     "hold_s": 93600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "PU-4",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 14400,
+      "max": 43200,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "uncoupled: real bearing wear also adds vibration and power"
+  },
+  {
+   "name": "tower-fan-imbalance",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-7"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cooling_tower",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "point": "Vibration",
+      "value": 1.5,
+      "ramp": {
+       "rate_per_s": 2.6e-05,
+       "target": 6.0
+      }
+     },
+     "hold_s": 180000
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CT-4",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 21600,
+      "max": 86400,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "uncoupled"
+  },
+  {
+   "name": "tower-basin-leak",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-7"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cooling_tower",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "point": "Basin_Level",
+      "value": 75.0,
+      "ramp": {
+       "rate_per_s": 0.00324,
+       "target": 40.0
+      }
+     },
+     "hold_s": 14400
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CT-3",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 2700,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [
+    "CT-3"
+   ],
+   "incident": null,
+   "note": "makeup still flows (store-published) while the level falls"
+  },
+  {
+   "name": "cdu-slow-leak",
+   "tier": "gradual",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-7"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": "s4",
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "cdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "TCS_Loop_Pressure",
+      "value": 250.0,
+      "ramp": {
+       "rate_per_s": 0.00081,
+       "target": 180.0
+      }
+     },
+     "hold_s": 90000
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CD-5",
+     "kind": "process",
+     "root": "injected_device",
+     "window_s": {
+      "min": 14400,
+      "max": 43200,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "interim ramp scored as plumbing only; CD-5 needs S4 loop_leak"
+  },
+  {
+   "name": "crah-setpoint-raise",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-8"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "all",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Setpoint",
+      "value": 22.0,
+      "ramp": {
+       "rate_per_s": 0.000833,
+       "target": 24.0
+      }
+     },
+     "hold_s": 14400
+    }
+   ],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CR-1",
+    "CR-3",
+    "RM-4"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "negative control: CR-1 follows the setpoint; RM-4/CR-3 re-baseline without findings"
+  },
+  {
+   "name": "chw-reset",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-8"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "point": "CHW_Setpoint",
+      "value": 9.0
+     },
+     "hold_s": 21600,
+     "note": "the simulator writes it to every chiller of the DC"
+    }
+   ],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CH-1",
+    "CD-1",
+    "CH-2"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "negative control; a two-sided CH-2 must treat the COP improvement as excluded"
+  },
+  {
+   "name": "crah-supply-bias",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": "tests/test_fault_campaign.py::test_twin_crah_supply_bias",
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Supply_Air_Temp",
+      "bias": 3.0,
+      "duration_s": 21600
+     },
+     "hold_s": 21600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-6",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": null,
+     "note": "scores once Phase 3 (0113) is live"
+    },
+    {
+     "detector": "CR-5",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 2100,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CR-1"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "CR-1 must be masked by L0; in P1 it WILL fire falsely (DQ-6 is P3) - recorded, not gated"
+  },
+  {
+   "name": "crah-supply-bias-control",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Supply_Air_Temp",
+      "bias": 3.0,
+      "affects_control": true,
+      "duration_s": 21600
+     },
+     "hold_s": 21600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-6",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "RM-4",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "CR-5",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "the hard case: diagnosis accuracy reported, not gated"
+  },
+  {
+   "name": "rack-probe-drift",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "sensor",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "SEN",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "inlet_temp",
+      "drift_per_h": 0.1,
+      "duration_s": 172800
+     },
+     "hold_s": 172800
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-6",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 54000,
+      "max": 108000,
+      "calibrated": false
+     }
+    },
+    {
+     "detector": "RM-4",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 54000,
+      "max": 108000,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "pdu-probe-stuck",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "pdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "pdu_temperature",
+      "stuck": true,
+      "duration_s": 21600
+     },
+     "hold_s": 21600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-5",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 7200,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "chw-supply-noisy",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "lead"
+     },
+     "body": {
+      "point": "CHW_Supply_Temp",
+      "noise_mult": 5.0,
+      "duration_s": 7200
+     },
+     "hold_s": 7200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-4",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 60,
+      "max": 600,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "crah-return-dropout",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Return_Air_Temp",
+      "dropout_pct": 30,
+      "duration_s": 7200
+     },
+     "hold_s": 7200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-1",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 30,
+      "max": 90,
+      "calibrated": false
+     },
+     "note": "<= 3 polls per window"
+    },
+    {
+     "detector": "DQ-2",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 30,
+      "max": 1800,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "requires the collector Status_Flags task (doc 33 1.21)"
+  },
+  {
+   "name": "chw-flow-meter-bias",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": "loop_entity",
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "chiller",
+      "datacenter": "DC1",
+      "pick": "lead"
+     },
+     "body": {
+      "point": "CHW_Flow",
+      "bias_frac": -0.15,
+      "duration_s": 7200
+     },
+     "hold_s": 7200,
+     "note": "bias_frac: the runner converts -15 % of the current truth to an absolute bias"
+    }
+   ],
+   "expected": [
+    {
+     "detector": "PL-2",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     },
+     "pending": "loop_entity"
+    },
+    {
+     "detector": "DQ-6",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "bmc-inlet-bias",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "server",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "inlet_temp",
+      "bias": 5.0,
+      "duration_s": 7200
+     },
+     "hold_s": 7200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-6",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 1800,
+      "max": 3600,
+      "calibrated": false
+     },
+     "note": "BMC (Redfish) versus PDU probe (SNMP)"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [
+    "SV-1"
+   ],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "SV-1 requires S4 server_thermal and stays disabled until then"
+  },
+  {
+   "name": "tower-wetbulb-bias",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "cooling_tower",
+      "datacenter": "DC1",
+      "pick": "first"
+     },
+     "body": {
+      "point": "OA_Wet_Bulb_Temp",
+      "bias": -3.0,
+      "duration_s": 21600
+     },
+     "hold_s": 21600
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CT-1",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 3600,
+      "max": 14400,
+      "calibrated": false
+     },
+     "note": "sister towers share the sky"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "cdu-filter-dp-drift",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "cdu",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Filter_DP",
+      "drift_per_h": 2.0,
+      "duration_s": 43200
+     },
+     "hold_s": 43200
+    }
+   ],
+   "expected": [
+    {
+     "detector": "CD-3",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 10800,
+      "max": 28800,
+      "calibrated": false
+     },
+     "note": "pump speed and flow unchanged"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null
+  },
+  {
+   "name": "ups-battery-probe-drift",
+   "tier": "sensor",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/faults/sensor",
+     "target": {
+      "device_type": "ups",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_prefix": "UPSA"
+     },
+     "body": {
+      "point": "ups_battery_temp_c",
+      "drift_per_h": 0.2,
+      "duration_s": 86400
+     },
+     "hold_s": 86400,
+     "note": "doc 32 names the point battery_temp_c; on a UPS the ext key is ups_battery_temp_c"
+    }
+   ],
+   "expected": [
+    {
+     "detector": "DQ-6",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": {
+      "min": 21600,
+      "max": 54000,
+      "calibrated": false
+     }
+    }
+   ],
+   "l1": null,
+   "expected_misses": [
+    "UP-1"
+   ],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "UP-1 requires S4 room_hvac_loss for its process truth"
+  },
+  {
+   "name": "clean-soak-7d",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [],
+   "enable_for_run": [],
+   "incident": null,
+   "hold_s": 604800,
+   "note": "zero derived alerts; false findings <= 0.05 per device-day"
+  },
+  {
+   "name": "heatwave",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [
+     "S1-9"
+    ],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/weather/override",
+     "target": {
+      "datacenter": "DC1"
+     },
+     "body": {
+      "datacenter": "DC1",
+      "dry_bulb_offset_c": 8.0,
+      "wet_bulb_offset_c": 6.0,
+      "duration_s": 43200
+     },
+     "hold_s": 43200
+    }
+   ],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CH-2",
+    "CT-1"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "CT-2 only if the approach itself rises (it should not)"
+  },
+  {
+   "name": "fire-pre-discharge",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": true,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/modbus/fire/smoke",
+     "target": {
+      "datacenter": "DC1"
+     },
+     "body": {
+      "datacenter": "DC1",
+      "room": "HA",
+      "pct_per_m": 0.5
+     },
+     "hold_s": 1200
+    }
+   ],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "CR-1",
+    "CR-2",
+    "CR-3",
+    "CR-5",
+    "RM-2",
+    "RM-3"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "note": "--allow-fire AND the user's explicit approval for that run; CR-*/RM-* explained by fire context"
+  },
+  {
+   "name": "maintenance-crah",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [
+    {
+     "api": "POST /api/bacnet/plant/overrides",
+     "target": {
+      "device_type": "crah",
+      "datacenter": "DC1",
+      "pick": "first",
+      "name_contains": "-HA-"
+     },
+     "body": {
+      "point": "Unit_Running",
+      "value": 0.0
+     },
+     "hold_s": 2700
+    }
+   ],
+   "expected": [],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "RM-2",
+    "RM-3",
+    "PD-1"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "manual": "open a platform maintenance window on the CRAH before the injection"
+  },
+  {
+   "name": "sim-restart",
+   "tier": "context",
+   "requires": {
+    "air_mode": "spatial",
+    "sim_tasks": [],
+    "allow_fire": false,
+    "fleet_paused": false
+   },
+   "pending": null,
+   "runs": 1,
+   "offline_twin": null,
+   "injections": [],
+   "expected": [
+    {
+     "detector": "DQ-1",
+     "kind": "sensor",
+     "root": "injected_device",
+     "window_s": null,
+     "note": "during the gap only"
+    }
+   ],
+   "l1": null,
+   "expected_misses": [],
+   "must_not": [
+    "DQ-6"
+   ],
+   "enable_for_run": [],
+   "incident": null,
+   "manual": "stop and start the simulator and its protocols (carry DCIM_SIM_AIR_MODEL=spatial); no bias findings after restart (C1)"
+  }
+ ]
+}

@@ -20,13 +20,17 @@ USER, PASSWORD = "admin", "admin1234"
 DC = "DC1"
 
 
-def _request(path: str, body=None, token: str | None = None, timeout: float = 300.0):
+def _request(path: str, body=None, token: str | None = None, timeout: float = 300.0,
+             method: str | None = None, base: str | None = None):
     headers = {"Content-Type": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(BASE + path, data=data, headers=headers)
-    return json.load(urllib.request.urlopen(req, timeout=timeout))
+    req = urllib.request.Request((base or BASE) + path, data=data, headers=headers,
+                                 method=method)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        raw = resp.read()
+    return json.loads(raw) if raw else None
 
 
 def connect():
@@ -40,6 +44,69 @@ def connect():
         return _request(path, body if body is not None else {}, token)
 
     return get, post
+
+
+class Client:
+    """get / post / delete / patch against one authenticated base URL. The
+    anomaly campaign runner (tools/live_campaign_anomaly.py) needs DELETE for
+    the fault endpoints, which connect() does not offer."""
+
+    def __init__(self, base: str = BASE, token: str | None = None):
+        self.base, self.token = base, token
+
+    @classmethod
+    def login(cls, base: str = BASE, user: str = USER, password: str = PASSWORD,
+              path: str = "/auth/login") -> "Client":
+        out = _request(path, {"username": user, "password": password}, base=base)
+        token = (out or {}).get("token") or (out or {}).get("access_token")
+        if not token:
+            raise RuntimeError(f"login to {base}{path} returned no token")
+        return cls(base, token)
+
+    def get(self, path):
+        return _request(path, None, self.token, base=self.base)
+
+    def post(self, path, body=None):
+        return _request(path, body if body is not None else {}, self.token, base=self.base,
+                        method="POST")
+
+    def patch(self, path, body):
+        return _request(path, body, self.token, base=self.base, method="PATCH")
+
+    def delete(self, path):
+        return _request(path, None, self.token, base=self.base, method="DELETE")
+
+
+# ── anomaly ground-truth helpers (doc 32 §4.7, §5.4, §6) ─────────────────────
+
+def add_sensor_fault(c: Client, device_id: str, point: str, **params) -> dict:
+    return c.post("/faults/sensor", dict(params, device=device_id, point=point))
+
+
+def add_degradation(c: Client, device_id: str, kind: str, rate_per_h: float,
+                    target: float, campaign: str | None = None) -> dict:
+    return c.post("/faults/degradation", {"device": device_id, "kind": kind,
+                                          "rate_per_h": rate_per_h, "target": target,
+                                          "campaign": campaign})
+
+
+def delete_fault(c: Client, fault_id: str, restore: bool = False) -> dict:
+    return c.delete(f"/faults/{fault_id}" + ("?restore=true" if restore else ""))
+
+
+def active_faults(c: Client) -> list:
+    return (c.get("/faults") or {}).get("active", [])
+
+
+def plant_view(c: Client, view: str = "wire") -> dict:
+    """name -> {point: value}, the wire (what BACnet serves) or the truth (what
+    physics reads). They differ only on points carrying a sensor fault."""
+    return {r["name"]: r["values"] for r in c.get(f"/bacnet/plant/metrics?view={view}")}
+
+
+def ledger(c: Client, **q) -> list:
+    qs = "&".join(f"{k}={v}" for k, v in q.items() if v is not None)
+    return (c.get("/faults/ledger" + (f"?{qs}" if qs else "")) or {}).get("entries", [])
 
 
 def device_ids(get) -> dict:

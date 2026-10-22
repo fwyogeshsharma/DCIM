@@ -103,6 +103,63 @@ _DEFAULT_CLIMATE = (15.0, 10.0)   # temperate fallback for unknown cities
 DIURNAL_AMP_C = 5.0     # ± day/night swing added on top of the seasonal mean
 
 
+# ── Weather override (doc 32 §6.3, C10) ───────────────────────────────────────
+# Weather is the largest LEGITIMATE driver of plant efficiency: wet bulb sets the
+# condenser water and therefore lift, so a heatwave lowers COP and raises tower
+# approach demand with no fault at all. CH-2 and CT-1 regress on wet bulb so that
+# this is not flagged, and the only way to test that gating is to move the
+# weather on purpose. An offset per city, applied inside ambient_c / wet_bulb_c,
+# so everything that already reads them (chiller kW through ambient_factor, the
+# economiser, condenser supply, tower OA points, electrical-room drift) follows
+# without a second code path.
+#
+#   ambient' = ambient + dry_off
+#   wet'     = wet + wet_off, clamped to ≤ ambient'
+#
+# *wet_off* is the wet-bulb SHIFT. The API defaults it to dry_off, so a dry-bulb
+# offset alone moves both temperatures (the constant-depression model); a
+# wet-bulb offset alone is a humidity change; "+8 dry / +6 wet" moves the tower
+# OA points by exactly +8 / +6 (doc 32 §14). Wet bulb never exceeds dry bulb.
+# [Deviation: doc 32 §6.3 writes wet' = ambient' − depression + wet_off, which
+# would move wet bulb by dry_off + wet_off and contradicts its own acceptance.] Expires at *until* — ``now`` is honoured, so tests
+# are deterministic. The store ledgers expiry (``expired_weather``).
+_WEATHER: dict = {}          # city_key -> {"dry", "wet", "until", "id"}
+
+
+def _city_key(city: str | None) -> str:
+    return (city or "").strip().lower()
+
+
+def set_weather_override(city: str | None, dry_c: float, wet_c: float,
+                         until_ts: float, fault_id: str | None = None) -> None:
+    _WEATHER[_city_key(city)] = {"dry": float(dry_c), "wet": float(wet_c),
+                                 "until": float(until_ts), "id": fault_id}
+
+
+def clear_weather_override(city: str | None) -> dict | None:
+    """Remove a city's override; returns what was there (None if nothing)."""
+    return _WEATHER.pop(_city_key(city), None)
+
+
+def weather_override(city: str | None, now: float | None = None) -> dict | None:
+    """The override in force for *city* at *now*, or None (expired = none)."""
+    w = _WEATHER.get(_city_key(city))
+    if w is None:
+        return None
+    t = time.time() if now is None else now
+    return w if t < w["until"] else None
+
+
+def expired_weather(now: float | None = None) -> list:
+    """Pop every override whose *until* has passed: [(city, entry)]. The store
+    calls this once a tick and closes each ledger entry as ``expired``."""
+    t = time.time() if now is None else now
+    out = [(c, w) for c, w in list(_WEATHER.items()) if t >= w["until"]]
+    for c, _w in out:
+        _WEATHER.pop(c, None)
+    return out
+
+
 def ambient_c(city: str | None, now: float | None = None) -> float:
     """Approximate outdoor dry-bulb (°C) for a city at time *now* (epoch seconds).
 
@@ -119,7 +176,12 @@ def ambient_c(city: str | None, now: float | None = None) -> float:
     # Coldest near Jan 15 (doy≈15): -cos peaks negative there.
     seasonal = -seas_amp * math.cos(2.0 * math.pi * (doy - 15) / 365.0)
     diurnal  = DIURNAL_AMP_C * math.sin(2.0 * math.pi * (hour - 9.0) / 24.0)
-    return mean + seasonal + diurnal
+    t = mean + seasonal + diurnal
+    if _WEATHER:
+        w = weather_override(city, now)
+        if w is not None:
+            t += w["dry"]
+    return t
 
 
 # ── Wet bulb: what a cooling tower actually chases ────────────────────────────
@@ -144,7 +206,12 @@ def wet_bulb_c(city: str | None, now: float | None = None) -> float:
     """Approximate outdoor WET-bulb (°C) — the temperature a cooling tower can
     approach but never beat."""
     dep = _WB_DEPRESSION_C.get((city or "").strip().lower(), WB_DEPRESSION_DEFAULT)
-    return ambient_c(city, now) - dep
+    dry = ambient_c(city, now)
+    if _WEATHER:
+        w = weather_override(city, now)
+        if w is not None:
+            return min(dry, (dry - w["dry"]) - dep + w["wet"])
+    return dry - dep
 
 
 def ambient_factor(ambient: float) -> float:
@@ -285,6 +352,56 @@ def chiller_cop(plr: float, city: str | None, now: float | None = None,
     amb = ambient_factor(ambient_c(city, now)) * max(1e-6, cond_factor)
     cop = cop_rated * p / (pf * max(1e-6, amb))
     return max(2.0, min(9.0, cop))
+
+
+# ── Degradation and setpoint terms on the chiller draw (doc 32 §5.3, §6.2) ────
+# Condenser fouling: ~1.5 % compressor energy per °F of condensing temperature
+# (vendor rule of thumb, Oxmaint) = 2.7 % per K of added condenser approach.
+COND_FOUL_KW_PER_K = 0.027
+# CHW reset: ~2-3 % compressor energy per K of evaporator lift [uncertain: rule of
+# thumb]. A warmer leaving-water setpoint raises suction pressure and cuts lift,
+# so a 7 -> 9 C reset makes the machine ~5 % cheaper. 1.0 at the design 7 C.
+CHW_LIFT_KW_PER_K = 0.025
+
+
+def chw_lift_factor(chw_sp_c: float | None) -> float:
+    """Compressor-draw multiplier for a leaving-CHW setpoint other than design."""
+    if chw_sp_c is None:
+        return 1.0
+    return max(0.70, min(1.30, 1.0 - CHW_LIFT_KW_PER_K * (float(chw_sp_c) - CHW_SETPOINT_C)))
+
+
+def chiller_draw_w(nameplate_w: float, plr: float, city: str | None,
+                   now: float | None = None, cond_factor: float = 1.0,
+                   efficiency: float = 1.0, cond_foul_k: float = 0.0,
+                   chw_sp_c: float | None = None) -> tuple:
+    """(draw_w, unmet_frac) for a chiller that may be degraded.
+
+    *efficiency* is the ``cop`` degradation multiplier (1.0 healthy): compressor
+    wear, undercharge or non-condensables make the same cooling cost more kW, so
+    the draw is divided by it. *cond_foul_k* is the condenser-approach rise
+    (``hx_approach``), charged at COND_FOUL_KW_PER_K. *chw_sp_c* applies the lift
+    term for a CHW reset.
+
+    The draw is capped at nameplate, which is the motor's FLA (current) limit. A
+    worn machine that would need more than that cannot make the tonnage: the
+    unmet share ``1 − nameplate/required`` is returned so the store books it as
+    lost capacity. At part load (the usual case on a staged plant) the cap is
+    not reached, the machine simply draws more, and the derived COP falls by
+    construction.
+
+    With every degradation term at its default this is exactly
+    chiller_electrical_w, so the calibration anchor is unchanged.
+    """
+    if plr <= 0.0 or nameplate_w <= 0.0:
+        return 0.0, 0.0
+    p = (nameplate_w * chiller_power_frac(plr)
+         * ambient_factor(ambient_c(city, now)) * max(0.0, cond_factor))
+    p *= (1.0 + COND_FOUL_KW_PER_K * max(0.0, cond_foul_k)) * chw_lift_factor(chw_sp_c)
+    p /= max(0.05, min(1.0, efficiency))
+    if p <= nameplate_w:
+        return max(0.0, p), 0.0
+    return nameplate_w, 1.0 - nameplate_w / p
 
 
 def chiller_electrical_w(nameplate_w: float, plr: float,

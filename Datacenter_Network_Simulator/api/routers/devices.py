@@ -1421,6 +1421,15 @@ FAULT_MAP = {
                           "types": ["switchgear"]},
     "swgr_bus_fault":    {"swgrcond": "bus_fault",    "label": "Bus Fault",
                           "types": ["switchgear"]},
+    # Mechanical panel / MCC main-breaker trip (doc 32 §13.2 rpp-trip-crah, S1-11).
+    # CRAHs are fed from MECHANICAL distribution (MCC -> MPP), not from IT RPPs,
+    # so the realistic power-chain root for "half a hall's CRAHs drop" is the MPP.
+    # The board goes dead in the energization walk and every plant load below it
+    # is unpowered through the same path a utility loss takes. Latching.
+    "mpp_breaker_trip":  {"panelcond": "breaker_trip", "label": "Panel Main Breaker Trip",
+                          "types": ["mpp"]},
+    "mcc_breaker_trip":  {"panelcond": "breaker_trip", "label": "MCC Main Breaker Trip",
+                          "types": ["mcc"]},
     # NOTE: a power-feeder cable break is NOT a device fault — a cable is a link, so it
     # is broken by double-clicking the power edge on the canvas (api.breakLink on the
     # 'power' layer). Energization follows intact feeders, so opening one de-energizes
@@ -1492,6 +1501,11 @@ def get_device_faults(device_id: str):
         _sc = set(st.get_swgr_conditions(device_id))
         active += [k for k, v in FAULT_MAP.items()
                    if v.get("swgrcond") in _sc and dtype in v["types"]]
+    # MPP / MCC main-breaker trip — latching, ACTIVE until cleared.
+    if st and dtype in ("mpp", "mcc") and hasattr(st, "get_panel_conditions"):
+        _pnc = set(st.get_panel_conditions(device_id))
+        active += [k for k, v in FAULT_MAP.items()
+                   if v.get("panelcond") in _pnc and dtype in v["types"]]
     # PDU breaker trip — latching, so it has to report as ACTIVE until cleared.
     if st and dtype in ("pdu", "floor_pdu") and hasattr(st, "get_pdu_conditions"):
         _pc = set(st.get_pdu_conditions(device_id))
@@ -1734,6 +1748,11 @@ def set_device_fault(device_id: str, body: FaultRequest):
     # it loses that feed (a dual-corded server rides it on its other PSU).
     if "pducond" in spec:
         st.set_pdu_condition(device_id, spec["pducond"], on)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # MPP / MCC main-breaker trip (S1-11): a power event in the energization walk.
+    if "panelcond" in spec:
+        st.set_panel_condition(device_id, spec["panelcond"], on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     # Override conditions (UPS/PDU state alarms) pin the backing ext-state metric via

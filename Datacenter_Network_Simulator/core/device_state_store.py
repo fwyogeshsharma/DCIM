@@ -893,6 +893,31 @@ class DeviceStateStore:
         # Forced-alarm couplings whose target points the store overwrites: logged
         # once per (device, alarm) so the lost coupling is visible, not silent.
         self._forced_coupling_logged: set = set()
+        # Generic forced-alarm severity timers for store-side couplings (S1-10):
+        # (dtype, name, alarm) -> seconds forced.
+        self._forced_t: Dict[tuple, float] = {}
+        # Ramp / oscillate on plant overrides (doc 32 §6.1, S1-7):
+        # {device NAME: {point: {start, rate_per_s, target, osc, t, id, reached, span}}}.
+        # Evaluated once per tick, BEFORE physics, into plant_alarm_overrides, so
+        # a ramped setpoint moves the physics and the BACnet merge is unchanged.
+        self.plant_ramps: Dict[str, Dict[str, dict]] = {}
+        # Degradation side-state (doc 32 §5.3). Capacity a worn chiller cannot
+        # make at its FLA limit (cop / hx_approach), booked as a partial loss.
+        self._chiller_eff_derate: Dict[str, float] = {}
+        self._chiller_plr: Dict[str, float] = {}         # dc -> chiller thermal PLR
+        # Air/water a loaded filter or strainer still lets through once the drive
+        # has run out of speed (1.0 = holding design flow), and the airflow /
+        # flow fraction of rated the filter dP is read at (dP ~ Q^2).
+        self._crah_airflow_frac: Dict[str, float] = {}
+        self._filter_q: Dict[str, float] = {}
+        self._cdu_flow_frac: Dict[str, float] = {}
+        # Per-room mean of the CRAH discharge setpoints (S1-8), for the fallback
+        # supply when no unit has published yet.
+        self._crah_sp_room: Dict[tuple, float] = {}
+        # Per-instrument RNG for the transmitter dither on store-driven points
+        # (filter dP, approaches): stable per device, independent of the global
+        # random stream so adding these points moves no other test's sequence.
+        self._inst_rng: Dict[str, random.Random] = {}
 
         # Per-DEVICE live-metric overrides for servers / network gear, set from a
         # node's Metric Tick window. {device_id: {metric: value}} — forces a metric
@@ -1127,6 +1152,9 @@ class DeviceStateStore:
         self._gen_failed: Set[str] = set()             # generator ids that will NOT start (injected)
         self._gen_conditions: Dict[str, set] = {}      # generator id → active alarm conditions
         self._swgr_conditions: Dict[str, set] = {}     # switchgear id → breaker-trip / bus-fault
+        # MPP / MCC id → latching main-breaker conditions (S1-11): the board goes
+        # dead in the energization walk and its mechanical loads unpowered.
+        self._panel_conditions: Dict[str, set] = {}
         # PDU id → latching conditions. Only breaker_trip is here: it is the one PDU
         # fault with a POWER consequence rather than an annunciation, so it has to be
         # state the energization walk can read. Everything else a PDU raises (outlet
@@ -1432,7 +1460,7 @@ class DeviceStateStore:
         "chiller": {"Alarm_HighCHWSupply": ("CHW_Supply_Temp", "CHW_Return_Temp")},
     }
     #: Couplings the store now applies itself (so they are not "lost").
-    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp")}
+    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp"), ("cdu", "Alarm_HighSupplyTemp")}
 
     def _alarm_forced(self, dtype: str, name: str, alarm: str) -> bool:
         if float((self.plant_alarm_overrides.get(name) or {}).get(alarm, 0.0) or 0.0) >= 0.5:
@@ -1449,6 +1477,215 @@ class DeviceStateStore:
         t = self._crah_hightemp_t.get(name, 0.0) + float(self._dt or 0.0)
         self._crah_hightemp_t[name] = t
         return min(1.0, 0.25 + t / 60.0)
+
+    def _forced_sev(self, dtype: str, name: str, alarm: str) -> float:
+        """Severity of any forced alarm on the engine's ramp (0.25 -> 1.0 over
+        ~45 s), 0.0 when not forced. Call once per tick per (name, alarm)."""
+        key = (dtype, name, alarm)
+        if not self._alarm_forced(dtype, name, alarm):
+            self._forced_t.pop(key, None)
+            return 0.0
+        t = self._forced_t.get(key, 0.0) + float(self._dt or 0.0)
+        self._forced_t[key] = t
+        return min(1.0, 0.25 + t / 60.0)
+
+    # ------------------------------------------------------------------ #
+    #  Setpoints honoured by physics (doc 32 §6.2, S1-8)                   #
+    # ------------------------------------------------------------------ #
+    # Physics used to read module constants, so an operator "changing a
+    # setpoint" changed a label: CHW_Setpoint and TCS_Setpoint were rewritten
+    # from constants every tick and the CRAH Setpoint was ignored. Each control
+    # loop now reads its setpoint from the operator's map (a hold or a ramp),
+    # falling back to the design value.
+
+    def _op_point(self, name: str, point: str) -> Optional[float]:
+        v = (self.plant_alarm_overrides.get(name) or {}).get(point)
+        try:
+            return None if v is None else float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _crah_sp(self, name: str) -> float:
+        v = self._op_point(name, "Setpoint")
+        return _SUPPLY_SETPOINT_C if v is None else v
+
+    def _tcs_sp(self, name: str) -> float:
+        v = self._op_point(name, "TCS_Setpoint")
+        return self._CDU_TCS_SETPOINT_C if v is None else v
+
+    def _chw_sp(self, dc: str) -> float:
+        """The DC's leaving-CHW setpoint. The chillers share one header, so the
+        API writes a reset to every chiller of the DC; the mean of whatever is
+        held covers a half-applied write."""
+        from core.cooling_model import CHW_SETPOINT_C
+        kinds = (self._cooling_context().get("plant_by_dc") or {}).get(dc) or {}
+        vals = [v for v in (self._op_point(c, "CHW_Setpoint")
+                            for c in (kinds.get("chiller") or [])) if v is not None]
+        return (sum(vals) / len(vals)) if vals else CHW_SETPOINT_C
+
+    def _rng_for(self, name: str) -> random.Random:
+        r = self._inst_rng.get(name)
+        if r is None:
+            r = self._inst_rng[name] = random.Random(stable_seed(name) ^ 0x5A17)
+        return r
+
+    # ------------------------------------------------------------------ #
+    #  Injections stepped once per tick, before physics                   #
+    # ------------------------------------------------------------------ #
+
+    def _step_injections(self) -> None:
+        """Degradations advance on the store's clamped dt (a paused simulator
+        does not foul), ramps write their value into the operator map, and
+        weather overrides past their *until* are closed in the ledger."""
+        dt = float(self._dt or 0.0)
+        try:
+            self.faults.step_degradations(dt)
+        except Exception:
+            log.exception("[StateStore] degradation step error")
+        try:
+            self._step_plant_ramps(dt)
+        except Exception:
+            log.exception("[StateStore] plant ramp step error")
+        try:
+            from core.cooling_model import _WEATHER, expired_weather
+            if _WEATHER:
+                for _city, w in expired_weather():
+                    if w.get("id"):
+                        self.faults.ledger.close(w["id"], "expired", end=w["until"])
+        except Exception:
+            log.exception("[StateStore] weather expiry error")
+
+    def _step_plant_ramps(self, dt: float) -> None:
+        """value(t) = start + rate × t toward target, held there; plus an
+        optional sine (oscillate). Written into plant_alarm_overrides, so the
+        existing override merge carries it to the wire unchanged."""
+        if not self.plant_ramps:
+            return
+        for name, pts in list(self.plant_ramps.items()):
+            for point, r in list((pts or {}).items()):
+                r["t"] = float(r.get("t", 0.0)) + dt
+                v = float(r["start"])
+                rate, tgt = r.get("rate_per_s"), r.get("target")
+                if rate and tgt is not None:
+                    step = abs(float(rate)) * r["t"]
+                    tgt = float(tgt)
+                    v = min(tgt, v + step) if tgt >= v else max(tgt, v - step)
+                    if not r.get("reached") and v == tgt:
+                        r["reached"] = True
+                        if r.get("id"):
+                            self.faults.ledger.mark(r["id"], "target_reached")
+                osc = r.get("osc")
+                if osc and float(osc.get("period_s") or 0) > 0:
+                    v += float(osc.get("amplitude") or 0.0) * math.sin(
+                        2.0 * math.pi * r["t"] / float(osc["period_s"]))
+                span = r.get("span")
+                if span:
+                    v = max(span[0], min(span[1], v))
+                self.plant_alarm_overrides.setdefault(name, {})[point] = round(v, 4)
+
+    # ------------------------------------------------------------------ #
+    #  Degraded drives: filters, strainers, worn impellers (doc 32 §5.3)  #
+    # ------------------------------------------------------------------ #
+    # CRAH: clean filter ~60 Pa of a ~250 Pa system at rated airflow, change at
+    # ~240 Pa (4x clean) [judgement: Liebert/Stulz filter-switch range]. A loaded
+    # filter raises the system resistance, so a constant-airflow EC fan must turn
+    # sqrt(R) faster to hold the same airflow. Power at fixed airflow follows
+    # Q x dP, i.e. R (not speed^3: the system curve itself moved). Delivered stays
+    # 1.0 until the fan runs out of speed; past that airflow, and with it
+    # sensible capacity, falls as 1/s_req.
+    _CRAH_FILTER_CLEAN_PA = 60.0
+    _CRAH_SYS_PA = 250.0
+    # CDU: strainer ~35 kPa clean of a ~200 kPa secondary loop at design flow.
+    _CDU_STRAINER_KPA = 35.0
+    _CDU_LOOP_KPA = 200.0
+
+    def _degraded_drive(self, name: str, dtype: str, nameplate_w: float,
+                        spd: float, tgt_w: float) -> tuple:
+        """(speed, draw_w) after any filter / strainer / impeller degradation."""
+        from core.cooling_model import DRIVE_PARASITIC, PUMP_SHUTOFF_RATIO, affinity_power_kw
+        if dtype == "crah":
+            self._filter_q[name] = spd
+            L = self.faults.machine_value(name, "filter_loading")
+            if L <= 0.0:
+                self._crah_airflow_frac.pop(name, None)
+                return spd, tgt_w
+            R = 1.0 + (self._CRAH_FILTER_CLEAN_PA * 3.0 * L) / self._CRAH_SYS_PA
+        elif dtype == "cdu":
+            L = self.faults.machine_value(name, "filter_loading")
+            if L <= 0.0:
+                self._cdu_flow_frac.pop(name, None)
+                return spd, tgt_w
+            R = 1.0 + (self._CDU_STRAINER_KPA * 1.5 * L) / self._CDU_LOOP_KPA
+        elif dtype == "pump":
+            v = self.faults.machine_value(name, "pump_derate")
+            if v >= 1.0:
+                return spd, tgt_w
+            # Worn impeller: head = v x (A N^2 - B Q^2). The loop holds its dP
+            # setpoint, so on the pump's own similarity line (Q ~ N) the speed
+            # that restores design head is N' = N sqrt((1/v + B) / A).
+            a, b = PUMP_SHUTOFF_RATIO, PUMP_SHUTOFF_RATIO - 1.0
+            s = min(1.0, spd * math.sqrt((1.0 / max(0.05, v) + b) / a))
+            return s, affinity_power_kw(nameplate_w, s)
+        else:
+            return spd, tgt_w
+        s_req = spd * math.sqrt(R)
+        if s_req <= 1.0:
+            frac, s = 1.0, s_req
+            p = nameplate_w * (DRIVE_PARASITIC + (1.0 - DRIVE_PARASITIC) * spd ** 3 * R)
+        else:
+            frac, s, p = 1.0 / s_req, 1.0, nameplate_w
+        if dtype == "crah":
+            self._crah_airflow_frac[name] = frac
+            self._filter_q[name] = spd * frac
+        else:
+            self._cdu_flow_frac[name] = frac
+        return s, min(nameplate_w, p)
+
+    # ------------------------------------------------------------------ #
+    #  Mechanical panel / MCC breaker trip (doc 32 §13.2, S1-11)          #
+    # ------------------------------------------------------------------ #
+
+    def set_panel_condition(self, panel_id: str, kind: str, on: bool) -> None:
+        """Open (on) or reclose a mechanical panel's (MPP) or MCC's main breaker.
+        A POWER event: the board goes dead in the energization walk and every
+        plant load below it is unpowered through the same path a utility loss
+        takes (BACnet/Modbus controllers on it go silent, the units stop, the
+        cooling model books the loss). It latches until cleared. kind ∈
+        {breaker_trip}."""
+        conds = self._panel_conditions.setdefault(panel_id, set())
+        if on:
+            conds.add(kind)
+        else:
+            conds.discard(kind)
+            if not conds:
+                self._panel_conditions.pop(panel_id, None)
+        self.invalidate_power_context()
+
+    def get_panel_conditions(self, panel_id: str) -> list:
+        return sorted(self._panel_conditions.get(panel_id, set()))
+
+    def _panel_tripped_plant(self, ctx: dict) -> Dict[str, set]:
+        """{dc: plant names below a tripped MPP/MCC}."""
+        out: Dict[str, set] = {}
+        if not self._panel_conditions:
+            return out
+        children = ctx.get("children", {})
+        id_type = ctx.get("id_type", {})
+        for pid in list(self._panel_conditions):
+            seen, stack = set(), [pid]
+            while stack:
+                n = stack.pop()
+                for c in children.get(n, []):
+                    if c not in seen:
+                        seen.add(c)
+                        stack.append(c)
+            dc = self._dc_of(pid)
+            for nid in seen:
+                if id_type.get(nid) in self._MECH_LEAF_TYPES:
+                    nm = self._device_name(nid)
+                    if nm:
+                        out.setdefault(dc, set()).add(nm)
+        return out
 
     def _log_lost_couplings(self, operator_map: dict) -> None:
         """Log, on the first tick it happens, every forced alarm whose engine
@@ -1501,7 +1738,7 @@ class DeviceStateStore:
         self._faults_booted = True
         try:
             led = self.faults.ledger
-            saved_at, recs = None, []
+            saved_at, recs, data = None, [], {}
             path = self._faults_state_path()
             if path.exists():
                 try:
@@ -1509,8 +1746,14 @@ class DeviceStateStore:
                     saved_at = data.get("saved_at")
                     recs = data.get("sensor_faults") or []
                 except (OSError, ValueError) as exc:
+                    data = {}
                     log.warning("[StateStore] %s unreadable (%s); no faults resumed", path, exc)
             got = self.faults.resume(recs, saved_at)
+            # Degradations RESUME with their persisted value (§7.3): a fouled
+            # condenser is still fouled after a BMS reboot. Overrides, ramps,
+            # setpoints and weather are in-memory and close as sim_restart below.
+            kept_deg = self.faults.resume_degradations(data, saved_at)
+            got["resumed"] = list(got["resumed"]) + kept_deg
             led.close_stale(at=saved_at, keep=got["resumed"])
             # C1 (doc 32 §8): stable hashing stepped every per-instrument offset
             # ONCE, on the first start of this code. Ledgered as a sim_change so
@@ -1541,7 +1784,8 @@ class DeviceStateStore:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(".json.tmp")
             tmp.write_text(json.dumps({"v": 1, "saved_at": time.time(),
-                                       "sensor_faults": self.faults.to_json()}),
+                                       "sensor_faults": self.faults.to_json(),
+                                       **self.faults.degradations_json()}),
                            encoding="utf-8")
             os.replace(tmp, path)
         except Exception as exc:
@@ -2907,6 +3151,7 @@ class DeviceStateStore:
         mcc_ats = ctx.get("mcc_ats", {})
         dcs = set(dc_gens) | set(dc_utility) | set(dc_mcc)
         unpowered: set = set()
+        _panel_dead = self._panel_tripped_plant(ctx)
         for dc in dcs:
             # What the transfer switch senses on its NORMAL terminals: the utility
             # service AND the main board it is fed from. A tripped main or a faulted
@@ -2937,6 +3182,11 @@ class DeviceStateStore:
                     if dead or dtv not in live_types:
                         unpowered.add(nm)
                         dc_dark += 1
+            # A tripped MPP / MCC main (S1-11) unpowers its own loads only.
+            for nm in _panel_dead.get(dc, ()):
+                if nm not in unpowered:
+                    unpowered.add(nm)
+                    dc_dark += 1
             # Ride-through clock: how long this DC's plant has been short of full
             # power. Reset the instant every unit is energized again.
             self._mech_dead_s[dc] = (0.0 if dc_dark == 0
@@ -3910,7 +4160,15 @@ class DeviceStateStore:
                 dc = self._dc_of(nid)
                 src_ok, _tie = self._mcc_tie_state(dc, ctx)
                 live_ats = any(en.get(a, False) for a in ctx.get("dc_ats", {}).get(dc, []))
-                en[nid] = bool(src_ok.get(nid, True)) and live_ats
+                en[nid] = (bool(src_ok.get(nid, True)) and live_ats
+                           and not self._panel_conditions.get(nid))
+            elif dtv == "mpp":
+                # A tripped panel main (S1-11) takes the hall's mechanical board
+                # dead with its source perfectly healthy.
+                full = parents.get(nid, [])
+                _src_live = (any(en.get(p, False) for p in _intact(nid))
+                             if full else True)
+                en[nid] = _src_live and not self._panel_conditions.get(nid)
             else:
                 # A node with power parents is live iff at least one INTACT feeder
                 # reaches a live parent; break every feeder and it goes dark. A node
@@ -4141,7 +4399,7 @@ class DeviceStateStore:
             from core.cooling_model import (
                 ambient_c, wet_bulb_c,
                 cooling_electrical_w, crah_fan_speed_ratio, vfd_speed_frac,
-                affinity_power_kw, chiller_electrical_w, CHILLER_PLF,
+                affinity_power_kw, chiller_electrical_w, chiller_draw_w, CHILLER_PLF,
                 stage_modules, installed_modules_for, PLANT_MODULE_KW,
                 PUMP_MIN_SPEED, FAN_MIN_SPEED, OH_FLOOR, OH_VAR,
                 tower_cell_demand, tower_cells_needed, tower_cells_running,
@@ -4260,6 +4518,17 @@ class DeviceStateStore:
                 _towers_ok = [_n for _n in _towers_all if self._tower_available(_n)]
                 _duty_inst = (itl / 1000.0) / max(1e-6, installed_kw)
                 _demand = tower_cell_demand(_duty_inst, len(_towers_all))
+                # tower_approach (doc 32 §5.3, S1-3): fouled fill transfers less
+                # heat per unit of air, so the bank buys approach back with
+                # airflow — the fans run faster and reach 100 % sooner, which is
+                # what CT-2 reads. The cells share one basin header, so the bank
+                # answers to the MEAN fouling of the available cells. What the
+                # fans cannot buy back shows as approach (_compute_cond_loop).
+                _tfoul_l = [self.faults.machine_value(_tn, "tower_approach")
+                            for _tn in _towers_ok]
+                _tfoul = (sum(_tfoul_l) / len(_tfoul_l)) if _tfoul_l else 0.0
+                if _tfoul > 0.0:
+                    _demand *= 1.0 + self._TOWER_FOUL_DEMAND_PER_K * _tfoul
                 _cells_need = tower_cells_needed(_duty_inst, len(_towers_all))
                 # Below the fan turndown the bank CYCLES cells rather than idling them
                 # all at min speed — running fewer cells at a controllable speed. The
@@ -4296,6 +4565,11 @@ class DeviceStateStore:
                 self._plant_standby_names |= (set(_towers_ok) - set(_towers_run))
                 _cond_f = (tower_chiller_factor(_cells_need, _cells_run)
                            if _cells_run else 1.0)
+                # Warmer condenser water from fouled fill costs compressor lift
+                # at the plant rule of thumb (TOWER_KW_PER_C per K of CW).
+                if _tfoul > 0.0:
+                    from core.cooling_model import TOWER_KW_PER_C
+                    _cond_f *= 1.0 + TOWER_KW_PER_C * _tfoul
                 # The design ENVELOPE for this DC. No longer accumulated into the
                 # cooling total — that is summed from the devices after the collapse
                 # below. Still computed because `lf` is derived from it, and `lf` is
@@ -4486,7 +4760,9 @@ class DeviceStateStore:
                 plr = ((itl / _run_cap_w) if _run_cap_w > 0
                        else ((itl / itd) if itd > 0 else 0.0))
                 plr = max(0.0, min(1.0, plr))
+                self._chiller_plr[_dc] = plr
                 _city = dc_city.get(_dc)
+                _chw_sp_dc = self._chw_sp(_dc)
                 # Hall inlet/return air temp → CRAH fan SPEED ramp (more airflow when
                 # hot). Per-hall (below): each CRAH ramps on ITS room's inlet temp; the
                 # DC average is the fallback for a room with no servers yet. The cube-law
@@ -4645,8 +4921,11 @@ class DeviceStateStore:
                             duty = min(1.0, _duty_inst * (_n_all / _n_run))
                         _min = FAN_MIN_SPEED if _t in _VFD_FAN else PUMP_MIN_SPEED
                         spd  = vfd_speed_frac(duty, _min)
-                        plant_speed[_n] = spd
                         tgt_w = affinity_power_kw(w, spd)
+                        # Filters, strainers and worn impellers (doc 32 §5.3):
+                        # the drive speeds up to hold its flow, at a power cost.
+                        spd, tgt_w = self._degraded_drive(_n, _t, w, spd, tgt_w)
+                        plant_speed[_n] = spd
                     elif _t == "chiller":
                         # Staged-off chiller: standby, drawing ~0 (its load is carried
                         # by the running units). NOT a cooling loss — excluded from the
@@ -4659,7 +4938,18 @@ class DeviceStateStore:
                         # linear: nameplate at design, cheaper mid-load, penalised at
                         # very low PLR (fixed losses dominate). COP is the inverse —
                         # peaks mid-load, droops with a hot condenser.
-                        tgt_w = chiller_electrical_w(w, plr, _city, cond_factor=_cond_f)
+                        # cop / hx_approach degradations and the CHW lift term
+                        # (doc 32 §5.3, §6.2). At healthy defaults and the design
+                        # 7 C setpoint this is exactly chiller_electrical_w.
+                        tgt_w, _unmet = chiller_draw_w(
+                            w, plr, _city, cond_factor=_cond_f,
+                            efficiency=self.faults.machine_value(_n, "cop"),
+                            cond_foul_k=self.faults.machine_value(_n, "hx_approach"),
+                            chw_sp_c=_chw_sp_dc)
+                        if _unmet > 0.0:
+                            self._chiller_eff_derate[_n] = round(_unmet, 4)
+                        else:
+                            self._chiller_eff_derate.pop(_n, None)
                         # COP is NOT set here — see the derivation after the
                         # normalisation below. The raw curve value is computed
                         # against an un-normalised draw, and publishing it beside a
@@ -4814,6 +5104,10 @@ class DeviceStateStore:
                 for _n2, _cap in _cop_cap.items():
                     _frac = ((_cap / _cap_sum) if _cap_sum > 0
                              else 1.0 / max(1, len(_cop_cap)))
+                    # A worn machine at its FLA limit is not making its share:
+                    # the unmet part is booked as lost capacity, and COP is what
+                    # it DOES deliver over what it draws, so Q = COP x kW holds.
+                    _frac *= 1.0 - self._chiller_eff_derate.get(_n2, 0.0)
                     _p_kw = plant_power.get(_n2, 0.0)
                     plant_cop[_n2] = (round(_deliver_kw * _frac / _p_kw, 2)
                                       if _p_kw > 1e-6 else 0.0)
@@ -5321,6 +5615,11 @@ class DeviceStateStore:
     _COND_RISE     = 0.35    # °C/s the loop heats with rejection fully lost
     _COND_FALL     = 0.55    # °C/s it recovers once the towers are back
     _COND_TRIP_S   = 5.0     # seconds above trip temp before the safety latches
+    _COND_APPROACH_C = 2.0   # design condenser approach at full load [judgement]
+    _EVAP_APPROACH_C = 1.5   # design evaporator approach at full load [judgement]
+    # Tower fill fouling: extra airflow the bank needs per K of fouling to hold
+    # its duty [judgement]. The residual approach rise is the degradation value.
+    _TOWER_FOUL_DEMAND_PER_K = 0.10
     _CHILLER_MIN_LOAD = 0.40 # capacity floor while limiting (40 % of nameplate)
 
     def _ensure_staging_primed(self) -> None:
@@ -5466,6 +5765,16 @@ class DeviceStateStore:
             else:
                 _cn = _cr = max(1, len(towers))
             base = cond_supply_c(city_by_dc.get(dc), _cn, _cr)
+            # The protection thresholds ride the CLEAN site base: they describe
+            # the machine's selection, and fouled fill must not move them.
+            _base_clean = base
+            # tower_approach (doc 32 §5.3, S1-3): fouled fill holds the basin
+            # further above wet bulb at the same load. One header, so the loop
+            # sees the mean over the cells that can run.
+            _tf = [self.faults.machine_value(t, "tower_approach")
+                   for t in towers if self._tower_available(t)]
+            if _tf:
+                base += sum(_tf) / len(_tf)
             self._cond_base_c[dc] = round(base, 2)
 
             # Loop temperature: heats toward the ceiling in proportion to lost
@@ -5541,15 +5850,34 @@ class DeviceStateStore:
                     auto.setdefault(_cip, {}).update({
                         "Cond_Supply_Temp": round(cur, 1),
                         "Cond_Return_Temp": round(cur, 1),
-                        "Cond_Pressure": round(cond_kpa_idle, 1)})
+                        "Cond_Pressure": round(cond_kpa_idle, 1),
+                        "Cond_Approach_Temp": 0.0, "Evap_Approach_Temp": 0.0})
 
             # Site-adjusted protection thresholds (see the constants above).
-            lim_c  = max(self._COND_LIMIT_C, base + self._COND_LIMIT_MARGIN_C)
-            trip_c = max(self._COND_TRIP_C,  base + self._COND_TRIP_MARGIN_C)
-            over = cur >= trip_c
+            lim_c  = max(self._COND_LIMIT_C, _base_clean + self._COND_LIMIT_MARGIN_C)
+            trip_c = max(self._COND_TRIP_C,  _base_clean + self._COND_TRIP_MARGIN_C)
+            _plr = max(0.0, min(1.0, self._chiller_plr.get(dc, 0.5)))
+            _app_lf = 0.5 + 0.5 * _plr
             for name in chillers:
                 ip = name
                 latched = name in self._chiller_hp_lockout
+                # HX APPROACHES (doc 32 §5.3, S1-2). Condenser approach =
+                # saturated condensing temperature − leaving condenser water;
+                # it grows with heat flux, so the design part scales with the
+                # machine's load [judgement: 2.0 K cond / 1.5 K evap at full
+                # load, half that near idle]. Tube fouling (hx_approach) adds
+                # on top at the same load, and raises the condensing side with
+                # it: head pressure, lift and the protection thresholds all see
+                # condenser water + fouling. Evaporator approach stays at design.
+                _foul = self.faults.machine_value(name, "hx_approach")
+                _rng = self._rng_for(name)
+                _capp = round(self._COND_APPROACH_C * _app_lf + _foul
+                              + _rng.uniform(-0.05, 0.05), 2)
+                _eapp = round(self._EVAP_APPROACH_C * _app_lf
+                              + _rng.uniform(-0.05, 0.05), 2)
+                _cur_c = cur + _foul
+                _kpa = cond_kpa_run + 26.0 * _foul
+                over = _cur_c >= trip_c
 
                 if not latched and over:
                     held = self._cond_trip_s.get(name, 0.0) + dt
@@ -5581,10 +5909,12 @@ class DeviceStateStore:
                                     # Locked out: no compressor heat into the condenser,
                                     # so the barrel sits at loop temperature — no range.
                                     "Cond_Return_Temp": round(cur, 1),
-                                    "Compressor_Load": 0.0}
+                                    "Compressor_Load": 0.0,
+                                    "Cond_Approach_Temp": 0.0,
+                                    "Evap_Approach_Temp": 0.0}
                     continue
 
-                if cur > lim_c:
+                if _cur_c > lim_c:
                     # Capacity limit: unload linearly from full at the limit onset
                     # down to the floor at the trip point. This is the machine
                     # PROTECTING itself and still carrying load, so it annunciates on
@@ -5592,12 +5922,14 @@ class DeviceStateStore:
                     # distinction is what stops the BMS swapping lead machines over a
                     # condition that belongs to the condenser loop they share.
                     span = max(0.1, trip_c - lim_c)
-                    frac = min(1.0, (cur - lim_c) / span)
+                    frac = min(1.0, (_cur_c - lim_c) / span)
                     avail = 1.0 - (1.0 - self._CHILLER_MIN_LOAD) * frac
                     self._chiller_derate[name] = round(1.0 - avail, 3)
                     if ip:
                         auto[ip] = {"Alarm_CondPressLimit": 1.0,
-                                    "Cond_Pressure": round(cond_kpa_run, 1),
+                                    "Cond_Pressure": round(_kpa, 1),
+                                    "Cond_Approach_Temp": _capp,
+                                    "Evap_Approach_Temp": _eapp,
                                     "Cond_Supply_Temp": round(cur, 1),
                                     "Cond_Return_Temp": round(
                                         cur + self._cond_range_c.get(
@@ -5613,7 +5945,9 @@ class DeviceStateStore:
                     # they cannot the control loop is out of authority and the
                     # derived range widens, which is the whole point of publishing
                     # the live figure rather than the design constant.
-                    auto[ip] = {"Cond_Pressure": round(cond_kpa_run, 1),
+                    auto[ip] = {"Cond_Pressure": round(_kpa, 1),
+                                "Cond_Approach_Temp": _capp,
+                                "Evap_Approach_Temp": _eapp,
                                 "Cond_Supply_Temp": round(cur, 1),
                                 "Cond_Return_Temp": round(
                                     cur + self._cond_range_c.get(
@@ -5927,8 +6261,10 @@ class DeviceStateStore:
                 if self._is_faulted(name) or name in self._chw_flow_interlock:
                     return 1.0
                 # A chiller riding its head-pressure limit is still running but
-                # has shed capacity — a PARTIAL loss, not a binary one.
-                return self._chiller_derate.get(name, 0.0)
+                # has shed capacity — a PARTIAL loss, not a binary one. So is a
+                # worn machine pinned at its FLA limit (cop / hx_approach).
+                return max(self._chiller_derate.get(name, 0.0),
+                           self._chiller_eff_derate.get(name, 0.0))
 
             # ── Cooling loss, computed per TRAIN ─────────────────────────────
             # A train is a series chain in its own right: chiller → evaporator pump →
@@ -6202,7 +6538,10 @@ class DeviceStateStore:
             # reusing it keeps the water the plant makes and the air the room gets
             # telling one story instead of two.
             pen = self._chw_pen.get(dc, 0.0)
-            supply = chw_supply_c(pen, CHW_SETPOINT_C)
+            # S1-8: the leaving-water setpoint is the operator's (a CHW reset),
+            # not the design constant, and the published CHW_Setpoint says so.
+            _sp = self._chw_sp(dc)
+            supply = chw_supply_c(pen, _sp)
             # affects_control (doc 32 §4.4): a chiller whose leaving-water sensor
             # reads b high makes its own water b colder. The chillers share one
             # header, so the header is the mean over the running units; each
@@ -6351,7 +6690,7 @@ class DeviceStateStore:
                     pts.update({"CHW_Supply_Temp": round(
                                     supply + _cb_mean - _cb_by.get(name, 0.0), 1),
                                 "CHW_Return_Temp": round(ret, 1),
-                                "CHW_Setpoint": round(CHW_SETPOINT_C, 1),
+                                "CHW_Setpoint": round(_sp, 1),
                                 "CHW_Flow": round(per_ch, 1)})
                     # Off-setpoint annunciation, with a dwell so a stage change or a
                     # valve step cannot annunciate, and hysteresis so a plant sitting
@@ -6362,12 +6701,12 @@ class DeviceStateStore:
                     # explicit zero would stamp out a fault the operator injected from
                     # the Limits tab. Dropping the key instead lets the engine's own
                     # 0.0 show through, which is the clear.
-                    over = supply > (CHW_SETPOINT_C + self._CHW_HIGH_DB_C)
+                    over = supply > (_sp + self._CHW_HIGH_DB_C)
                     held = (self._chw_high_s.get(name, 0.0) + dt) if over else 0.0
                     self._chw_high_s[name] = held
                     if held >= self._CHW_HIGH_S:
                         self._chw_high_alarm.add(name)
-                    elif supply <= (CHW_SETPOINT_C + self._CHW_CLEAR_DB_C):
+                    elif supply <= (_sp + self._CHW_CLEAR_DB_C):
                         self._chw_high_alarm.discard(name)
                     if name in self._chw_high_alarm:
                         pts["Alarm_HighCHWSupply"] = 1.0
@@ -6475,7 +6814,12 @@ class DeviceStateStore:
                     # affinity-only form published the same number for both.
                     _q_frac = ((per_pump / _pump_design_lps)
                                if _pump_design_lps > 1e-6 else None)
+                    # pump_derate (doc 32 §5.3, S1-6): a worn impeller develops
+                    # v x the head at the same speed and flow. The power flow
+                    # has already raised the speed to hold design dP; once it
+                    # caps at 100 % the head droops here.
                     diff = round(self._PUMP_DIFF_KPA
+                                 * self.faults.machine_value(name, "pump_derate")
                                  * pump_head_frac(spd, _q_frac), 1)
                     pts = auto.setdefault(ip, {})
                     pts.update({
@@ -6543,8 +6887,15 @@ class DeviceStateStore:
                        else None)
             # Discharge = setpoint + the shortfall the plant is carrying. A healthy
             # plant holds setpoint, which is what makes any drift off it diagnostic.
-            _sa = _SUPPLY_SETPOINT_C + self._chw_pen.get(dc, 0.0)
+            # S1-8: each unit holds ITS OWN discharge setpoint (Setpoint point,
+            # operator hold or ramp), not the module constant.
+            _pen_dc = self._chw_pen.get(dc, 0.0)
+            _sps = [self._crah_sp(n) for n in crahs]
+            _sp_room = (sum(_sps) / len(_sps)) if _sps else _SUPPLY_SETPOINT_C
+            self._crah_sp_room[rk] = _sp_room
+            _sa = _sp_room + _pen_dc
             self._supply_air_c[dc] = round(_sa, 2)
+            _chw_sp_dc = self._chw_sp(dc)
             for name in crahs:
                 if (name in self._plant_standby_names
                         or name in self._plant_unpowered_names):
@@ -6591,8 +6942,23 @@ class DeviceStateStore:
                 # tick, so it never reached the wire or the room. Applied here,
                 # store-side, on the engine's own severity ramp (0.25 -> 1.0).
                 _ht = self._crah_hightemp_sev(name)
-                _sa_u = _sa - _cb + 6.0 * _ht
+                _sp_u = self._crah_sp(name)
+                _sa_u = _sp_u + _pen_dc - _cb + 6.0 * _ht
                 pts["Supply_Air_Temp"] = round(_sa_u, 1)
+                # FILTER dP (doc 32 §5.3, S1-5), in Pa: 60 Pa x (1 + 3L) at
+                # rated airflow, and dP ~ Q^2 so it reads at the airflow the
+                # unit is actually moving. The "change filter" switch is judged
+                # on the loading (rated-flow-equivalent dP), as a controller
+                # with airflow measurement computes it [judgement: a bare dP
+                # switch would trip later at part flow]. Raised only, never
+                # zeroed, so an operator-forced Filter_Dirty survives.
+                _L = self.faults.machine_value(name, "filter_loading")
+                _q = max(0.0, min(1.0, self._filter_q.get(name, 1.0)))
+                _dp = self._CRAH_FILTER_CLEAN_PA * (1.0 + 3.0 * _L) * _q * _q
+                pts["Filter_DP"] = round(max(0.0, _dp * (1.0 + self._rng_for(name)
+                                                         .uniform(-0.01, 0.01))), 1)
+                if _L >= 1.0 - 1e-9:
+                    pts["Filter_Dirty"] = 1.0
                 # CHILLED-WATER VALVE. A CRAH holds discharge setpoint by modulating
                 # this valve, so its position is the output of a temperature control
                 # loop — not, as it used to be, a restatement of the plant's demand
@@ -6605,6 +6971,11 @@ class DeviceStateStore:
                 # trims for load, and it saturates once the water is a couple of
                 # degrees off. _chw_pen IS that shortfall, already integrated.
                 _load_pos = 30.0 + 50.0 * max(0.0, min(1.0, self._plant_duty.get(dc, 0.0)))
+                # A warmer discharge setpoint needs less coil at the same load,
+                # and warmer (reset) chilled water needs more [judgement: the
+                # sign is physics, the gains are not calibrated].
+                _load_pos += -4.0 * (_sp_u - _SUPPLY_SETPOINT_C) + 5.0 * (_chw_sp_dc - CHW_SETPOINT_C)
+                _load_pos = max(10.0, _load_pos)
                 _starve = (self._chw_pen.get(dc, 0.0) + max(0.0, _cb)) * self._CRAH_VALVE_GAIN
                 pts["CHW_Valve"] = (100.0 if _ht > 0.0
                                     else round(min(100.0, _load_pos + _starve), 1))
@@ -6634,7 +7005,9 @@ class DeviceStateStore:
                 continue
             # Drift of the facility loop above its design temperature, attenuated by
             # the exchanger's approach (see _CDU_FOLLOW_FRAC).
-            _drift = max(0.0, self._chw_supply_c.get(dc, CHW_SETPOINT_C) - CHW_SETPOINT_C)
+            # Drift above what the plant INTENDS (its setpoint), so a CHW reset
+            # is answered by the facility valve, not passed through as drift.
+            _drift = max(0.0, self._chw_supply_c.get(dc, CHW_SETPOINT_C) - self._chw_sp(dc))
             for name in _cdus:
                 ip = name
                 if not ip:
@@ -6660,7 +7033,8 @@ class DeviceStateStore:
                 # a lightly loaded loop DOES.
                 _flow_design = (_nom / (self._CDU_TCS_RANGE_C * CP_WATER_KJ_KGK)
                                 if _nom > 0 else 0.0)
-                _flow = max(self._CDU_MIN_FLOW_FRAC, _duty) * _flow_design
+                _flow = (max(self._CDU_MIN_FLOW_FRAC, _duty) * _flow_design
+                         * self._cdu_flow_frac.get(name, 1.0))
                 _range = (_q / (_flow * CP_WATER_KJ_KGK)) if _flow > 0 else 0.0
                 # The facility valve modulates to hold the secondary setpoint,
                 # and holds it until it runs out of travel.
@@ -6672,22 +7046,53 @@ class DeviceStateStore:
                 # setpoint on the CDU's own supply sensor, so a sensor b high
                 # drives the coolant b colder — less driving difference, more valve.
                 _cb = self.faults.control_bias(name, "TCS_Supply_Temp")
-                _avail = max(1.0, self._CDU_TCS_SETPOINT_C - _cb
+                # S1-8: the CDU holds ITS OWN TCS setpoint (operator hold/ramp).
+                _tsp = self._tcs_sp(name)
+                _avail = max(1.0, _tsp - _cb
                              - self._chw_supply_c.get(dc, CHW_SETPOINT_C))
                 _avail_design = max(1.0, self._CDU_TCS_SETPOINT_C - CHW_SETPOINT_C)
+                # hx_approach on the CDU (doc 32 §5.3, S1-4): plate fouling eats
+                # part of the driving difference, so the facility valve opens
+                # further for the same heat and saturates sooner; past that the
+                # lost authority lifts the coolant off setpoint.
+                _hx = self.faults.machine_value(name, "hx_approach")
+                _avail_eff = max(1.0, _avail - _hx)
                 _demand = (self._CDU_VALVE_MIN_PCT
                            + self._CDU_VALVE_LOAD_GAIN * _duty
-                           * (_avail_design / _avail))
+                           * (_avail_design / _avail_eff))
+                # Forced Alarm_HighSupplyTemp (doc 32 §9.2, S1-10): "coolant too
+                # warm to setpoint". The engine's +6 K / +25 % landed on points
+                # this block overwrites, so they never reached the wire or the
+                # servers on the loop. Applied store-side on the same ramp.
+                _hst = self._forced_sev("cdu", name, "Alarm_HighSupplyTemp")
+                _leak = self._forced_sev("cdu", name, "Alarm_Leak")
                 _unmet = max(0.0, _demand - 100.0) / 100.0
                 _lost = min(_range, _unmet * self._CDU_LOST_AUTHORITY_K)
-                _tcs = (self._CDU_TCS_SETPOINT_C - _cb
+                _tcs = (_tsp - _cb
                         + _drift * self._CDU_FOLLOW_FRAC
-                        + _lost
+                        + _lost + 6.0 * _hst
                         + random.uniform(-self._CDU_TCS_BAND_K, self._CDU_TCS_BAND_K))
                 pts["TCS_Supply_Temp"] = round(_tcs, 1)
                 pts["TCS_Return_Temp"] = round(_tcs + _range, 1)
-                pts["TCS_Setpoint"] = round(self._CDU_TCS_SETPOINT_C, 1)
-                pts["Facility_CHW_Valve"] = round(min(100.0, _demand), 1)
+                pts["TCS_Setpoint"] = round(_tsp, 1)
+                pts["Facility_CHW_Valve"] = round(min(100.0, _demand + 25.0 * _hst), 1)
+                # Live HX approach replaces the walk: 3.0 K at rated heat, ~Q^0.8
+                # [judgement], plus fouling, plus the engine's forced-alarm and
+                # leak shifts (which the walk used to carry).
+                _irng = self._rng_for(name)
+                pts["Approach_Temp"] = round(
+                    3.0 * max(0.05, _duty) ** 0.8 + _hx + 3.0 * _hst + 2.0 * _leak
+                    + _irng.uniform(-0.05, 0.05), 2)
+                # Strainer dP (kPa) at the flow actually moving (dP ~ Q^2):
+                # 35 kPa x (1 + 1.5L) at design flow. At L >= 1 the unit
+                # annunciates low flow [judgement: doc 32 §5.3]; raised only.
+                _Lc = self.faults.machine_value(name, "filter_loading")
+                _qf = (max(self._CDU_MIN_FLOW_FRAC, _duty)
+                       * self._cdu_flow_frac.get(name, 1.0))
+                pts["Filter_DP"] = round(self._CDU_STRAINER_KPA * (1.0 + 1.5 * _Lc)
+                                         * _qf * _qf * (1.0 + _irng.uniform(-0.01, 0.01)), 2)
+                if _Lc >= 1.0 - 1e-9:
+                    pts["Alarm_LowFlow"] = 1.0
                 # Published with them, so flow x range x cp gives back the heat
                 # on the same row. The generator derives a flow of its own for a
                 # CDU with no cold-plate loop under it; this one supersedes it
@@ -6949,6 +7354,15 @@ class DeviceStateStore:
         if (float(pv.get("Unit_Running", 1.0)) < 0.5
                 or float(pv.get("Alarm_AirflowLoss", 0.0)) >= 0.5):
             return 0.0
+        # Gradual filter loading (doc 32 §5.3): the fan holds airflow until it
+        # runs out of speed, so delivered stays 1.0 and only then falls. The
+        # store-published Filter_Dirty at L >= 1 is the ALARM, not a second
+        # derate; an operator-forced Filter_Dirty keeps its step on top.
+        if self.faults.machine_value(name, "filter_loading") > 0.0:
+            frac = self._crah_airflow_frac.get(name, 1.0)
+            if self._alarm_forced("crah", name, "Filter_Dirty"):
+                frac = min(frac, 1.0 - _CRAH_FILTER_DERATE)
+            return frac
         if float(pv.get("Filter_Dirty", 0.0)) >= 0.5:
             return 1.0 - _CRAH_FILTER_DERATE
         return 1.0
@@ -7028,7 +7442,8 @@ class DeviceStateStore:
             # room reads identically with the telemetry plane up or down.
             base = self._supply_air_c.get(
                 device.datacenter,
-                _SUPPLY_SETPOINT_C + self._chw_pen.get(device.datacenter, 0.0))
+                self._crah_sp_room.get(rk, _SUPPLY_SETPOINT_C)
+                + self._chw_pen.get(device.datacenter, 0.0))
         # LOST CAPACITY, as a shortfall rather than a headcount.
         #
         # A CRAH trip used to add a fixed share of 12 K whether or not the rest of
@@ -7124,7 +7539,8 @@ class DeviceStateStore:
             pv = _plant_state_cache.get(n) or {}
             sa = pv.get("Supply_Air_Temp")
             supply = float(sa) if sa is not None else self._supply_air_c.get(
-                rk[0], _SUPPLY_SETPOINT_C + self._chw_pen.get(rk[0], 0.0))
+                rk[0], self._crah_sp_room.get(rk, _SUPPLY_SETPOINT_C)
+                + self._chw_pen.get(rk[0], 0.0))
             fan = pv.get("Fan_Speed")
             units.append(_air.Unit(
                 id=n, x=float(d.floor_x), y=float(d.floor_y or 0.0),
@@ -7319,6 +7735,9 @@ class DeviceStateStore:
 
     def _tick(self):
         devices = self._dm.get_all_devices()
+        # Degradations, ramps and weather expiry BEFORE physics: a ramped
+        # setpoint or a fouled coil is an input to this tick's plant.
+        self._step_injections()
         self._compute_leak_heat()
         # Condenser loop BEFORE the CHW penalty: a chiller that trips or unloads
         # on head pressure has to be reflected in this same tick's cooling loss.

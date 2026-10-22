@@ -52,7 +52,23 @@ def _L():
 
 # ── BACnet plant overrides ───────────────────────────────────────────────────
 
-def _plant_override(dev, point: str, value: Optional[float], overrides: dict) -> None:
+def _setpoint_now(dev, point: str, overrides: dict) -> Optional[float]:
+    """What the setpoint IS before this change: the operator's hold, else the
+    design value physics falls back to."""
+    prev = (overrides.get(dev.name) or {}).get(point)
+    if prev is not None:
+        return float(prev)
+    try:
+        from core.device_state_store import DeviceStateStore, _SUPPLY_SETPOINT_C
+        from core.cooling_model import CHW_SETPOINT_C
+        return {"Setpoint": _SUPPLY_SETPOINT_C, "CHW_Setpoint": CHW_SETPOINT_C,
+                "TCS_Setpoint": DeviceStateStore._CDU_TCS_SETPOINT_C}.get(point)
+    except Exception:
+        return None
+
+
+def _plant_override(dev, point: str, value: Optional[float], overrides: dict,
+                    campaign: Optional[str] = None) -> None:
     name, did = dev.name, dev.id
     dtype = dev.device_type.value
     key = ("override", name, point)
@@ -61,8 +77,8 @@ def _plant_override(dev, point: str, value: Optional[float], overrides: dict) ->
         return
     if point in SETPOINT_POINTS:
         kind, expected = "setpoint", "none"
-        prev = (overrides.get(name) or {}).get(point)
-        params = {"from": prev, "to": float(value), "rate_per_s": None}
+        params = {"from": _setpoint_now(dev, point, overrides), "to": float(value),
+                  "rate_per_s": None}
     else:
         kind, expected = "override", "process"
         params = {"value": float(value)}
@@ -71,11 +87,41 @@ def _plant_override(dev, point: str, value: Optional[float], overrides: dict) ->
             expected = "sensor"
     _L().open(kind, device=name, device_id=did, point=point, params=params,
               expected_kind=expected, metric_hint=_hint(dtype, point),
-              source="POST /api/bacnet/plant/overrides", key=key)
+              source="POST /api/bacnet/plant/overrides", key=key, campaign=campaign)
 
 
-def plant_override(dev, point, value, overrides) -> None:
-    _fl.safe(_plant_override, dev, point, value, overrides)
+def plant_override(dev, point, value, overrides, campaign=None) -> None:
+    _fl.safe(_plant_override, dev, point, value, overrides, campaign)
+
+
+def _plant_ramp(dev, point: str, r: dict, overrides: dict,
+                campaign: Optional[str] = None) -> Optional[str]:
+    """A ramp / oscillation on a plant override (doc 32 §6.1): ``ramp`` with
+    expected_kind ``process``, or ``setpoint`` / ``none`` on a setpoint point.
+    Shares the override's key, so a later hold, ramp or clear supersedes or
+    closes it. Returns the ledger id (the store marks target_reached on it)."""
+    name, did = dev.name, dev.id
+    dtype = dev.device_type.value
+    params = {"from": r.get("start"), "to": r.get("target"),
+              "rate_per_s": r.get("rate_per_s")}
+    if r.get("osc"):
+        params["oscillate"] = dict(r["osc"])
+    if point in SETPOINT_POINTS:
+        kind, expected = "setpoint", "none"
+    else:
+        kind, expected = "ramp", "process"
+        # A valve feedback oscillating with no actuator fault is still the
+        # published position moving with no flow following it (doc 32 §13.2
+        # valve-hunting): the SHAPE is the truth VA-2 is scored on.
+    e = _L().open(kind, device=name, device_id=did, point=point, params=params,
+                  expected_kind=expected, metric_hint=_hint(dtype, point),
+                  source="POST /api/bacnet/plant/overrides", key=("override", name, point),
+                  campaign=campaign)
+    return e["id"]
+
+
+def plant_ramp(dev, point, r, overrides, campaign=None) -> Optional[str]:
+    return _fl.safe(_plant_ramp, dev, point, r, overrides, campaign)
 
 
 # ── electrical ───────────────────────────────────────────────────────────────
@@ -118,7 +164,11 @@ def _device_fault(dev, fault: str, spec: dict, on: bool, instance: Any = None) -
             params[k] = spec[k]
     if instance is not None:
         params["instance"] = instance
-    _L().open("fault_menu", device=dev.name, device_id=dev.id,
+    # A panel / MCC main-breaker trip is an ELECTRICAL injection (doc 32 §7.1).
+    kind = "electrical" if "panelcond" in spec else "fault_menu"
+    if kind == "electrical":
+        params["what"] = fault
+    _L().open(kind, device=dev.name, device_id=dev.id,
               point=spec.get("metric") or spec.get("override"), params=params,
               expected_kind=expected, source="POST /api/devices/{id}/fault", key=key)
 

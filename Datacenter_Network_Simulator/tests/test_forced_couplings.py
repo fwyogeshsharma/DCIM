@@ -1,5 +1,7 @@
-"""S0-9 (doc 32 §9.2, §14): a forced CRAH Alarm_HighTemp reaches the wire and
-the room.
+"""S0-9 / S1-10 (doc 32 §9.2, §14): forced alarms whose coupling targets a
+store-published point. A forced CRAH Alarm_HighTemp reaches the wire and the
+room; a forced CDU Alarm_HighSupplyTemp reaches the wire and the servers on its
+cold-plate loop.
 
 The engine's +6 K landed on Supply_Air_Temp, which the store overwrites every
 tick, so the forced bit was the only tell and the room never warmed — CR-1's
@@ -111,3 +113,33 @@ def test_lost_couplings_are_logged_once(hall, caplog):
         r.store.plant_alarm_overrides[name]["Alarm_HighReturnAir"] = 1.0
         r.tick(2)
     assert sum("does not reach the wire" in x.getMessage() for x in caplog.records) == 1
+
+
+# ── S1-10: CDU Alarm_HighSupplyTemp ─────────────────────────────────────────
+
+def test_forced_cdu_high_supply_temp_reaches_the_wire_and_the_loop(tmp_path):
+    from test_degradation import _rig as _iso_rig
+    r = _iso_rig(tmp_path, cdus=1)
+    r.tick(150)
+    cdu = r.h.made["CDU1"].name
+    loop = sorted(r.store._cdu_loop_servers().get(cdu, ()))
+    assert loop, "the fixture CDU carries a cold-plate loop"
+    dev = {d.name: d for d in r.servers()}
+    die0 = sum(dev[n].cpu_temp for n in loop) / len(loop)
+    sp = _wire(r, cdu, "TCS_Setpoint")
+    tcs0, valve0 = _wire(r, cdu, "TCS_Supply_Temp"), _wire(r, cdu, "Facility_CHW_Valve")
+    app0 = _wire(r, cdu, "Approach_Temp")
+    r.store.plant_alarm_overrides.setdefault(cdu, {})["Alarm_HighSupplyTemp"] = 1.0
+    r.tick(60)
+    assert _wire(r, cdu, "Alarm_HighSupplyTemp") == 1.0
+    assert _wire(r, cdu, "TCS_Supply_Temp") >= sp + 5.5
+    assert _wire(r, cdu, "Facility_CHW_Valve") >= min(100.0, valve0 + 24.0)
+    assert _wire(r, cdu, "Approach_Temp") == pytest.approx(app0 + 3.0, abs=0.3)
+    # The servers on that loop take the warmer coolant (die tau ~150 s).
+    r.tick(240)
+    die1 = sum(dev[n].cpu_temp for n in loop) / len(loop)
+    assert die1 > die0 + 2.0
+    r.store.plant_alarm_overrides.pop(cdu, None)
+    r.tick(3)
+    assert _wire(r, cdu, "TCS_Supply_Temp") == pytest.approx(tcs0, abs=0.5)
+    assert r.store._forced_t == {}

@@ -313,3 +313,145 @@ def test_the_air_side_going_dark_leaves_the_plant_healthy(tmp_path, plant_cache)
         "the plant is making good water — the failure is in the hall")
     assert p.store._cool_loss_frac.get(DC, 0.0) == 0.0
     assert p.store.cooling_degraded(DC) is False
+
+
+# ── Offline twins of the anomaly campaign library (doc 32 §13, S3-1) ────────
+# Each reads its injection straight from tools/anomaly_campaigns.json, so the
+# twin cannot drift from what the live runner sends, and checks the SIMULATOR
+# half of the scenario: that the injection lands with the truth/wire split the
+# scenario's `kind` claims, and that the physics shows the signature the
+# expected detectors are meant to find. Detection itself is the platform's
+# (doc 33 §4); these keep the ground truth honest offline, in seconds.
+
+from test_degradation import _rig as _iso_rig  # noqa: E402
+from test_fault_publish_truth import api_state  # noqa: E402,F401  (fixture)
+
+
+def _scn(name):
+    from tools.live_campaign_anomaly import load_library, scenario
+    return scenario(load_library(), name)
+
+
+def _inj(name, i=0):
+    s = _scn(name)
+    return s, s["injections"][i]
+
+
+def test_twin_crah_supply_bias(tmp_path, api_state):
+    """crah-supply-bias: the reading lies by +3 K, the room does not move."""
+    from api.routers.faults import SensorFaultBody, add_sensor_fault
+    s, inj = _inj("crah-supply-bias")
+    assert inj["api"] == "POST /api/faults/sensor"
+    ctl = _iso_rig(tmp_path / "c")
+    r = _iso_rig(tmp_path / "f")
+    api_state(r)
+    ctl.tick(40)
+    r.tick(40)
+    crah = r.h.made["CRAH1"]
+    body = dict(inj["body"], device=crah.id, campaign=f"{s['name']}/twin")
+    out = add_sensor_fault(SensorFaultBody(**body))
+    ctl.tick(60)
+    r.tick(60)
+    truth = r.caches["_plant_state_cache"][crah.name]["Supply_Air_Temp"]
+    wire = r.bac[crah.name].get_snapshot()["Supply_Air_Temp"]
+    assert wire == pytest.approx(truth + inj["body"]["bias"], abs=0.05)
+    assert truth == pytest.approx(ctl.caches["_plant_state_cache"][crah.name]["Supply_Air_Temp"])
+    assert [d.inlet_temp for d in r.servers()] == pytest.approx(
+        [d.inlet_temp for d in ctl.servers()], abs=1e-9)
+    e = r.store.faults.ledger.get(out["id"])
+    assert e["campaign"] == f"{s['name']}/twin" and e["expected_kind"] == "sensor"
+
+
+def test_twin_chiller_cop_decay(tmp_path, api_state):
+    """chiller-cop-decay, compressed: the degradation clock is stepped in 30-min
+    chunks (the pinned-dt shortcut) with physics ticked between, against a
+    control twin. COP falls monotonically to 0.8x and the target mark lands at
+    ~20 simulated hours; no capacity is lost at part load."""
+    from api.routers.faults import DegradationBody, add_degradation
+    s, inj = _inj("chiller-cop-decay")
+    ctl = _iso_rig(tmp_path / "c")
+    r = _iso_rig(tmp_path / "f")
+    api_state(r)
+    ctl.tick(40)
+    r.tick(40)
+    ch = [t["chiller"] for t in r.store._plant_trains_run[DC]][0]
+    b = inj["body"]
+    out = add_degradation(DegradationBody(device=r.h.name(ch).id, kind=b["kind"],
+                                          rate_per_h=b["rate_per_h"], target=b["target"],
+                                          campaign=f"{s['name']}/twin"))
+    ratios, sim_h = [], 0.0
+    while sim_h < inj["hold_s"] / 3600.0:
+        r.store.faults.step_degradations(1800.0)
+        sim_h += 0.5
+        ctl.tick(3)
+        r.tick(3)
+        ratios.append(r.store._plant_cop_by_name[ch] / ctl.store._plant_cop_by_name[ch])
+    assert all(b2 <= a + 0.01 for a, b2 in zip(ratios, ratios[1:])), ratios
+    assert ratios[-1] == pytest.approx(0.80, rel=0.03)
+    assert r.store._chiller_eff_derate.get(ch, 0.0) == 0.0
+    e = r.store.faults.ledger.get(out["id"])
+    assert e["end"] is None and [m["what"] for m in e["marks"]] == ["target_reached"]
+    assert r.store.faults.degradation_for(ch, "cop").reached_ts is not None
+
+
+def test_twin_crah_filter_loading(tmp_path, api_state):
+    """crah-filter-loading, compressed: dP climbs for ~50 simulated hours while
+    the fan holds airflow (no L1, delivered 1.0); Filter_Dirty, the L1 the lead
+    time is measured against, asserts only once loading reaches 1.0."""
+    from api.routers.faults import DegradationBody, add_degradation
+    s, inj = _inj("crah-filter-loading")
+    r = _iso_rig(tmp_path)
+    api_state(r)
+    r.tick(40)
+    crah = r.h.made["CRAH1"]
+    b = inj["body"]
+    add_degradation(DegradationBody(device=crah.id, kind=b["kind"], rate_per_h=b["rate_per_h"],
+                                    target=b["target"], campaign=f"{s['name']}/twin"))
+    rows = []
+    for h in range(0, 56):
+        r.tick(2)
+        pts = r.store._plant_auto_points[crah.name]
+        q = r.store._filter_q[crah.name]
+        rows.append((h, r.store.faults.machine_value(crah.name, "filter_loading"),
+                     pts["Filter_DP"] / (q * q), pts.get("Filter_Dirty", 0.0),
+                     r.call(r.store._crah_delivered_frac, crah.name)))
+        r.store.faults.step_degradations(3600.0)
+    first_dirty = next(h for h, _L, _dp, d, _f in rows if d == 1.0)
+    assert first_dirty == 50                                   # L = 0.02/h x 50 h
+    # dP (normalised to airflow) up >= 60 % 20 h before the switch: the lead.
+    assert rows[30][2] >= 1.6 * rows[0][2]
+    assert all(f == pytest.approx(1.0) for _h, _L, _dp, _d, f in rows)
+    assert all(b2[2] >= a[2] * 0.97 for a, b2 in zip(rows, rows[1:]))
+
+
+def test_twin_lead_chiller_stop(tmp_path, api_state):
+    """lead-chiller-stop: a clean failover. The standby takes the load, the
+    water holds setpoint, and only the state change is ledgered."""
+    from api.routers.bacnet import PlantOverride, set_plant_override
+    s, inj = _inj("lead-chiller-stop")
+    r = _iso_rig(tmp_path)
+    api_state(r)
+    r.tick(60)
+    lead = [t["chiller"] for t in r.store._plant_trains_run[DC]][0]
+    set_plant_override(PlantOverride(device=r.h.name(lead).id, campaign=f"{s['name']}/twin",
+                                     **inj["body"]))
+    peak, alarmed = 0.0, False
+    for _ in range(600):
+        r.tick(1)
+        peak = max(peak, r.store._chw_supply_c[DC])
+        alarmed = alarmed or bool(r.store._chw_high_alarm)
+    now = {t["chiller"] for t in r.store._plant_trains_run[DC]}
+    assert lead not in now and now, "a standby train took the lead"
+    # FINDING, recorded rather than hidden: with ONE train staged (this
+    # fixture's load, and a light live DC), a SILENT lead stop is a total loss
+    # until the 90 s run-proof dwell promotes the standby, so chilled water
+    # runs to the +12 K cap first (peak ~19 C here) and may latch
+    # Alarm_HighCHWSupply. lead-chiller-stop is a clean negative control only
+    # where the remaining staged trains cover the load. The plant must still
+    # fail over and come back to setpoint with the alarm cleared.
+    assert peak >= 7.0
+    assert r.store._chw_supply_c[DC] <= 7.0 + 0.5
+    assert not r.store._chw_high_alarm
+    assert not r.store.cooling_degraded(DC)
+    e = r.store.faults.ledger.query(kind="override", campaign=f"{s['name']}/twin")["entries"]
+    assert len(e) == 1 and e[0]["point"] == "Chiller_Running"

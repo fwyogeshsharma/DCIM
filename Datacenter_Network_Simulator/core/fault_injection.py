@@ -192,6 +192,68 @@ class FaultConflict(Exception):
     """A sensor fault is already active on (device, point)."""
 
 
+# ── degradations (doc 32 §5, C7): the MACHINE changes, so physics changes ────
+
+#: kind -> valid device types, healthy value, physical band, unit. A degradation
+#: moves TRUTH: the store's physics reads :meth:`FaultBook.machine_value`.
+DEGRADATION_KINDS: Dict[str, Dict[str, Any]] = {
+    "cop": {"types": ("chiller",), "healthy": 1.0, "band": (0.5, 1.0),
+            "unit": "efficiency multiplier"},
+    "tower_approach": {"types": ("cooling_tower",), "healthy": 0.0, "band": (0.0, 10.0),
+                       "unit": "K added to approach"},
+    "hx_approach": {"types": ("chiller", "cdu"), "healthy": 0.0, "band": (0.0, 10.0),
+                    "unit": "K added to HX approach"},
+    "filter_loading": {"types": ("crah", "cdu"), "healthy": 0.0, "band": (0.0, 1.5),
+                       "unit": "loading fraction (1.0 = change-filter dP)"},
+    "pump_derate": {"types": ("pump",), "healthy": 1.0, "band": (0.5, 1.0),
+                    "unit": "head multiplier"},
+}
+
+
+def degradation_healthy(kind: str) -> float:
+    return float(DEGRADATION_KINDS[kind]["healthy"])
+
+
+@dataclass
+class Degradation:
+    """One active degradation. ``value`` is the CURRENT machine state, advanced
+    by ``rate_per_h * dt / 3600`` toward ``target`` on each store tick (the
+    store's clamped dt, not the wall clock: a paused simulator does not foul)."""
+    id: str
+    device: str
+    device_id: str
+    kind: str
+    rate_per_h: float
+    target: float
+    value: float = 0.0
+    start_ts: float = 0.0
+    from_value: float = 0.0
+    reached_ts: Optional[float] = None
+
+    def params(self) -> Dict[str, Any]:
+        return {"degradation": self.kind, "rate_per_h": self.rate_per_h,
+                "target": self.target, "from": self.from_value}
+
+    def eta_ts(self) -> Optional[float]:
+        if self.reached_ts is not None:
+            return self.reached_ts
+        if self.rate_per_h <= 0:
+            return None
+        return self.start_ts + abs(self.target - self.from_value) / self.rate_per_h * 3600.0
+
+    def to_json(self) -> Dict[str, Any]:
+        return {"id": self.id, "device": self.device, "device_id": self.device_id,
+                "kind": self.kind, "rate_per_h": self.rate_per_h, "target": self.target,
+                "value": self.value, "start_ts": self.start_ts,
+                "from_value": self.from_value, "reached_ts": self.reached_ts}
+
+    @classmethod
+    def from_json(cls, d: Dict[str, Any]) -> "Degradation":
+        keys = {"id", "device", "device_id", "kind", "rate_per_h", "target", "value",
+                "start_ts", "from_value", "reached_ts"}
+        return cls(**{k: v for k, v in d.items() if k in keys})
+
+
 # ── the read-only view ───────────────────────────────────────────────────────
 
 class DeviceView:
@@ -243,6 +305,15 @@ class FaultBook:
         # Per-tick wire cache for attr/ext faults: (device, point) -> (wire|None, delta)
         self._wire: Dict[tuple, tuple] = {}
         self._wire_tick: Dict[tuple, float] = {}
+        # Degradations: active ramps, and the MACHINE state they leave behind.
+        # A fouled coil stays fouled when its ramp is deleted (§4.7): the
+        # machine map keeps the value until a restore (maintenance) resets it,
+        # and a "held" ledger entry stays open over that residual so a correct
+        # detection after the ramp ends is not scored as a false alarm.
+        self._degs: Dict[str, Degradation] = {}
+        self._deg_by: Dict[tuple, str] = {}
+        self._machine: Dict[tuple, float] = {}
+        self._held_deg: Dict[tuple, str] = {}          # (device, kind) -> held ledger id
 
     # -- plumbing ---------------------------------------------------------------
     @property
@@ -267,9 +338,148 @@ class FaultBook:
             fid = self._by_point.get((device, point))
             return self._faults.get(fid) if fid else None
 
-    def get(self, fault_id: str) -> Optional[SensorFault]:
+    def get(self, fault_id: str):
+        """The active sensor fault or degradation with this id (None if neither)."""
         with self._lock:
-            return self._faults.get(fault_id)
+            return self._faults.get(fault_id) or self._degs.get(fault_id)
+
+    # -- degradations -------------------------------------------------------------
+    def machine_value(self, device: str, kind: str) -> float:
+        """The machine's CURRENT degradation state (healthy when untouched).
+        Lock-free read of one dict entry: called by physics every tick."""
+        v = self._machine.get((device, kind))
+        return degradation_healthy(kind) if v is None else v
+
+    def machine_state(self) -> Dict[tuple, float]:
+        with self._lock:
+            return dict(self._machine)
+
+    def degradation_for(self, device: str, kind: str) -> Optional[Degradation]:
+        with self._lock:
+            i = self._deg_by.get((device, kind))
+            return self._degs.get(i) if i else None
+
+    def held_id(self, device: str, kind: str) -> Optional[str]:
+        with self._lock:
+            return self._held_deg.get((device, kind))
+
+    def held_key(self, fault_id: str) -> Optional[tuple]:
+        with self._lock:
+            for k, i in self._held_deg.items():
+                if i == fault_id:
+                    return k
+        return None
+
+    def add_degradation(self, d: Degradation, ledger_entry: Optional[dict] = None,
+                        resumed: bool = False) -> Degradation:
+        """Start a ramp. One per (device, kind): a second is a FaultConflict.
+        It starts from the machine's current state, so a coil left fouled by an
+        earlier (deleted) ramp keeps fouling from where it was."""
+        key = (d.device, d.kind)
+        with self._lock:
+            if key in self._deg_by:
+                raise FaultConflict(f"degradation {self._deg_by[key]} already active "
+                                    f"on {d.device}/{d.kind}")
+            if not d.start_ts:
+                d.start_ts = self.clock()
+            if not resumed:
+                d.value = self.machine_value(d.device, d.kind)
+                d.from_value = d.value
+            self._degs[d.id] = d
+            self._deg_by[key] = d.id
+            self._machine[key] = d.value
+            held = None if resumed else self._held_deg.pop(key, None)
+        if held:
+            self.ledger.close(held, "superseded", end=d.start_ts)
+        if ledger_entry is not None and not resumed:
+            kw = dict(ledger_entry)
+            kw.setdefault("device", d.device)
+            kw.setdefault("device_id", d.device_id)
+            kw.setdefault("point", None)
+            kw.setdefault("params", d.params())
+            kw.setdefault("expected_kind", "process")
+            self.ledger.open("degradation", start=d.start_ts, fault_id=d.id, **kw)
+        return d
+
+    def step_degradations(self, dt: float, now: Optional[float] = None) -> List[str]:
+        """Advance every active ramp by *dt* simulated seconds. Returns the ids
+        that reached their target this step (each ledgered as an ``op: mark``;
+        the entry stays OPEN: a fouled coil does not unfoul)."""
+        if not self._degs or dt <= 0.0:
+            return []
+        now = self.clock() if now is None else now
+        reached = []
+        with self._lock:
+            for d in list(self._degs.values()):
+                if d.reached_ts is not None:
+                    continue
+                step = max(0.0, d.rate_per_h) * dt / 3600.0
+                if d.target >= d.value:
+                    d.value = min(d.target, d.value + step)
+                else:
+                    d.value = max(d.target, d.value - step)
+                self._machine[(d.device, d.kind)] = d.value
+                if abs(d.value - d.target) <= 1e-12:
+                    d.reached_ts = now
+                    reached.append(d.id)
+        for i in reached:
+            self.ledger.mark(i, "target_reached", at=now)
+        return reached
+
+    def _open_held(self, device: str, device_id: str, kind: str, value: float,
+                   at: float) -> Optional[str]:
+        """A residual degraded state with no ramp: ledgered as an open
+        degradation entry until restored."""
+        if abs(value - degradation_healthy(kind)) <= 1e-9:
+            return None
+        e = self.ledger.open("degradation", device=device, device_id=device_id,
+                             point=None, start=at, expected_kind="process",
+                             params={"degradation": kind, "held": True,
+                                     "value": round(value, 6), "rate_per_h": 0.0},
+                             source="DELETE /api/faults/{id} (ramp stopped, not restored)")
+        with self._lock:
+            self._held_deg[(device, kind)] = e["id"]
+        return e["id"]
+
+    def remove_degradation(self, fault_id: str, reason: str = "deleted",
+                           restore: bool = False, at: Optional[float] = None,
+                           source: str = "DELETE /api/faults/{id}") -> Optional[dict]:
+        """Stop a ramp (or end a held residual). Without *restore* the machine
+        keeps its degraded value and a held entry opens over it; with *restore*
+        the machine is reset to healthy and a separate ``maintenance`` entry is
+        ledgered (the recovery is a maintenance event, not the fault ending).
+        A held id without *restore* is refused: ``{"held": True}``."""
+        now = self.clock() if at is None else at
+        with self._lock:
+            d = self._degs.pop(fault_id, None)
+            if d is not None:
+                self._deg_by.pop((d.device, d.kind), None)
+                key, dev_id = (d.device, d.kind), d.device_id
+            else:
+                key = next((k for k, i in self._held_deg.items() if i == fault_id), None)
+                if key is None:
+                    return None
+                if not restore:
+                    return {"id": fault_id, "held": True}
+                self._held_deg.pop(key, None)
+                dev_id = None
+            value = self._machine.get(key, degradation_healthy(key[1]))
+            if restore:
+                self._machine.pop(key, None)
+        closed = self.ledger.close(fault_id, "restore" if restore else reason, end=now)
+        if dev_id is None and closed:
+            dev_id = closed.get("device_id")
+        if restore:
+            self.ledger.instant("maintenance", device=key[0], device_id=dev_id, point=None,
+                                params={"degradation": key[1], "from": round(value, 6),
+                                        "to": degradation_healthy(key[1]),
+                                        "restored": fault_id},
+                                expected_kind="none", source=source + "?restore=true",
+                                start=now, end_reason="restore")
+        elif d is not None:
+            self._open_held(d.device, d.device_id, d.kind, value, now)
+        return closed or {"id": fault_id, "kind": "degradation", "device": key[0],
+                          "end_reason": "restore" if restore else reason}
 
     # -- lifecycle --------------------------------------------------------------
     def add_sensor(self, f: SensorFault, ledger_entry: Optional[dict] = None,
@@ -298,9 +508,12 @@ class FaultBook:
         return f
 
     def remove(self, fault_id: str, reason: str = "deleted",
-               at: Optional[float] = None) -> Optional[dict]:
+               at: Optional[float] = None, restore: bool = False) -> Optional[dict]:
         """Remove a fault and close its ledger entry. Returns the closed entry
-        (or a minimal dict when the ledger had no open entry), None if unknown."""
+        (or a minimal dict when the ledger had no open entry), None if unknown.
+        A degradation id goes through :meth:`remove_degradation`."""
+        if fault_id in self._degs or self.held_key(fault_id) is not None:
+            return self.remove_degradation(fault_id, reason, restore=restore, at=at)
         with self._lock:
             f = self._faults.pop(fault_id, None)
             if f is None:
@@ -337,6 +550,24 @@ class FaultBook:
                                     "stuck": f.stuck, "held": f.held,
                                     "in_dropout": f.in_dropout(now) if f.dropout_pct else False,
                                     "last_wire": f.last_wire}})
+        with self._lock:
+            degs = list(self._degs.values())
+            held = dict(self._held_deg)
+            machine = dict(self._machine)
+        for d in degs:
+            out.append({"id": d.id, "kind": "degradation", "device": d.device,
+                        "device_id": d.device_id, "point": None, "start_ts": d.start_ts,
+                        "params": d.params(),
+                        "current": {"value": round(d.value, 6),
+                                    "reached": d.reached_ts is not None,
+                                    "eta_ts": d.eta_ts()}})
+        for (dev, kind), fid in held.items():
+            out.append({"id": fid, "kind": "degradation", "device": dev, "device_id": None,
+                        "point": None, "start_ts": None,
+                        "params": {"degradation": kind, "held": True},
+                        "current": {"value": round(machine.get((dev, kind),
+                                                               degradation_healthy(kind)), 6),
+                                    "held": True}})
         return out
 
     # -- the transform ----------------------------------------------------------
@@ -533,6 +764,62 @@ class FaultBook:
     def to_json(self) -> List[dict]:
         return [f.to_json() for f in self._snapshot()]
 
+    def degradations_json(self) -> Dict[str, Any]:
+        """Persisted with the sensor faults in active.json: active ramps with
+        their CURRENT value, the machine state, and the held entries."""
+        with self._lock:
+            return {"degradations": [d.to_json() for d in self._degs.values()],
+                    "machine_state": [{"device": k[0], "kind": k[1], "value": v}
+                                      for k, v in self._machine.items()],
+                    "held": [{"device": k[0], "kind": k[1], "id": i}
+                             for k, i in self._held_deg.items()]}
+
+    def resume_degradations(self, data: Optional[Dict[str, Any]],
+                            saved_at: Optional[float],
+                            now: Optional[float] = None) -> List[str]:
+        """Restore the machine state and the active ramps from active.json. A
+        fouled condenser is still fouled after a BMS reboot: each ramp resumes
+        at its PERSISTED value with an ``op: resume`` line over the gap. The ramp
+        does not advance over the downtime (the simulator was not running)."""
+        now = self.clock() if now is None else now
+        data = data or {}
+        led = self.ledger
+        kept: List[str] = []
+        with self._lock:
+            for m in data.get("machine_state") or []:
+                try:
+                    if m["kind"] in DEGRADATION_KINDS:
+                        self._machine[(m["device"], m["kind"])] = float(m["value"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+        for rec in data.get("degradations") or []:
+            try:
+                d = Degradation.from_json(rec)
+            except TypeError:
+                continue
+            if d.kind not in DEGRADATION_KINDS:
+                continue
+            try:
+                self.add_degradation(d, resumed=True)
+            except FaultConflict:
+                continue
+            if led.adopt(d.id):
+                led.resume(d.id, saved_at if saved_at else now, now)
+            kept.append(d.id)
+        for h in data.get("held") or []:
+            try:
+                key, fid = (h["device"], h["kind"]), h["id"]
+            except (KeyError, TypeError):
+                continue
+            if key in self._deg_by:
+                continue
+            with self._lock:
+                self._held_deg[key] = fid
+            if led.adopt(fid):
+                led.resume(fid, saved_at if saved_at else now, now)
+            kept.append(fid)
+        return kept
+
     def resume(self, records: Iterable[dict], saved_at: Optional[float],
                now: Optional[float] = None) -> Dict[str, List[str]]:
         """Re-register faults persisted in ``active.json``. A fault whose
@@ -584,5 +871,6 @@ def sigma_for(surface: str, dtype: str, point: str) -> float:
 
 
 __all__ = ["SensorFault", "FaultBook", "FaultConflict", "DeviceView", "point_span",
+           "Degradation", "DEGRADATION_KINDS", "degradation_healthy",
            "is_binary", "CONTROL_POINTS", "ATTR_SIGMA", "ATTR_EXT_ALIASES",
            "set_active", "get_active", "sigma_for"]
