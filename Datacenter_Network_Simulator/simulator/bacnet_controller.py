@@ -674,7 +674,9 @@ class BACnetController:
              plant_standby_names: set | None = None,
              plant_oa_by_name: dict | None = None,
              plant_unpowered_names: set | None = None,
-             faults=None) -> None:
+             faults=None,
+             sag_by_ip: dict | None = None,
+             freq_by_ip: dict | None = None) -> None:
         """
         Advance all EV2 telemetry engines by *dt* seconds.
 
@@ -686,6 +688,12 @@ class BACnetController:
         ({device_name: {point: value}}) those per-device binary forces are applied
         last — this is how a single plant unit is alarmed from its Metric Tick
         window, independent of the type-wide locks.
+
+        *sag_by_ip* ({ev2_ip: fraction of nominal}) carries this tick's utility
+        sag to the meters on the sagging bus, and *freq_by_ip* ({ev2_ip: Hz})
+        the grid frequency each meter's bus follows. Both are decided by the
+        store, which knows the power graph; a meter absent from them sees no
+        event and (for frequency) keeps its own walk.
         """
         if not self._running:
             return
@@ -816,7 +824,9 @@ class BACnetController:
                                     and str(_lim.get("lock")) == "on"):
                                 _ev_forced.add(_k[len("ev2:"):])
                     values = engine.tick(dt, live_kw=_lkw, circuit_kw=_ckw,
-                                         forced=_ev_forced or None)
+                                         forced=_ev_forced or None,
+                                         bus_sag=(sag_by_ip or {}).get(_ip),
+                                         grid_freq_hz=(freq_by_ip or {}).get(_ip))
                 if metric_flags:
                     values = {
                         k: v for k, v in values.items()

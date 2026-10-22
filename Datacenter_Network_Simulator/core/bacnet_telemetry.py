@@ -92,6 +92,14 @@ class EV2TelemetryEngine:
     # 60 Hz panel scales correctly.
     UNDERVOLTAGE_FRAC        = 0.90   # × nominal_voltage → sag alarm (207 V @ 230)
     UNDERFREQ_FRAC           = 0.98   # × nominal_freq   → under-freq (49 Hz @ 50)
+    # Consecutive ticks a condition must hold before its alarm latches. A bus
+    # event that should register on this meter must therefore last at least this
+    # many ticks — the store sizes its utility-sag events from it.
+    ALARM_DEBOUNCE           = 2
+    # What an operator-FORCED low-side alarm puts the panel through: a sag to
+    # 85 % of nominal, a frequency excursion to 97 % of nominal.
+    FORCED_SAG_FRAC          = 0.85
+    FORCED_UNDERFREQ_FRAC    = 0.97
 
     def __init__(
         self,
@@ -228,9 +236,8 @@ class EV2TelemetryEngine:
         self._alarm_sensor_fault      = False
         self._alarm_undervoltage      = False
         self._alarm_underfrequency    = False
-        self._fault_recovery_timer    = 0.0
 
-        self._ALARM_DEBOUNCE = 2   # ticks above threshold required to latch
+        self._ALARM_DEBOUNCE = self.ALARM_DEBOUNCE   # ticks above threshold to latch
         self._cnt_overcurrent       = 0
         self._cnt_voltage_imbalance = 0
         self._cnt_high_thd          = 0
@@ -238,15 +245,15 @@ class EV2TelemetryEngine:
         self._cnt_undervoltage      = 0
         self._cnt_underfrequency    = 0
 
-        # ── Transient power-quality events ────────────────────────
-        # A steady sim never leaves nominal, so the low-side alarms would never
-        # exercise. Occasionally inject a multi-tick voltage SAG (all phases dip
-        # together, as a real feeder fault does) or a FREQUENCY DIP, then recover.
-        # Rare — a few events per simulated day — so normal operation stays clean.
-        self._sag_ticks       = 0     # >0 while a voltage-sag event is active
-        self._freq_dip_ticks  = 0     # >0 while a frequency-dip event is active
-        self._sag_target      = 0.0   # V the sag pulls all phases toward
-        self._freq_dip_target = 0.0   # Hz the dip pulls frequency toward
+        # ── Power-quality events come from OUTSIDE the meter ──────
+        # A sag or a frequency excursion is a property of the BUS, not of one
+        # meter: every meter on a sagging bus sees it on the same cycle, and a
+        # meter behind a double-conversion UPS never sees a utility sag at all.
+        # So this engine no longer rolls its own dice for them (it used to, per
+        # meter, which raised ~50 uncorrelated MAJOR alarms a month per meter,
+        # UPS-backed IT panels included). The store's power-flow pass decides
+        # when a bus sags and which meters sit on it, and passes it in through
+        # tick(bus_sag=..., grid_freq_hz=...).
 
     # ─────────────────────────────────────────────────────────────
     #  Diurnal load multiplier (0.3 – 1.0 over 24 h)
@@ -265,7 +272,9 @@ class EV2TelemetryEngine:
 
     def tick(self, dt: float, live_kw: float | None = None,
              circuit_kw: list | None = None,
-             forced: set | None = None) -> Dict[str, float]:
+             forced: set | None = None,
+             bus_sag: float | None = None,
+             grid_freq_hz: float | None = None) -> Dict[str, float]:
         """
         Advance simulation by *dt* seconds.
 
@@ -286,6 +295,16 @@ class EV2TelemetryEngine:
         derivation in _update_alarms() then raises the alarm off those readings.
         Without this the forced bit sat next to perfectly nominal readings — an
         overcurrent alarm reporting 40 A — which no real meter would ever publish.
+
+        *bus_sag* — fraction of nominal the bus this meter is clamped on is at
+        THIS tick (e.g. 0.85), or None for no event. A utility sag is decided
+        upstream (the store knows which meters share a bus and which sit behind
+        a UPS); the meter only measures it. To latch Alarm_Undervoltage the
+        caller must hold it for ALARM_DEBOUNCE ticks.
+
+        *grid_freq_hz* — the frequency of the grid this meter's bus follows this
+        tick. When given, the meter reads it (plus a few mHz of measurement
+        noise) instead of its own walk, so every meter on one grid agrees.
 
         Returns a flat dict of all object names → new present values.
         Boolean alarm values are returned as 0.0 / 1.0.
@@ -313,8 +332,16 @@ class EV2TelemetryEngine:
             mul = max(0.0, min(1.25, live_kw / self._rated_kw_peak))
         else:
             mul = self._diurnal()
-        self._step_voltages()
-        self._step_frequency()
+        # An operator-forced sag / under-frequency imposes the condition the
+        # alarm describes, exactly as the other forced alarms do, so the bit is
+        # never published next to nominal readings.
+        if forced and "Alarm_Undervoltage" in forced:
+            bus_sag = (min(bus_sag, self.FORCED_SAG_FRAC) if bus_sag
+                       else self.FORCED_SAG_FRAC)
+        if forced and "Alarm_UnderFrequency" in forced:
+            grid_freq_hz = self._freq_nominal * self.FORCED_UNDERFREQ_FRAC
+        self._step_voltages(bus_sag)
+        self._step_frequency(grid_freq_hz)
         self._step_thd(mul)
         self._step_pf()
 
@@ -352,7 +379,7 @@ class EV2TelemetryEngine:
 
         # Alarms read the (now summed) per-phase currents, so evaluate after the
         # panel is resolved.
-        self._update_alarms()
+        self._update_alarms(forced)
 
         # ── One-time kWh seeding (commissioning baseline) ─────────────
         # Seed each branch's lifetime energy from its real load × install age, and
@@ -447,35 +474,29 @@ class EV2TelemetryEngine:
         """filtered = alpha × new + (1 − alpha) × old"""
         return alpha * new_val + (1.0 - alpha) * old_val
 
-    def _step_voltages(self):
+    def _step_voltages(self, bus_sag: float | None = None):
         """
         Stable signal class — slow random-walk ±0.15 V/tick with EMA α=0.12.
-        Occasional voltage transients (sag/swell) still pass through.
         COV cadence: every few minutes at 1.0 V threshold.
+
+        *bus_sag* (fraction of nominal, or None) is a bus-wide sag supplied by
+        the caller: it pulls ALL three phases down together, as a real feeder
+        disturbance does. There is no per-meter random event any more.
         """
-        # Voltage-SAG event: a feeder-wide dip that pulls ALL three phases down
-        # together (utility fault ride-through, large motor start, ATS transfer).
-        # Start rarely; hold the sag band for a few ticks, then recover — this is
-        # what trips Alarm_Undervoltage. A sag is a fast transient, so during the
-        # event drive the phases toward the target with a HIGH α (not the slow
-        # steady-state smoothing, which would never reach the threshold in time).
-        if self._sag_ticks <= 0 and random.random() < 0.0006:
-            self._sag_ticks  = random.randint(3, 6)
-            self._sag_target = self._v_nominal * random.uniform(0.82, 0.88)  # ~189–202 V
-        sagging = self._sag_ticks > 0
-        if sagging:
-            self._sag_ticks -= 1
+        sagging = bus_sag is not None and bus_sag > 0
+        target = self._v_nominal * float(bus_sag) if sagging else 0.0
 
         for attr in ('_va', '_vb', '_vc'):
             old = getattr(self, attr)
             if sagging:
-                tgt = self._sag_target + random.uniform(-1.5, 1.5)   # small per-phase spread
-                smoothed = self._ema(tgt, old, alpha=0.7)            # fast transient
+                # Fast transient, small per-phase spread. α=0.95, not the old
+                # 0.7: an RMS meter has next to no lag on a step, and at 0.7 a
+                # 2-tick sag to 88 % never got under the 90 % threshold on its
+                # first tick, so the debounce could not latch it.
+                tgt = target + random.uniform(-1.0, 1.0)
+                smoothed = self._ema(tgt, old, alpha=0.95)
             else:
                 raw = old + random.uniform(-0.15, 0.15)
-                # Occasional shallow sag/swell (0.2% chance per phase per tick)
-                if random.random() < 0.002:
-                    raw += random.choice([-1, 1]) * random.uniform(3.0, 10.0)
                 gap = self._v_nominal - old
                 if abs(gap) > 5.0:
                     # Post-event recovery: once a sag/swell clears, real voltage
@@ -489,21 +510,18 @@ class EV2TelemetryEngine:
                     smoothed = self._ema(raw, old, alpha=0.12)
             setattr(self, attr, max(0.0, min(300.0, smoothed)))
 
-    def _step_frequency(self):
+    def _step_frequency(self, grid_freq_hz: float | None = None):
         """
         Stable signal class — ±0.008 Hz/tick with EMA α=0.12.
         Grid regulation pulls toward nominal. COV cadence: every 5–10 min.
+
+        With *grid_freq_hz* the meter measures the grid it is on: that value
+        plus ≤2 mHz of measurement noise. Without it (an engine driven by an
+        older caller) it keeps its own mean-reverting walk. Either way there is
+        no per-meter random dip: a frequency excursion is a grid event.
         """
-        # Frequency-DIP event: a distressed/overloaded grid or genset drops below
-        # nominal for a few ticks (load step, generator governor lag), then the
-        # regulator recovers it — this is what trips Alarm_UnderFrequency.
-        if self._freq_dip_ticks <= 0 and random.random() < 0.0004:
-            self._freq_dip_ticks  = random.randint(3, 6)
-            self._freq_dip_target = self._freq_nominal * random.uniform(0.960, 0.975)  # ~48.0–48.75 @ 50
-        if self._freq_dip_ticks > 0:
-            self._freq_dip_ticks -= 1
-            self._freq = self._ema(self._freq_dip_target + random.uniform(-0.05, 0.05),
-                                   self._freq, alpha=0.6)   # fast transient
+        if grid_freq_hz is not None:
+            self._freq = float(grid_freq_hz) + random.uniform(-0.002, 0.002)
         else:
             raw = self._freq + random.uniform(-0.008, 0.008)
             gap = self._freq_nominal - self._freq
@@ -840,7 +858,7 @@ class EV2TelemetryEngine:
 
         return panel_kw
 
-    def _update_alarms(self):
+    def _update_alarms(self, forced: set | None = None):
         """Evaluate alarm conditions with debounce — N consecutive ticks required."""
 
         def _debounce(condition: bool, counter_attr: str, alarm_attr: str) -> None:
@@ -901,14 +919,10 @@ class EV2TelemetryEngine:
             '_cnt_underfrequency', '_alarm_underfrequency',
         )
 
-        # Sensor fault: random occurrence 0.05% chance per tick, clears after 5 ticks
-        if self._alarm_sensor_fault:
-            self._fault_recovery_timer -= 1
-            if self._fault_recovery_timer <= 0:
-                self._alarm_sensor_fault = False
-        elif random.random() < 0.0005:
-            self._alarm_sensor_fault   = True
-            self._fault_recovery_timer = random.randint(3, 8)
+        # Sensor fault: a failed CT/input is a hardware fault, not weather. It
+        # is asserted only while one is injected (forced) and clears the tick the
+        # force is released; it no longer appears at random.
+        self._alarm_sensor_fault = bool(forced and "Alarm_SensorFault" in forced)
 
     # ─────────────────────────────────────────────────────────────
     #  Convenience: apply values to a BACnetObject dict

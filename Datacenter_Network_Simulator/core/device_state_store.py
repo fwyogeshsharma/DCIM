@@ -36,7 +36,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, TYPE_CHECKING
 from core.psychrometrics import dew_point_c
 # Per-instrument offsets are a property of the instrument's NAME (doc 32 §9.3):
 # builtin hash() is salted per process and stepped them on every restart.
-from core.sim_seed import stable_hash
+from core.sim_seed import stable_hash, stable_seed
 from core import fault_injection as _fault_injection
 from core import air_model as _air
 from core.device_manager import DeviceType, cooling_capacity_w, fan_rpm_range
@@ -446,6 +446,83 @@ _ELECTRICAL_ROOM_RH = 45.0
 #: 20 °C. A cooled room barely does; a ventilated one largely does, because
 #: outdoor air is what is cooling it.
 _ROOM_AIR_WEATHER_K = {"UR": 0.10, "MR": 0.20, "GR": 0.30, "CP": 0.25, "OR": 0.05}
+
+
+# ── Utility power-quality events (sags) ──────────────────────────────────────
+#
+# A voltage sag is a property of a BUS, not of a meter. On a real site the
+# overwhelming majority come from the utility side (a fault on a neighbouring
+# feeder clearing, lightning, a large motor start on the grid): they last well
+# under a second, and every instrument on the utility-fed buses sees the same
+# one at the same instant. A double-conversion UPS absorbs it completely, so the
+# meters on UPS-output panels never see it. IEEE 1159 / EPRI DPQ survey numbers
+# put utility sags below 90 % at roughly a few dozen a YEAR per site (survey-
+# level, weather and region dependent). The default, 0.1/day (~36 a year per
+# site), sits in that range; raise it to exercise the event more often.
+
+#: Events per datacenter per day; 0 disables. Read when the store is built.
+def _pq_sags_per_day() -> float:
+    raw = os.environ.get("DCIM_SIM_PQ_SAGS_PER_DAY", "").strip()
+    if not raw:
+        return 0.1
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        log.warning("DCIM_SIM_PQ_SAGS_PER_DAY=%r is not a number; using 0.1", raw)
+        return 0.1
+
+
+_PQ_SAG_DEPTH = (0.80, 0.88)        # retained voltage, fraction of nominal
+
+
+def classify_ev2_supply(panel: str, parents: Dict[str, list],
+                        id_type: Dict[str, str]) -> str:
+    """Where the bus an EV2 meter is clamped on gets its power from.
+
+    Walks UPSTREAM from *panel* over the power graph's *parents* map (meters are
+    already excluded from it). Returns:
+
+    * ``"utility"`` — some path reaches the utility service WITHOUT passing a
+      UPS: a utility sag reaches this bus (switchgear, MCC, plant boards);
+    * ``"ups"`` — the utility is reached only THROUGH a UPS: the double-
+      conversion inverter rides the sag out, but its output is synchronised to
+      the bypass, so the bus follows grid frequency;
+    * ``"local"`` — no path to the utility at all (a generator-only paralleling
+      board, an orphan panel): neither utility sags nor grid frequency apply.
+
+    A panel that IS a UPS counts as behind it (an EV2 on a UPS is clamped on
+    its output distribution). A topology with no utility_feed node (older saved
+    files) treats any parentless non-generator node as the utility service.
+    """
+    has_util = any(t == "utility_feed" for t in id_type.values())
+
+    def _is_service(n):
+        t = id_type.get(n)
+        if has_util:
+            return t == "utility_feed"
+        return not parents.get(n) and t not in ("generator", "ups")
+
+    exposed = via_ups = False
+    seen = set()
+    stack = [(panel, False)]
+    while stack:
+        n, thru = stack.pop()
+        if id_type.get(n) == "ups":
+            thru = True
+        if (n, thru) in seen:
+            continue
+        seen.add((n, thru))
+        if _is_service(n):
+            if thru:
+                via_ups = True
+            else:
+                exposed = True
+                break
+        for p in parents.get(n, []):
+            stack.append((p, thru))
+    if exposed:
+        return "utility"
+    return "ups" if via_ups else "local"
 
 
 _dc_city_dissent_seen: "tuple | None" = None
@@ -864,6 +941,18 @@ class DeviceStateStore:
         self._grid_freq: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
+        # Utility sags (bus events) and grid frequency, per EV2 IP, for THIS
+        # tick. Built by _step_power_quality from the power graph; consumed by
+        # the BACnet tick. A meter absent from _ev2_sag_by_ip sees no event.
+        self._ev2_sag_by_ip: Dict[str, float] = {}
+        self._ev2_freq_by_ip: Dict[str, float] = {}
+        self._pq_sags_per_day: float = _pq_sags_per_day()
+        # Own stream, seeded from DCIM_SIM_SEED, so a campaign re-run gets the
+        # same sag schedule and the global `random` draws elsewhere do not
+        # shift it.
+        self._pq_rng = random.Random(stable_seed("pq_utility_sag"))
+        # {dc: {"left": ticks, "depth": frac, "ips": [...], "fid": ledger id}}
+        self._pq_events: Dict[str, dict] = {}
         # Persistent circuit→branch slot order per EV2 IP. Real EV2 CT channels are
         # physical: a branch keeps its slot for the meter's life and a new PDU takes
         # the next free channel — existing branches never reshuffle (that would
@@ -1984,6 +2073,9 @@ class DeviceStateStore:
         peak_w: Dict[str, float] = {}
         rated_w: Dict[str, float] = {}
         ev2_ip_panel: Dict[str, str] = {}
+        ev2_ip_dc: Dict[str, str] = {}
+        ev2_ip_name: Dict[str, str] = {}
+        ev2_supply: Dict[str, str] = {}   # {ev2_ip: utility | ups | local}
         ev2_meters: list = []
         ev2_circuit_pdus: Dict[str, list] = {}
         dc_gens: Dict[str, list] = {}
@@ -2081,6 +2173,12 @@ class DeviceStateStore:
                 ip = d.ip_address or getattr(d, "mgmt_ip", None)
                 if nb and ip:
                     ev2_ip_panel[ip] = nb
+                    ev2_ip_dc[ip] = getattr(d, "datacenter", None) or "?"
+                    ev2_ip_name[ip] = d.name
+            # Which meters a utility sag reaches: cached with the context, so
+            # it is recomputed only when the power graph changes.
+            for ip, panel in ev2_ip_panel.items():
+                ev2_supply[ip] = classify_ev2_supply(panel, parents, id_type)
 
             # Ordered circuit → downstream-PDU map per EV2, matching the display
             # order used by the API (the clamp panel's downstream power neighbours,
@@ -2235,6 +2333,8 @@ class DeviceStateStore:
         self._power_ctx = {"children": children, "parents": parents,
                            "rank": rank, "peak_w": peak_w, "rated_w": rated_w,
                            "ev2_ip_panel": ev2_ip_panel, "ev2_meters": ev2_meters,
+                           "ev2_ip_dc": ev2_ip_dc, "ev2_ip_name": ev2_ip_name,
+                           "ev2_supply": ev2_supply,
                            "ev2_circuit_pdus": ev2_circuit_pdus,
                            "dc_gens": dc_gens, "dc_utility": dc_utility,
                            "dc_util_swgr": dc_util_swgr,
@@ -4793,6 +4893,91 @@ class DeviceStateStore:
             ip: (sum(v for v in self._ev2_circuit_kw[ip] if v is not None)
                  if _circuits.get(ip) else self._ev2_panel_kw(panel, through))
             for ip, panel in _panels.items()}
+        try:
+            _cities = dict(dc_city)
+        except NameError:
+            _cities = {}
+        try:
+            self._step_power_quality(ctx, _cities)
+        except Exception:
+            log.exception("[StateStore] power-quality step failed")
+            self._ev2_sag_by_ip = {}
+
+    def _step_power_quality(self, ctx: dict, dc_city: Dict[str, Any]) -> None:
+        """Utility sags and grid frequency for every EV2 meter, this tick.
+
+        One event generator per DATACENTER, not per meter: a sag hits every
+        utility-fed bus of the site on the same tick, and no bus behind a UPS.
+        Depth 80–88 % of nominal. A real utility sag is sub-second; the meter
+        holds it for ALARM_DEBOUNCE ticks because that is the shortest event
+        its alarm derivation can latch (one tick reads as a spike and is
+        debounced away). One event at a time per site. Every event is ledgered
+        as a ``context`` entry so a detection that overlaps it scores as true.
+        """
+        from core.bacnet_telemetry import EV2TelemetryEngine
+        supply = ctx.get("ev2_supply", {})
+        ip_dc = ctx.get("ev2_ip_dc", {})
+        ip_name = ctx.get("ev2_ip_name", {})
+
+        # Grid frequency: one value per grid (city) per tick. Every meter whose
+        # bus reaches the utility follows it — directly, or through a UPS whose
+        # inverter is synchronised to its bypass. A generator-only board keeps
+        # the meter's own walk (it follows a governor, not the grid).
+        freq: Dict[str, float] = {}
+        for ip, cls in supply.items():
+            city = dc_city.get(ip_dc.get(ip))
+            if city and cls in ("utility", "ups"):
+                freq[ip] = self._grid_frequency(city)
+        self._ev2_freq_by_ip = freq
+
+        by_dc: Dict[str, list] = {}
+        for ip, cls in supply.items():
+            if cls == "utility":
+                by_dc.setdefault(ip_dc.get(ip, "?"), []).append(ip)
+
+        sag: Dict[str, float] = {}
+        rate = self._pq_sags_per_day
+        p_tick = (1.0 - math.exp(-rate * max(0.0, self._dt) / 86400.0)) if rate > 0 else 0.0
+        for dc in sorted(set(by_dc) | set(self._pq_events)):
+            ev = self._pq_events.get(dc)
+            if ev is None:
+                ips = by_dc.get(dc) or []
+                if not ips or p_tick <= 0 or self._pq_rng.random() >= p_tick:
+                    continue
+                # No utility sag reaches a site that is not on the utility.
+                if not self.normal_source_ok(dc, ctx):
+                    continue
+                depth = round(self._pq_rng.uniform(*_PQ_SAG_DEPTH), 3)
+                ev = {"left": EV2TelemetryEngine.ALARM_DEBOUNCE, "depth": depth,
+                      "ips": sorted(ips), "fid": None}
+                self._pq_events[dc] = ev
+                ev["fid"] = self._ledger_sag(dc, depth,
+                                             [ip_name.get(i, i) for i in ev["ips"]], ctx)
+            for ip in ev["ips"]:
+                sag[ip] = ev["depth"]
+            ev["left"] -= 1
+            if ev["left"] <= 0:
+                self._pq_events.pop(dc, None)
+                if ev.get("fid"):
+                    from core import fault_ledger as _fl
+                    _fl.safe(_fl.get_ledger().close, ev["fid"], "cleared")
+        self._ev2_sag_by_ip = sag
+
+    def _ledger_sag(self, dc: str, depth: float, meters: list, ctx: dict) -> Optional[str]:
+        """Open the ledger entry for one utility sag; None if the ledger fails
+        (a ledger failure never breaks the tick)."""
+        from core import fault_ledger as _fl
+        uid = ctx.get("dc_utility", {}).get(dc)
+        udev = self._dm.get_device(uid) if uid else None
+        e = _fl.safe(_fl.get_ledger().open, "context",
+                     device=getattr(udev, "name", None), device_id=uid,
+                     params={"context": "utility_sag", "datacenter": dc,
+                             "depth_frac": depth, "meters": meters},
+                     expected_kind="process", source="sim_power_quality")
+        if e:
+            log.info("[StateStore] utility sag %s: %.0f %% of nominal on %d meter(s)",
+                     dc, depth * 100, len(meters))
+        return e.get("id") if e else None
 
     def _device_name(self, nid: str) -> Optional[str]:
         """A device's name, or None when the id no longer resolves.
@@ -7209,6 +7394,8 @@ class DeviceStateStore:
                 self._bacnet_ctrl.tick(self._dt, self.metric_flags, self.metric_limits,
                                        _plant_ovr, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
+                                       sag_by_ip=self._ev2_sag_by_ip,
+                                       freq_by_ip=self._ev2_freq_by_ip,
                                        circuit_labels_by_ip=self._ev2_circuit_names,
                                        plant_power_by_name=self._plant_power_by_name,
                                        plant_cop_by_name=self._plant_cop_by_name,
