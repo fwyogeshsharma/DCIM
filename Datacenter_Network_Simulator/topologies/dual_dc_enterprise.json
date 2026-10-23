@@ -93874,7 +93874,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "6b65a6a4",
         "interfaces": [
@@ -94138,7 +94138,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "47229389",
         "interfaces": [
@@ -94402,7 +94402,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "d58842de",
         "interfaces": [
@@ -94665,7 +94665,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "baa80dd4",
         "interfaces": [
@@ -94928,7 +94928,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "c6a7ee39",
         "interfaces": [
@@ -95191,7 +95191,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "508ebad7",
         "interfaces": [
@@ -95454,7 +95454,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "95a76d79",
         "interfaces": [
@@ -95717,7 +95717,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "c17af08a",
         "interfaces": [
@@ -95980,7 +95980,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "ff01cf99",
         "interfaces": [
@@ -96243,7 +96243,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "4b22d308",
         "interfaces": [
@@ -96506,7 +96506,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "9be578c7",
         "interfaces": [
@@ -96663,21 +96663,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -96725,62 +96725,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -96814,7 +96772,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "04fc6d82",
         "interfaces": [
@@ -96971,21 +96929,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -97033,62 +96991,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -97119,7 +97035,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "c40db9b4",
         "interfaces": [
@@ -97276,21 +97192,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -97338,62 +97254,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -97427,7 +97301,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "b09b2a5c",
         "interfaces": [
@@ -97584,21 +97458,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -97646,62 +97520,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -97732,7 +97564,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "1931e9ee",
         "interfaces": [
@@ -97889,21 +97721,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -97951,62 +97783,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -98040,7 +97830,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "894a05e4",
         "interfaces": [
@@ -98197,21 +97987,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -98259,62 +98049,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -106169,7 +105917,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "8a175dfe",
         "interfaces": [
@@ -106433,7 +106181,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "2702878b",
         "interfaces": [
@@ -106697,7 +106445,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "ce3714af",
         "interfaces": [
@@ -106960,7 +106708,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "7d7ddbed",
         "interfaces": [
@@ -107223,7 +106971,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "7bc67e1f",
         "interfaces": [
@@ -107486,7 +107234,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "e1b294de",
         "interfaces": [
@@ -107749,7 +107497,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "d9d80b8d",
         "interfaces": [
@@ -108012,7 +107760,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "e14eb70d",
         "interfaces": [
@@ -108275,7 +108023,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "b63b4dc3",
         "interfaces": [
@@ -108538,7 +108286,7 @@
             "count": 2
           }
         ],
-        "model_name": "APC AP8941",
+        "model_name": "APC AP8953",
         "metrics_enabled": true,
         "id": "b118f68d",
         "interfaces": [
@@ -108801,7 +108549,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "7428a656",
         "interfaces": [
@@ -108958,21 +108706,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -109020,62 +108768,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -109109,7 +108815,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "2f65fafa",
         "interfaces": [
@@ -109266,21 +108972,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -109328,62 +109034,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -109414,7 +109078,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "4bd6cee6",
         "interfaces": [
@@ -109571,21 +109235,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -109633,62 +109297,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -109722,7 +109344,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "f1afdb65",
         "interfaces": [
@@ -109879,21 +109501,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -109941,62 +109563,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -135181,7 +134761,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "21b06d34",
         "interfaces": [
@@ -135338,21 +134918,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -135400,62 +134980,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -135489,7 +135027,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "43755a29",
         "interfaces": [
@@ -135646,21 +135184,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -135708,62 +135246,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -135794,7 +135290,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "d338713c",
         "interfaces": [
@@ -135951,21 +135447,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -136013,62 +135509,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -136102,7 +135556,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "6a5d9395",
         "interfaces": [
@@ -136259,21 +135713,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -136321,62 +135775,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -136407,7 +135819,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "e8496202",
         "interfaces": [
@@ -136564,21 +135976,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -136626,62 +136038,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -136715,7 +136085,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "700c385e",
         "interfaces": [
@@ -136872,21 +136242,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -136934,62 +136304,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -137020,7 +136348,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "101dc7fb",
         "interfaces": [
@@ -137177,21 +136505,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -137239,62 +136567,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -137328,7 +136614,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "beef762e",
         "interfaces": [
@@ -137485,21 +136771,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -137547,62 +136833,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -137633,7 +136877,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "86cf3fb2",
         "interfaces": [
@@ -137790,21 +137034,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -137852,62 +137096,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -137941,7 +137143,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "c657ada3",
         "interfaces": [
@@ -138098,21 +137300,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -138160,62 +137362,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -152232,7 +151392,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "867a94ee",
         "interfaces": [
@@ -152389,21 +151549,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -152451,62 +151611,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -152540,7 +151658,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "8735d48e",
         "interfaces": [
@@ -152697,21 +151815,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -152759,62 +151877,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -153959,7 +153035,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "3c957d66",
         "interfaces": [
@@ -154116,21 +153192,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -154178,62 +153254,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",
@@ -154267,7 +153301,7 @@
             "count": 2
           }
         ],
-        "model_name": "Raritan PX2-5170CR",
+        "model_name": "Raritan PX3-5503U",
         "metrics_enabled": true,
         "id": "70625c84",
         "interfaces": [
@@ -154424,21 +153458,21 @@
           {
             "index": 13,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 14,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
           {
             "index": 15,
             "type": "C13",
-            "bank": 1,
+            "bank": 2,
             "phase": "L1",
             "rated_a": 10.0
           },
@@ -154486,62 +153520,20 @@
           },
           {
             "index": 22,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 23,
-            "type": "C13",
+            "type": "C19",
             "bank": 2,
             "phase": "L1",
-            "rated_a": 10.0
+            "rated_a": 16.0
           },
           {
             "index": 24,
-            "type": "C13",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 10.0
-          },
-          {
-            "index": 25,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 26,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 27,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 28,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 29,
-            "type": "C19",
-            "bank": 2,
-            "phase": "L1",
-            "rated_a": 16.0
-          },
-          {
-            "index": 30,
             "type": "C19",
             "bank": 2,
             "phase": "L1",

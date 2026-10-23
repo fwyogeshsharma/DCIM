@@ -466,6 +466,7 @@ MODEL_SYSDESCR = {
     "Dell EMC PowerSwitch Z9332F-ON": "Enterprise SONiC Distribution by Dell Technologies - 4.2.0 - HwSku: DellEMC-Z9332f-ON - Distribution: Debian - Kernel: 5.10.0-18-2-amd64",
     # APC Rack PDU
     "APC AP8941":      "APC Rack PDU 2G, Switched, ZeroU, 30A, 208V, (21)C13&(3)C19, NMC3 fw v1.4.2",
+    "APC AP8953":      "APC Rack PDU 2G, Switched, ZeroU, 32A, 230V, (21)C13&(3)C19, NMC3 fw v1.4.2",
     "APC AP8886":      "APC Rack PDU 2G, Metered, ZeroU, 22.0kW(32A), 230V 3-phase, (30)C13&(12)C19, NMC3 fw v1.4.2",
     "APC AP8959":      "APC Rack PDU 2G, Switched, 1U, 30A, 208V, (12)C13&(4)C19, NMC3 fw v1.4.2",
     "APC AP8681":      "APC Rack PDU 2G, Metered-by-Outlet, 1U, 16A, 230V, (12)C13&(4)C19, NMC3 fw v1.4.2",
@@ -475,6 +476,7 @@ MODEL_SYSDESCR = {
     "Raritan PX3-5190R":  "Raritan PX3 Rack PDU, 1U, 30A, 208V, (24)C13&(6)C19, fw 3.7.0",
     "Raritan PX3-5161R":  "Raritan PX3 Rack PDU, 1U, 16A, 208V, (12)C13&(4)C19, fw 3.7.0",
     "Raritan PX2-5170CR": "Raritan PX2 Rack PDU, 0U, 30A, 208V, (24)C13&(6)C19, fw 3.5.20",
+    "Raritan PX3-5503U":  "Raritan PX3 Rack PDU, 0U, 32A, 230V, (21)C13&(3)C19, fw 3.7.0",
     # Eaton ePDU G3
     "Eaton ePDU G3 MA 1U 16A":  "Eaton ePDU G3 Managed, 1U, 16A, 230V, (12)C13&(4)C19, fw 3.0.8",
     "Eaton ePDU G3 MA 1U 32A":  "Eaton ePDU G3 Managed, 1U, 32A, 230V, (18)C13&(6)C19, fw 3.0.8",
@@ -706,6 +708,7 @@ MODEL_SYSOID = {
     "Dell EMC PowerSwitch Z9332F-ON": "1.3.6.1.4.1.674.10895.3278",
     # APC Rack PDU OIDs
     "APC AP8941":      "1.3.6.1.4.1.318.1.3.5.1",
+    "APC AP8953":      "1.3.6.1.4.1.318.1.3.5.2",
     "APC AP8886":      "1.3.6.1.4.1.318.1.3.5.4",
     "APC AP8959":      "1.3.6.1.4.1.318.1.3.5.8",
     "APC AP8681":      "1.3.6.1.4.1.318.1.3.5.16",
@@ -715,6 +718,7 @@ MODEL_SYSOID = {
     "Raritan PX3-5190R":  "1.3.6.1.4.1.13742.6.3.2.21",
     "Raritan PX3-5161R":  "1.3.6.1.4.1.13742.6.3.2.22",
     "Raritan PX2-5170CR": "1.3.6.1.4.1.13742.6.3.2.14",
+    "Raritan PX3-5503U":  "1.3.6.1.4.1.13742.6.3.2.23",
     # Schneider Electric enterprise root (IANA PEN 3833). It was falling through to
     # VENDOR_SYSOID's "1.3.6.1.4.1.0.0" placeholder, which is not an assignable OID
     # at all - a discovery tool matching on it learns nothing and may well treat the
@@ -993,6 +997,11 @@ PDU_OUTLET_CATALOG = {
     # VERIFIED — se.com/us/en/product/AP8941: "(21) C13 & (3) C19", 30A, 200/208V,
     # NEMA L6-30P (single-phase), 4992 VA.
     "APC AP8941":        (21,  3, 1, 30, 208),
+    # VERIFIED — AP8953 product data sheet (Schneider, via media.mayflex.com):
+    # "Rack PDU 2G, Switched, ZeroU, 32A, 230V, (21) C13 & (3) C19", nominal input
+    # 200/208/230 V, IEC 309 32A 2P+E, 32 A per phase. The AP8941's international
+    # twin: same outlets, fed L-N at 230 V off a 230/400 V panel.
+    "APC AP8953":        (21,  3, 1, 32, 230),
     # VERIFIED — apc.com/us/en/product/AP8865: "0U, 8.6kW, 208V, 3 phase, 30A, 36 C13,
     # 6 C19 and 2 NEMA 5-20R outlets". The 2 NEMA 5-20R are not modelled (nothing here
     # takes one). Was fabricated as (21,12,3,32,415)/22kW — a strip that does not exist.
@@ -1004,6 +1013,11 @@ PDU_OUTLET_CATALOG = {
     "APC AP8886":        (30, 12, 3, 32, 400),
     "APC AP8959":        (12,  4, 1, 30, 208),   # UNVERIFIED
     "Raritan PX2-5170CR": (24,  6, 1, 30, 208),
+    # UNVERIFIED — reseller listings only (no Raritan datasheet found 2026-10-23):
+    # "PX3-5503U 230V 1PH 32A 24 OUTLETS 21XC13 3XC19 IEC60309 32A 0U 7.4KVA",
+    # metered + outlet switching. Chosen over an APC strip because PX3 hosts the
+    # DPX2 probes these racks carry.
+    "Raritan PX3-5503U": (21,  3, 1, 32, 230),
     "Raritan PX3-5878":  (24, 12, 3, 32, 415),
     "Raritan PX3-5190R": (24,  6, 1, 30, 208),
     "Raritan PX3-5161R": (12,  4, 1, 16, 208),
@@ -1357,6 +1371,10 @@ _MODEL_RATED_W = {
     "ap8886":       22000,   # APC Metered ZeroU, 22.0kW(32A) 230V 3-phase, (30)C13&(12)C19
     "ap8865":        8600,   # APC Metered ZeroU, 8.6kW 208V 3-phase 30A, (36)C13&(6)C19
     "ap8941":        4992,   # APC Switched ZeroU, 208V 1-phase 30A (L6-30P), 4992 VA
+    # IEC 32 A single-phase at 230 V: 7.4 kVA, the figure both vendors print. IEC
+    # strips are not de-rated to 80 % the way NEC 210.20(A) rates North American ones.
+    "ap8953":        7360,   # APC Switched ZeroU, 32A 230V 1-phase (IEC 309 2P+E)
+    "px3-5503u":     7360,   # Raritan 0U, 32A 230V 1-phase, 7.4 kVA (UNVERIFIED)
     "px3-5878":     22000,   # UNVERIFIED — real unit looks like 6xC13/18xC19 @415V, not this
     "ap8959":        8600,   # UNVERIFIED
     "ap8681":        3700,   # APC Metered-by-Outlet 1U, 16A 230V single-phase
@@ -1479,6 +1497,8 @@ _MODEL_PHASES_BREAKER: dict[str, tuple[int, float]] = {
     "ap8886":       (3, 32.0),   # 22.0 kW, 230 V 3-phase, 32 A/phase
     "ap8865":       (3, 30.0),   # 8.6 kW, 208 V 3-phase, 30 A/phase
     "ap8941":       (1, 30.0),   # 4992 VA, 208 V 1-phase, L6-30P
+    "ap8953":       (1, 32.0),   # 7.4 kVA, 230 V 1-phase, IEC 309 32 A
+    "px3-5503u":    (1, 32.0),   # 7.4 kVA, 230 V 1-phase (UNVERIFIED)
     "ap8959":       (1, 30.0),   # 208 V 1-phase 30 A
     "ap8681":       (1, 16.0),   # 3.7 kW, 230 V 1-phase 16 A
     "px3-5878":     (3, 32.0),   # UNVERIFIED — rating unconfirmed, see above
@@ -1514,6 +1534,8 @@ _MODEL_PHASES_BREAKER: dict[str, tuple[int, float]] = {
 _MODEL_OUTLET_SWITCHING: dict[str, bool] = {
     # ── switched: has relays ──
     "ap8941":            True,   # APC Switched ZeroU
+    "ap8953":            True,   # APC Switched ZeroU
+    "px3-5503u":         True,   # Raritan, outlet switching per the listing
     "ap8959":            True,   # APC Switched 1U
     "px2-5170cr":        True,   # Raritan Switched 0U
     "px3-5878":          True,   # Raritan Switched 0U

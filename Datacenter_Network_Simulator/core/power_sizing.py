@@ -113,14 +113,32 @@ def _rating_for(model_name: str) -> int:
     return 0
 
 
+# The estate distributes 230/400 V wye: utility, switchgear and UPS meters all
+# model a 400 V L-L bus, and the RPPs feed rack strips from it. A single-phase
+# strip there is wired line-to-neutral at 230 V and a 3-phase one takes the
+# 400 V wye. A 208 V strip belongs to a 120/208 V system - there is no 208 V
+# anywhere on these panels - so the selector must never hand one out.
+_SITE_STRIP_VOLTS = {230, 240, 400, 415}
+
+
+def _fits_site_voltage(model_name: str) -> bool:
+    """Whether a rack-PDU SKU can be fed from this estate's panels. A SKU the
+    outlet catalog does not know is not excluded - nothing is known to rule it out."""
+    spec = PDU_OUTLET_CATALOG.get(model_name)
+    return spec is None or int(spec[4]) in _SITE_STRIP_VOLTS
+
+
 def _candidates(dtype_value: str, vendor_value: str) -> list[tuple[int, str]]:
     """[(rating_w, model_name)] for a (device_type, vendor), ascending by rating,
-    limited to models that carry a catalog rating."""
+    limited to models that carry a catalog rating and - for a rack PDU - that the
+    estate's 230/400 V panels can feed."""
     out: list[tuple[int, str]] = []
     for (dt, vn), models in DEVICE_MODELS.items():
         if dt.value != dtype_value or vn.value != vendor_value:
             continue
         for mdl in models:
+            if dtype_value == "pdu" and not _fits_site_voltage(mdl.name):
+                continue
             r = _rating_for(mdl.name)
             if r > 0:
                 out.append((r, mdl.name))

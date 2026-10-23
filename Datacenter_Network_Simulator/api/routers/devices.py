@@ -1181,7 +1181,7 @@ def apply_outlet(s, dev, outlet: int, state: str) -> str:
         raise OutletRefused(
             f"{dev.name} is a {dev.model_name}, which is metered rather "
             f"than switched - its outlets have no relay to open. Switched "
-            f"SKUs on this estate: APC AP8941, APC AP8959, Raritan PX2/PX3.")
+            f"SKUs on this estate: APC AP8953, Raritan PX3-5503U.")
     valid = {o.index for o in (dev.outlets or [])}
     if valid and outlet not in valid:
         raise OutletRefused(

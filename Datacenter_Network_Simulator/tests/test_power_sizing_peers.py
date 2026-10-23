@@ -143,9 +143,9 @@ def test_rack_pdus_are_not_peer_equalised():
     """
     nodes = [
         _node("heavy", "PDUA-DC1-HA-R2-01", "pdu", room="Server Hall A",
-              model="APC AP8941"),
+              model="APC AP8953"),
         _node("light", "PDUA-DC1-HA-R2-02", "pdu", room="Server Hall A",
-              model="APC AP8941"),
+              model="APC AP8953"),
     ]
     edges = []
     for i in range(18):                       # 18 cords, 12 kW: a full compute rack
@@ -158,7 +158,28 @@ def test_rack_pdus_are_not_peer_equalised():
     rightsize_nodes(nodes, edges)
 
     assert _model_of(nodes, "heavy") == "APC AP8886"     # 22 kW, 42 outlets
-    assert _model_of(nodes, "light") == "APC AP8941"     # untouched
+    assert _model_of(nodes, "light") == "APC AP8953"     # untouched
+
+
+def test_a_208v_strip_is_never_chosen_for_a_230_400v_panel():
+    """The estate's panels are 230/400 V: a strip is fed L-N at 230 V or takes the
+    400 V wye. A 208 V strip (120/208 V systems) has no supply here, so the
+    selector moves one onto the nearest SKU that does - never onto another."""
+    from core.power_sizing import select_sku
+    nodes = [_node("old", "PDUA-DC1-NR-R2-01", "pdu", room="Network Room",
+                   model="APC AP8941")]
+    edges = []
+    for i in range(4):
+        nodes.append(_node(f"n{i}", f"SW{i}", "switch", watts=300))
+        edges.append({"src": "old", "dst": f"n{i}", "layer": "power"})
+    rightsize_nodes(nodes, edges)
+    assert _model_of(nodes, "old") == "APC AP8953"
+    for load in (100, 2_000, 4_000, 12_000, 40_000):
+        for vendor in ("APC by Schneider Electric", "Raritan"):
+            sku = select_sku("pdu", vendor, load)
+            assert sku is None or "208" not in sku and sku not in (
+                "APC AP8941", "APC AP8959", "APC AP8865", "Raritan PX2-5170CR",
+                "Raritan PX3-5190R", "Raritan PX3-5161R"), (vendor, load, sku)
 
 
 # ── the ratchet ──────────────────────────────────────────────────────────────
