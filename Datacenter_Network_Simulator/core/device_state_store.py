@@ -39,7 +39,7 @@ from core.psychrometrics import dew_point_c
 from core.sim_seed import stable_hash, stable_seed
 from core import fault_injection as _fault_injection
 from core import air_model as _air
-from core.device_manager import DeviceType, cooling_capacity_w, fan_rpm_range
+from core.device_manager import PDU_OUTLET_CATALOG, DeviceType, cooling_capacity_w, fan_rpm_range
 
 if TYPE_CHECKING:
     from core.device_manager import Device, DeviceManager
@@ -966,6 +966,8 @@ class DeviceStateStore:
         self._grid_freq: Dict[str, float] = {}
         self._ev2_live_kw: Dict[str, float] = {}   # {ev2_ip: live downstream kW}
         self._ev2_circuit_kw: Dict[str, list] = {} # {ev2_ip: [per-circuit live kW]}
+        # {ev2_ip: [poles per circuit]} - 3 for a 3-phase branch, 1 for single-phase.
+        self._ev2_circuit_poles: Dict[str, list] = {}
         # Utility sags (bus events) and grid frequency, per EV2 IP, for THIS
         # tick. Built by _step_power_quality from the power graph; consumed by
         # the BACnet tick. A meter absent from _ev2_sag_by_ip sees no event.
@@ -5179,6 +5181,11 @@ class DeviceStateStore:
         self._ev2_circuit_names = {
             ip: [None if pid is None else self._device_name(pid) for pid in pids]
             for ip, pids in _circuits.items()}
+        # How many phases each branch draws from, so the meter puts its current
+        # on the right legs. Same ordered map again, for the same reason.
+        self._ev2_circuit_poles = {
+            ip: [None if pid is None else self._branch_poles(pid) for pid in pids]
+            for ip, pids in _circuits.items()}
         # The panel total is the sum of its OWN channels where it has them.
         # Taking the incomer's throughput independently let the two disagree:
         # the branches could each read zero for being carried elsewhere while
@@ -5272,6 +5279,33 @@ class DeviceStateStore:
             log.info("[StateStore] utility sag %s: %.0f %% of nominal on %d meter(s)",
                      dc, depth * 100, len(meters))
         return e.get("id") if e else None
+
+    # Branch loads that draw all three phases: distribution and motor plant.
+    _THREE_PHASE_TYPES = frozenset({
+        "floor_pdu", "rpp", "ups", "ats", "switchgear", "mcc", "mpp", "transformer",
+        "generator", "chiller", "pump", "cooling_tower", "crah", "crac", "cdu",
+    })
+
+    def _branch_poles(self, nid: str) -> int:
+        """How many phases a panel branch feeding *nid* draws from: 3 or 1.
+
+        A rack PDU is what its SKU is - the AP8886 in the server halls is a
+        22 kW 3-phase 400 V strip (PDU_OUTLET_CATALOG, checked against the
+        datasheet) and draws all three legs evenly; the AP8941 is single-phase.
+        An unknown PDU SKU is taken as single-phase, the common small strip.
+        Distribution gear and motor-driven plant - a transfer switch, a UPS, an
+        MCC, a chiller, a pump - is three-phase: no 100 kW load hangs off one
+        leg. Instruments and actuators (a sensor, a valve actuator) are small
+        single-phase loads.
+        """
+        d = self._dm.get_device(nid)
+        if d is None:
+            return 1
+        dtype = str(getattr(getattr(d, "device_type", None), "value", getattr(d, "device_type", "")))
+        if dtype == "pdu":
+            spec = PDU_OUTLET_CATALOG.get(getattr(d, "model_name", "") or "")
+            return 3 if spec and spec[2] == 3 else 1
+        return 3 if dtype in self._THREE_PHASE_TYPES else 1
 
     def _device_name(self, nid: str) -> Optional[str]:
         """A device's name, or None when the id no longer resolves.
@@ -7831,6 +7865,7 @@ class DeviceStateStore:
                 self._bacnet_ctrl.tick(self._dt, self.metric_flags, self.metric_limits,
                                        _plant_ovr, live_kw_by_ip=self._ev2_live_kw,
                                        circuit_kw_by_ip=self._ev2_circuit_kw,
+                                       circuit_poles_by_ip=self._ev2_circuit_poles,
                                        sag_by_ip=self._ev2_sag_by_ip,
                                        freq_by_ip=self._ev2_freq_by_ip,
                                        circuit_labels_by_ip=self._ev2_circuit_names,

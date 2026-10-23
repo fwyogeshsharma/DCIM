@@ -125,6 +125,7 @@ class EV2TelemetryEngine:
         #      used only when no rated_kw is supplied (un-populated topology).
         self._circuits       = circuits
         self._active         = active_circuits if active_circuits > 0 else circuits
+        self._poles: list    = []   # per-branch phase count, set each tick
         self._load_scale     = max(0.1, load_scale)
         if rated_kw and rated_kw > 0:
             # I = P / (V × PF × √3) for a balanced 3-phase load (assume PF≈0.90).
@@ -273,6 +274,7 @@ class EV2TelemetryEngine:
     def tick(self, dt: float, live_kw: float | None = None,
              circuit_kw: list | None = None,
              forced: set | None = None,
+             circuit_poles: list | None = None,
              bus_sag: float | None = None,
              grid_freq_hz: float | None = None) -> Dict[str, float]:
         """
@@ -323,9 +325,12 @@ class EV2TelemetryEngine:
         # With a live branch map, the honest denominator is the capacity of the
         # branches actually clamped (each on its 32 A breaker) — the same basis the
         # per-circuit curves already use, so panel and branches finally agree.
+        # How many phases each branch draws from (3 for a 3-phase rack PDU or a
+        # distribution feeder, 1 for a single-phase strip). Absent = all single.
+        self._poles = list(circuit_poles) if circuit_poles else []
         if live_circuits:
             _act = min(len(circuit_kw), self._circuits)
-            _cap = max(1e-6, _act * self._branch_rated_kw)
+            _cap = max(1e-6, sum(self._branch_kw_rating(i) for i in range(_act)))
             _live = sum(x for x in circuit_kw[:_act] if isinstance(x, (int, float)))
             mul = max(0.0, min(1.25, _live / _cap))
         elif live_kw is not None and self._rated_kw_peak > 0:
@@ -594,29 +599,50 @@ class EV2TelemetryEngine:
             smoothed = self._ema(raw, old, alpha=0.18)
             setattr(self, attr, max(0.0, min(self._i_clamp, smoothed)))
 
+    def _poles_of(self, i: int) -> int:
+        """Phases branch *i* draws from: 3 or 1 (single-phase when unknown)."""
+        p = self._poles[i] if i < len(getattr(self, "_poles", [])) else None
+        return 3 if p == 3 else 1
+
+    def _branch_kw_rating(self, i: int) -> float:
+        """The breaker a branch is measured against: 32 A on each pole it uses.
+        A 3-pole 32 A branch at 230 V L-N is 22 kW - the AP8886's own rating."""
+        return self._branch_rated_kw * self._poles_of(i)
+
     def _derive_panel_from_circuits(self) -> float:
         """Mains = sum of the branch circuits (real EV2: main CTs == Σ branch CTs).
 
-        Each active branch is a single-phase L-N load assigned to a phase
-        round-robin (A/B/C), matching the pole rotation of a real panelboard, so
-        the phase imbalance falls out of the actual per-branch loads instead of
-        an independent random walk. Per-phase current is the sum of that phase's
-        branch currents; panel real power is Σ branch kW; panel PF is the
-        current-weighted mean of the branch PFs (so V·ΣI·PF reconciles with Σ kW).
+        A 3-phase branch (a 3-phase rack PDU, a distribution feeder) draws the
+        same current on all three legs - its outlet banks are spread across the
+        phases - so it adds its line current to A, B and C alike. A single-phase
+        branch is an L-N load on one leg; those are assigned A/B/C in turn,
+        the pole rotation of a real panelboard. The panel's phase imbalance then
+        comes only from the single-phase branches, as it does in a real hall.
+        Per-phase current is the sum on that leg; panel real power is Σ branch
+        kW; panel PF is the current-weighted mean of the branch PFs (so V·ΣI·PF
+        reconciles with Σ kW).
 
-        Note: a 3-phase rack PDU is modelled as one single-phase equivalent branch
-        here (one CT per downstream PDU), a deliberate simplification.
+        One CT channel per branch, as before: a 3-phase branch's channel reads
+        its per-leg line current (a real EV2 gives such a branch three CTs, one
+        per leg; with balanced banks they read alike).
         """
         ph = [0.0, 0.0, 0.0]      # phase A / B / C current sums (A)
         tot_kw   = 0.0
         sum_i    = 0.0
         sum_i_pf = 0.0
+        single = 0                # single-phase branches placed so far
         for idx in range(self._active):
             cs = self._circuits_state[idx]
-            ph[idx % 3] += cs.current
+            poles = self._poles_of(idx)
+            if poles == 3:
+                for k in range(3):
+                    ph[k] += cs.current
+            else:
+                ph[single % 3] += cs.current
+                single += 1
             tot_kw   += cs.kw
-            sum_i    += cs.current
-            sum_i_pf += cs.current * cs.pf
+            sum_i    += cs.current * poles
+            sum_i_pf += cs.current * poles * cs.pf
         self._ia, self._ib, self._ic = ph
         if sum_i > 0.0:
             self._pf = max(0.70, min(0.99, sum_i_pf / sum_i))
@@ -693,10 +719,13 @@ class EV2TelemetryEngine:
                 # Real branch load: I = P / (V × PF). Spare CTs (past the mapped
                 # branches, or an energised-but-unloaded rack PDU) target 0.
                 tgt_kw = circuit_kw[i] if i < len(circuit_kw) else 0.0
-                cs_lf  = (tgt_kw / self._branch_rated_kw) if self._branch_rated_kw > 0 else 0.0
+                rating = self._branch_kw_rating(i)
+                cs_lf  = (tgt_kw / rating) if rating > 0 else 0.0
                 tgt_pf = _pf_from_load(cs_lf) + random.uniform(-0.004, 0.004)
                 cs.pf  = max(0.70, min(0.99, self._ema(tgt_pf, cs.pf, alpha=0.12)))
-                denom  = v_avg * cs.pf
+                # Per-leg line current: a 3-phase branch shares its load over
+                # three legs, P = 3·V_LN·I·PF.
+                denom  = v_avg * cs.pf * self._poles_of(i)
                 cs._target_current = (tgt_kw * 1000.0 / denom) if denom > 0 else 0.0
             else:
                 # Legacy synthetic walk when no live per-circuit load is available.
@@ -716,8 +745,8 @@ class EV2TelemetryEngine:
             else:
                 cs.current = max(0.0, self._ema(raw_i, cs.current, alpha=0.18))
 
-            # kW from single-phase: P = V × I × PF
-            cs.kw = v_avg * cs.current * cs.pf / 1000.0
+            # kW from the per-leg current: P = poles × V_LN × I × PF
+            cs.kw = self._poles_of(i) * v_avg * cs.current * cs.pf / 1000.0
 
             # kWh accumulation (deterministic — no noise on energy counter)
             cs.kwh += cs.kw * dt / 3600.0

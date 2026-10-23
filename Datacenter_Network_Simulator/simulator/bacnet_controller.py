@@ -665,6 +665,7 @@ class BACnetController:
              live_kw_by_ip: dict | None = None,
              circuit_kw_by_ip: dict | None = None,
              circuit_labels_by_ip: dict | None = None,
+             circuit_poles_by_ip: dict | None = None,
              plant_power_by_name: dict | None = None,
              plant_cop_by_name: dict | None = None,
              plant_loadfrac_by_name: dict | None = None,
@@ -824,6 +825,7 @@ class BACnetController:
                                     and str(_lim.get("lock")) == "on"):
                                 _ev_forced.add(_k[len("ev2:"):])
                     values = engine.tick(dt, live_kw=_lkw, circuit_kw=_ckw,
+                                         circuit_poles=(circuit_poles_by_ip or {}).get(_ip),
                                          forced=_ev_forced or None,
                                          bus_sag=(sag_by_ip or {}).get(_ip),
                                          grid_freq_hz=(freq_by_ip or {}).get(_ip))
