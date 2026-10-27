@@ -1231,13 +1231,29 @@ class SNMPRecGenerator:
                     updates[f"{A['rpdu2PowerFactor']}.1"]  = ("2", str(pdu_pf))
                     updates[f"{A['rpdu2Energy']}.1"]       = ("2", str(pdu_energy_x10))
                     updates[f"{A['rpdu2LoadState']}.1"]    = ("2", str(_load_state))
-                    updates[f"{A['rpdu2PhaseCurrent']}.1"] = ("2", str(int(round(_pdu_amps * 10))))
-                    updates[f"{A['rpdu2PhaseVoltage']}.1"] = ("2", str(pdu_volt))
-                    updates[f"{A['rpdu2PhaseState']}.1"]   = ("2", str(_load_state))
+                    # Per leg where the store has modelled the legs from the
+                    # outlets; the single per-phase figure on every leg where
+                    # it has not (a strip nothing is plugged into).
+                    _ph_n = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+                    _legs = list(ext.get("pdu_leg_current") or [])
+                    if len(_legs) != _ph_n:
+                        _legs = [_pdu_amps] * _ph_n
+                    _ph_breaker = float(getattr(device, "pdu_breaker_a", 0) or 0) or 32.0
+                    for _leg, _amps in enumerate(_legs, 1):
+                        _leg_pct = 100.0 * _amps / _ph_breaker
+                        _leg_state = (4 if _leg_pct >= 100 else 3 if _leg_pct >= 80
+                                      else 1 if _leg_pct < 10 else 2)
+                        updates[f"{A['rpdu2PhaseCurrent']}.{_leg}"] = ("2", str(int(round(_amps * 10))))
+                        updates[f"{A['rpdu2PhaseVoltage']}.{_leg}"] = ("2", str(pdu_volt))
+                        updates[f"{A['rpdu2PhaseState']}.{_leg}"]   = ("2", str(_leg_state))
                     # A tripped bank breaker reads as an overload bank state —
-                    # PowerNet has no separate "breaker open" object.
-                    updates[f"{A['rpdu2BankState']}.1"]    = ("2", "4" if pdu_brk != 1 else str(_load_state))
-                    updates[f"{A['rpdu2BankCurrent']}.1"]  = ("2", str(int(round(_pdu_amps * 10))))
+                    # PowerNet has no separate "breaker open" object. Each bank
+                    # carries its leg's current split over the banks on it.
+                    _banks = 6 if _ph_n == 3 else 2
+                    for _bk in range(1, _banks + 1):
+                        _bk_amps = _legs[(_bk - 1) % _ph_n] / (_banks / _ph_n)
+                        updates[f"{A['rpdu2BankState']}.{_bk}"]   = ("2", "4" if pdu_brk != 1 else str(_load_state))
+                        updates[f"{A['rpdu2BankCurrent']}.{_bk}"] = ("2", str(int(round(_bk_amps * 10))))
                     updates[f"{A['rpdu2OutletState']}.1"]  = ("2", "1" if pdu_out == 1 else "2")
                     # One row per probe fitted to a sensor port, and no rows
                     # at all when the ports are empty: an AP8000 has no
@@ -1975,17 +1991,33 @@ class SNMPRecGenerator:
         probes = SNMPRecGenerator._attached_probes(device, topology)
         if vkey == "apc":
             A = _vendor_oids.APC
+            # One row per LEG in rPDU2PhaseStatusTable and per bank in
+            # rPDU2BankStatusTable: a 1-phase strip has one of each, a 3-phase
+            # AP8886 three phase rows and six bank rows, indexed as the unit
+            # numbers them. A DCIM walks these tables; a walk that returned
+            # one row for a 3-phase unit would read as a strip with two legs
+            # missing.
+            _ph = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+            _banks = 6 if _ph == 3 else 2
             rows = [
                 _oid_entry(f"{A['rpdu2Power']}.1",        "2", "209"),  # 2.09 kW ×100
                 _oid_entry(f"{A['rpdu2ApparentPwr']}.1",  "2", "220"),  # 2.20 kVA ×100
                 _oid_entry(f"{A['rpdu2PowerFactor']}.1",  "2", "95"),   # 0.95 ×100
                 _oid_entry(f"{A['rpdu2Energy']}.1",       "2", "0"),    # kWh ×10
                 _oid_entry(f"{A['rpdu2LoadState']}.1",    "2", "2"),    # normal
-                _oid_entry(f"{A['rpdu2PhaseCurrent']}.1", "2", "100"),  # 10.0 A ×10
-                _oid_entry(f"{A['rpdu2PhaseVoltage']}.1", "2", "220"),
-                _oid_entry(f"{A['rpdu2PhaseState']}.1",   "2", "2"),
-                _oid_entry(f"{A['rpdu2BankState']}.1",    "2", "2"),
-                _oid_entry(f"{A['rpdu2BankCurrent']}.1",  "2", "100"),
+            ]
+            for _leg in range(1, _ph + 1):
+                rows += [
+                    _oid_entry(f"{A['rpdu2PhaseCurrent']}.{_leg}", "2", "100"),  # 10.0 A ×10
+                    _oid_entry(f"{A['rpdu2PhaseVoltage']}.{_leg}", "2", "230"),
+                    _oid_entry(f"{A['rpdu2PhaseState']}.{_leg}",   "2", "2"),
+                ]
+            for _bk in range(1, _banks + 1):
+                rows += [
+                    _oid_entry(f"{A['rpdu2BankState']}.{_bk}",    "2", "2"),
+                    _oid_entry(f"{A['rpdu2BankCurrent']}.{_bk}",  "2", "50"),
+                ]
+            rows += [
                 _oid_entry(f"{A['rpdu2OutletState']}.1",  "2", "1"),    # on
                 _oid_entry(f"{A['identName']}.0",         "4", device.name),
                 # device_serial, NOT a name-derived string. The strip's serial has

@@ -681,6 +681,18 @@ def _get_plant_wire_state(device_name: str) -> dict:
     return v if v is not None else _plant_state_cache.get(device_name, {})
 
 
+#: device id -> the PSU indexes an operator has failed. Module-level beside
+#: the ext cache for the same reason: the Redfish renderer runs on the HTTP
+#: thread with a Device in hand and no store, and a failed supply has to read
+#: as failed on the very next GET.
+_psu_failed_cache: Dict[str, Set[int]] = {}
+
+
+def _get_psu_failed(device_id: str) -> Set[int]:
+    """The PSU indexes currently failed on a load, or an empty set."""
+    return set(_psu_failed_cache.get(device_id, ()))
+
+
 def _get_ext_wire(device_name: str) -> dict:
     """The ext state a renderer serves: truth through the active FaultBook."""
     ext = _ext_state_cache.get(device_name, {})
@@ -1181,6 +1193,11 @@ class DeviceStateStore:
         # carries nothing, so the parent must drop out of the load's active set and
         # the SURVIVING side inherits the whole draw.
         self._dead_cord_pairs: set = set()
+        # Loads with a failed power supply, by PSU index. A failed supply is a
+        # dead cord with the plug still in: the chassis runs on the survivor,
+        # which carries the whole draw, and the strip on the failed side sees
+        # nothing from it. Latching - a supply does not heal.
+        self._psu_failed: Dict[str, Set[int]] = {}
         # Seconds each DC's mechanical plant has been (even partly) de-energized.
         # Drives the chilled-water ride-through — see _CHW_RIDE_S.
         self._mech_dead_s: Dict[str, float] = {}
@@ -3010,6 +3027,34 @@ class DeviceStateStore:
     def get_pdu_conditions(self, pdu_id: str) -> list:
         return sorted(self._pdu_conditions.get(pdu_id, set()))
 
+    def set_psu_condition(self, device_id: str, psu_index: int, on: bool) -> None:
+        """Fail (on) or replace (off) one power supply in a load.
+
+        A real 1+1 chassis loses nothing when a supply dies: the BMC marks it
+        Critical, the survivor takes the whole draw, and the cord on the dead
+        side goes quiet. That is exactly what this does, through the same
+        dead-cord set an opened outlet uses - so the power flow, the strip's
+        metering and the energisation walk all see one fewer live cord without
+        a second mechanism. A device with one supply simply goes dark.
+
+        It LATCHES. Nothing self-heals a power supply; clearing is the part
+        on the trolley.
+        """
+        failed = self._psu_failed.setdefault(device_id, set())
+        if on:
+            failed.add(int(psu_index))
+        else:
+            failed.discard(int(psu_index))
+            if not failed:
+                self._psu_failed.pop(device_id, None)
+        _psu_failed_cache[device_id] = set(self._psu_failed.get(device_id, ()))
+        if not _psu_failed_cache[device_id]:
+            _psu_failed_cache.pop(device_id, None)
+        self.invalidate_power_context()
+
+    def get_psu_failed(self, device_id: str) -> list:
+        return sorted(self._psu_failed.get(device_id, set()))
+
     def break_power_feed(self, device_id: str, which: str, on: bool) -> None:
         """Open (on) or restore a power feeder into a device. `which`:
           "input"     — every upstream power feeder (a single-source load's only cord,
@@ -3309,7 +3354,8 @@ class DeviceStateStore:
         # switched off for ever and the dataset generators still treating it as
         # dark - the outage outlived the outage.
         dead_plant: set = set()
-        for dev in (self._dm.get_all_devices() if off_by_pdu or dark_supplies else ()):
+        for dev in (self._dm.get_all_devices()
+                    if off_by_pdu or dark_supplies or self._psu_failed else ()):
             dtype = dev.device_type.value
             if (dtype not in self._IT_LEAF_TYPES
                     and dtype not in self._CORD_FED_PLANT_TYPES):
@@ -3321,8 +3367,14 @@ class DeviceStateStore:
             if not feeds:
                 continue
             live = 0
-            for f in feeds.values():
+            failed_psus = self._psu_failed.get(dev.id, ())
+            for psu_idx, f in feeds.items():
                 sup, outlet = f.get("supply_id"), f.get("outlet")
+                if psu_idx in failed_psus:
+                    # The plug is in; the supply behind it is dead. Same
+                    # consequence as an opened outlet, seen from the strip.
+                    dead_cords.add(frozenset((dev.id, sup)))
+                    continue
                 if sup in dark_supplies:
                     dead_cords.add(frozenset((dev.id, sup)))
                     continue
@@ -8789,6 +8841,51 @@ class DeviceStateStore:
         st["pdu_outlet_current"] = round(va / max(1.0, _ph * _v), 1)
         _ext_state_cache[device.name] = dict(st)
 
+    def _pdu_leg_currents(self, device: "Device", st: dict) -> list:
+        """RMS current per leg of a rack strip, from what is plugged into it.
+
+        This estate's 3-phase strips are 230/400 V Wye units (an AP8886 is
+        "230 V 3-phase, 32 A per phase"): every bank hangs line-to-neutral on
+        ONE leg, so an outlet's draw lands on the leg its bank sits on and
+        the leg current is that leg's watts over V(L-N) x PF. The catalog
+        labels a bank's phase as a pair ("L1-L2") in the 208 V convention;
+        here the pair names the leg the bank is on, in bank order, which is
+        how the EV2 clamp on the panel above already spreads the strip's
+        draw over A/B/C.
+
+        A cord carries the load's share of its own draw - half on a 1+1 pair,
+        all of it when the other supply has failed or its outlet is open -
+        and a dead cord carries nothing. A strip with no rating or nothing
+        plugged into it returns [] and keeps the old walk.
+        """
+        topo = self._topology
+        if topo is None:
+            return []
+        try:
+            loads = topo.outlet_loads(device.id)
+        except Exception:
+            return []
+        if not loads:
+            return []
+        ph = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+        v_ln = float(st.get("pdu_voltage", 230.0) or 230.0)
+        pf = max(0.5, float(st.get("pdu_power_factor", 0.95) or 0.95))
+        leg_of: Dict[int, int] = {}
+        for o in getattr(device, "outlets", None) or []:
+            leg_of[int(o.index)] = ((int(o.bank) - 1) % 3) if ph == 3 else 0
+        ctx = self._power_context()
+        watts = [0.0] * (3 if ph == 3 else 1)
+        for outlet, info in loads.items():
+            lid = info.get("load_id")
+            if not lid or frozenset((lid, device.id)) in self._dead_cord_pairs:
+                continue
+            w = self._through_live.get(lid, 0.0)
+            if w <= 0.0:
+                continue
+            n = len(self._active_parents(lid, ctx)) or 1
+            watts[leg_of.get(int(outlet), 0)] += w / n
+        return [round(w / (v_ln * pf), 2) for w in watts]
+
     def _apply_fault_ramps(self, device: "Device") -> None:
         """Advance each active fault ramp one tick. Runs after the walk and the
         static overrides so the injected value wins, and independent of the
@@ -9379,7 +9476,24 @@ class DeviceStateStore:
                         pf = random.uniform(0.50, 0.69)
                 st["pdu_power_factor"] = round(pf, 3)
 
-            if mf["pdu_phase_imbalance"]:
+            # Per-leg currents from the outlets, and the imbalance FROM them.
+            #
+            # A 3-phase strip carries its banks on three legs, and which leg a
+            # rack is heavy on is decided by where the cords were plugged, not
+            # by a random walk. So the legs are summed from the live draw on
+            # each outlet (dead cords and failed supplies carry nothing), the
+            # imbalance is NEMA's - the largest deviation from the mean over
+            # the mean - and the walk below only survives for a strip nothing
+            # is plugged into, where there is no physics to read.
+            _legs = self._pdu_leg_currents(device, st) if _pdu_rated > 0 else None
+            if _legs:
+                st["pdu_leg_current"] = _legs
+                if len(_legs) >= 2:
+                    _mean = sum(_legs) / len(_legs)
+                    st["pdu_phase_imbalance"] = (
+                        round(100.0 * max(abs(a - _mean) for a in _legs) / _mean, 1)
+                        if _mean > 0.05 else 0.0)
+            elif mf["pdu_phase_imbalance"]:
                 pi = st.get("pdu_phase_imbalance", 2.0)
                 pi = max(0.0, min(15.0, pi + random.uniform(-1.0, 1.0)))
                 if random.random() < 0.003:

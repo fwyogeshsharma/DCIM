@@ -426,23 +426,29 @@ def _power_supplies(device: "Device", topology=None) -> list:
         return []
     feeds = topology.power_feeds(device.id) if topology is not None else {}
     watts = _live_watts(device)
-    # A 1+1 pair shares the load; both supplies are live, each carrying its share
-    # of the WALL draw. (A failed-PSU case would put the whole chassis on the
-    # survivor — not modelled here, since nothing fails a PSU yet.)
-    input_per_psu = watts / len(psus)
+    # A 1+1 pair shares the load; both live supplies carry their share of the
+    # WALL draw. A failed supply carries nothing and the survivor carries the
+    # whole chassis - which is what makes a 1+1 pair a pair. The BMC reports
+    # the failed one Critical and offline; the chassis itself keeps running,
+    # which is the fact a DCIM has to be able to tell from a dead server.
+    from core.device_state_store import _get_psu_failed
+    failed = _get_psu_failed(device.id)
+    live_n = max(1, sum(1 for p in psus if p.index not in failed))
+    input_per_psu = watts / live_n
     out = []
     for i, p in enumerate(psus):
         feed = feeds.get(p.index)
         volts = outlet_voltage(feed["supply_model"]) if feed else 230
+        dead = p.index in failed
         entry = {
             "@odata.id": f"/redfish/v1/Chassis/{cid}/Power#/PowerSupplies/{i}",
             "MemberId": str(i),
             "Name": p.name,
             "PowerSupplyType": "AC",
-            "LineInputVoltage": volts,
+            "LineInputVoltage": 0 if dead else volts,
             "PowerCapacityWatts": p.capacity_w,
-            "PowerInputWatts": round(input_per_psu, 1),
-            "LastPowerOutputWatts": round(input_per_psu * _PSU_EFFICIENCY, 1),
+            "PowerInputWatts": 0.0 if dead else round(input_per_psu, 1),
+            "LastPowerOutputWatts": 0.0 if dead else round(input_per_psu * _PSU_EFFICIENCY, 1),
             "InputRanges": [{
                 "InputType": "AC",
                 # Auto-ranging supply: one SKU covers every rack voltage it might
@@ -453,7 +459,11 @@ def _power_supplies(device: "Device", topology=None) -> list:
                 "OutputWattage": p.capacity_w,
             }],
             "Model": f"PWR-{p.capacity_w}W-AC",
-            "Status": {"State": "Enabled", "Health": "OK"},
+            # DMTF Resource.Status: a supply that has failed is Critical, and
+            # UnavailableOffline is the state a BMC reports for a unit that is
+            # present but not supplying - the pair every poller checks.
+            "Status": ({"State": "UnavailableOffline", "Health": "Critical"} if dead
+                       else {"State": "Enabled", "Health": "OK"}),
         }
         if feed:
             # Which cord this supply is on. Redfish's Power schema has no standard

@@ -1384,6 +1384,15 @@ FAULT_MAP = {
     # as the UPS conditions do, so the existing raise/clear rules fire.
     "pdu_breaker_trip": {"pducond": "breaker_trip", "label": "Breaker Trip",
                          "types": ["pdu", "floor_pdu"]},
+    # A failed power supply in a dual-corded load: the BMC marks it Critical
+    # over Redfish, the survivor carries the whole chassis, and the strip on
+    # the dead side sees that cord go quiet. Latching, through the store's
+    # set_psu_condition path - a supply is replaced, never healed. PSU1 is
+    # the one failed; the operator who wants PSU2 can fail it on the device
+    # page, where the supply is named.
+    "psu_fail":         {"psucond": 1, "label": "PSU Failure",
+                         "types": ["server", "switch", "router", "firewall",
+                                   "load_balancer", "oob_switch", "cdu"]},
     "pdu_outlet_fail":  {"override": "pdu_outlet_failure", "value": "failed",
                          "scope": "outlet",
                          "label": "Outlet Failure",     "types": ["pdu", "floor_pdu"]},
@@ -1506,6 +1515,10 @@ def get_device_faults(device_id: str):
         _pnc = set(st.get_panel_conditions(device_id))
         active += [k for k, v in FAULT_MAP.items()
                    if v.get("panelcond") in _pnc and dtype in v["types"]]
+    # A failed supply latches too: active until the part is swapped.
+    if st and hasattr(st, "get_psu_failed") and st.get_psu_failed(device_id):
+        active += [k for k, v in FAULT_MAP.items()
+                   if "psucond" in v and dtype in v["types"]]
     # PDU breaker trip — latching, so it has to report as ACTIVE until cleared.
     if st and dtype in ("pdu", "floor_pdu") and hasattr(st, "get_pdu_conditions"):
         _pc = set(st.get_pdu_conditions(device_id))
@@ -1750,6 +1763,11 @@ def set_device_fault(device_id: str, body: FaultRequest):
         st.set_pdu_condition(device_id, spec["pducond"], on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # A failed power supply: a dead cord with the plug still in.
+    if "psucond" in spec:
+        st.set_psu_condition(device_id, int(spec["psucond"]), on)
+        verb = "Failing" if on else "Replacing"
+        return OkResponse(message=f"{verb} PSU{spec['psucond']} on {dev.name}")
     # MPP / MCC main-breaker trip (S1-11): a power event in the energization walk.
     if "panelcond" in spec:
         st.set_panel_condition(device_id, spec["panelcond"], on)
