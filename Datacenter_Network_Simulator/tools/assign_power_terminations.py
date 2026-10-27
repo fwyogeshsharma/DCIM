@@ -30,8 +30,18 @@ FEED SIDE: PSU1 takes the A feed and PSU2 the B feed, from the PDU's name prefix
 itself is not written onto the PSU, since it is a fact about the cord and is read
 back from the edge via TopologyEngine.power_feeds / device_manager.feed_side.
 
-Outlet order is deterministic (cords sorted by load name), so a re-run reproduces
-the same assignment rather than reshuffling every cord.
+WHERE ON THE STRIP: spread, heaviest first, mirrored. A strip's outlets are
+wired in banks, each behind its own breaker, and on a 3-phase strip each bank
+hangs on one leg. Filling outlets in order put a rack's load on the first two
+banks - 17 A on a 16 A bank - with the rest empty, and its legs 15/18/5 A. An
+installer does not cable that way: the heaviest loads go in first, each into
+the outlet whose LEG carries least so far, then whose BANK does, so the phases
+balance at the panel and no bank breaker sits near its rating. And a load's
+two cords take the SAME outlet number on its A and B strips ("outlet 7 on both
+sides"), which is how racks are documented and what a failover check assumes.
+
+Outlet order is deterministic (loads sorted by draw, then name), so a re-run
+reproduces the same assignment rather than reshuffling every cord.
 
 Idempotent. Refuses to write if any PDU would overflow its outlet count.
 
@@ -48,7 +58,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core.device_manager import (  # noqa: E402
-    PDU_OUTLET_CATALOG, PSU_COUNT_BY_TYPE, C13_CONTINUOUS_W, _PHASE_PAIRS,
+    PDU_OUTLET_CATALOG, PSU_COUNT_BY_TYPE, C13_CONTINUOUS_W, outlet_layout,
 )
 
 
@@ -57,20 +67,7 @@ def build_outlets(model: str) -> list:
     if not spec:
         return []
     n_c13, n_c19, phases, _a, _v = spec
-    n_banks = 6 if phases == 3 else 2
-    total = n_c13 + n_c19
-    per_bank = max(1, -(-total // n_banks))
-    out = []
-    for i in range(total):
-        bank = min(n_banks, i // per_bank + 1)
-        out.append({
-            "index": i + 1,
-            "type": "C13" if i < n_c13 else "C19",
-            "bank": bank,
-            "phase": _PHASE_PAIRS[(bank - 1) % 3] if phases == 3 else "L1",
-            "rated_a": 10.0 if i < n_c13 else 16.0,
-        })
-    return out
+    return outlet_layout(n_c13, n_c19, phases)
 
 
 def build_psus(dtype: str, watts: int) -> list:
@@ -81,6 +78,72 @@ def build_psus(dtype: str, watts: int) -> list:
     return [{"index": i + 1, "name": f"PSU{i + 1}", "inlet": inlet,
              "capacity_w": 1100 if inlet == "C14" else 2400}
             for i in range(n)]
+
+
+def _pair_key(name: str) -> str:
+    """PDUA-DC1-HA-R2-01 and PDUB-DC1-HA-R2-01 are one pair."""
+    return name[4:] if name[:4] in ("PDUA", "PDUB") else name
+
+
+def spread_outlets(cords: dict, byid: dict) -> dict:
+    """(pdu_id, load_id) -> outlet index, for every cord.
+
+    Per pair of strips (or a lone strip): loads heaviest first; each takes the
+    outlet of its connector type that is free on EVERY strip it is corded to,
+    choosing the one whose leg then bank carries the least draw so far, lowest
+    number on a tie. A load whose strips share no free outlet number (a pair of
+    unlike SKUs) is placed on each strip alone by the same rule.
+    """
+    groups: dict = defaultdict(list)
+    for pdu_id in cords:
+        groups[_pair_key(byid[pdu_id]["name"])].append(pdu_id)
+    out: dict = {}
+    for strips in groups.values():
+        strips.sort(key=lambda s: byid[s]["name"])
+        layout = {s: {o["index"]: o for o in byid[s]["outlets"]} for s in strips}
+        phases = {s: (3 if any(o.get("phase", "L1") != "L1" for o in byid[s]["outlets"]) else 1)
+                  for s in strips}
+        used = {s: set() for s in strips}
+        leg_w = {s: defaultdict(float) for s in strips}
+        bank_w = {s: defaultdict(float) for s in strips}
+        on = defaultdict(list)                     # load -> strips it is corded to
+        for s in strips:
+            for e in cords[s]:
+                on[e["dst"]].append(s)
+
+        def leg(s, o):
+            b = layout[s][o]["bank"]
+            return (b - 1) % 3 if phases[s] == 3 else 0
+
+        def cost(ss, o):
+            return (sum(leg_w[s][leg(s, o)] for s in ss),
+                    sum(bank_w[s][layout[s][o]["bank"]] for s in ss), o)
+
+        def place(load_id, ss):
+            load = byid[load_id]
+            want = "C19" if load["psus"][0]["inlet"] == "C20" else "C13"
+            free = [o for o in sorted(layout[ss[0]])
+                    if all(o in layout[s] and layout[s][o]["type"] == want
+                           and o not in used[s] for s in ss)]
+            if not free:
+                return False
+            o = min(free, key=lambda x: cost(ss, x))
+            w = float(load.get("power_draw_w") or 0) / max(1, len(on[load_id]))
+            for s in ss:
+                used[s].add(o)
+                leg_w[s][leg(s, o)] += w
+                bank_w[s][layout[s][o]["bank"]] += w
+                out[(s, load_id)] = o
+            return True
+
+        order = sorted(on, key=lambda lid: (-float(byid[lid].get("power_draw_w") or 0),
+                                            byid[lid]["name"]))
+        for lid in order:
+            ss = on[lid]
+            if not place(lid, ss) and len(ss) > 1:
+                for s in ss:
+                    place(lid, [s])
+    return out
 
 
 def main(path: str, dry_run: bool = False) -> int:
@@ -119,13 +182,23 @@ def main(path: str, dry_run: bool = False) -> int:
     for pdu_id in cords:
         cords[pdu_id].sort(key=lambda e: byid[e["dst"]]["name"])
 
-    # 3. assign
+    # 3. where each load plugs in: spread over legs then banks, the same outlet
+    #    number on both strips of a pair (see module docstring).
+    outlet_for = spread_outlets(cords, byid)
+
+    # 4. assign
     assigned = Counter()
     overflow = []
     for pdu_id, es in cords.items():
         pdu = byid[pdu_id]
         free = {"C13": [o["index"] for o in pdu["outlets"] if o["type"] == "C13"],
                 "C19": [o["index"] for o in pdu["outlets"] if o["type"] == "C19"]}
+        for e in es:
+            o = outlet_for.get((pdu_id, e["dst"]))
+            if o is not None:
+                for k in free:
+                    if o in free[k]:
+                        free[k].remove(o)
         used_psu = defaultdict(set)
         for e in es:
             load = byid[e["dst"]]
@@ -144,7 +217,8 @@ def main(path: str, dry_run: bool = False) -> int:
                 overflow.append(f"{load['name']}: every PSU already corded")
                 continue
             used_psu[e["dst"]].add(want_psu)
-            e["outlet"] = free[want].pop(0)
+            o = outlet_for.get((pdu_id, e["dst"]))
+            e["outlet"] = o if o is not None else free[want].pop(0)
             e["psu"] = want_psu
             e["supply_node"] = pdu_id
             e["load_node"] = e["dst"]

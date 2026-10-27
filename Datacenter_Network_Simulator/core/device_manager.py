@@ -1591,6 +1591,40 @@ def pdu_phases_breaker(device_type: "DeviceType",
     return (0, 0.0)
 
 
+def outlet_layout(n_c13: int, n_c19: int, phases: int) -> list:
+    """A rack strip's receptacles: index, connector, bank, phase, rating.
+
+    Every bank carries BOTH connectors. A bank is one breakered section of the
+    strip, and a maker spreads C13s and C19s over all of them so that any bank
+    - and so, on a 3-phase unit, any leg - can take a 1U server or a C20 load.
+    An AP8886's 30 C13 + 12 C19 are six banks of 5 + 2. Numbering runs along
+    the strip bank by bank, each bank's C13s before its C19s; a remainder goes
+    to the lower banks.
+
+    It used to number every C13 first and every C19 last, which left an
+    AP8886's banks 5 and 6 almost all C19: leg 3's only C13s were the seven in
+    bank 3, so any cabling that balanced the legs filled that one bank to its
+    breaker. No strip is wired like that.
+    """
+    n_banks = 6 if phases == 3 else 2
+
+    def share(n):
+        base, extra = divmod(n, n_banks)
+        return [base + (1 if b < extra else 0) for b in range(n_banks)]
+
+    c13s, c19s = share(n_c13), share(n_c19)
+    out, idx = [], 1
+    for b in range(n_banks):
+        bank = b + 1
+        phase = _PHASE_PAIRS[b % 3] if phases == 3 else "L1"
+        for kind, n, amps in (("C13", c13s[b], 10.0), ("C19", c19s[b], 16.0)):
+            for _ in range(n):
+                out.append({"index": idx, "type": kind, "bank": bank,
+                            "phase": phase, "rated_a": amps})
+                idx += 1
+    return out
+
+
 def pdu_bank_breaker_a(model_name: str = "") -> float:
     """The breaker on each outlet bank of a rack strip, in amps; 0.0 when the
     strip has none.
@@ -2035,22 +2069,7 @@ class Device:
         if not spec:
             return          # unknown SKU: no invented outlets — absent beats wrong
         n_c13, n_c19, phases, _rating_a, _volts = spec
-        n_banks = 6 if phases == 3 else 2
-        self.outlets = []
-        # C13s first, then C19s — the order they are numbered on the unit. Banks are
-        # filled in contiguous runs (bank 1 = the first outlets), matching how a
-        # breakered group maps to a physical section of the strip.
-        total = n_c13 + n_c19
-        per_bank = max(1, -(-total // n_banks))       # ceil
-        for i in range(total):
-            bank = min(n_banks, i // per_bank + 1)
-            self.outlets.append(Outlet(
-                index=i + 1,
-                type="C13" if i < n_c13 else "C19",
-                bank=bank,
-                phase=_PHASE_PAIRS[(bank - 1) % 3] if phases == 3 else "L1",
-                rated_a=10.0 if i < n_c13 else 16.0,
-            ))
+        self.outlets = [Outlet(**o) for o in outlet_layout(n_c13, n_c19, phases)]
 
     def _generate_psus(self):
         """Build this load's PSUs. Supply gear and sensor-port devices get none."""

@@ -177,7 +177,14 @@ class TopologyEngine:
         return outlets, psus
 
     def next_free_outlet(self, pdu_id: str, want_type: str = "C13"):
-        """First unused outlet of *want_type* on this PDU, or None when full.
+        """The unused outlet of *want_type* an installer would pick, or None when full.
+
+        Not the first free one: the one on the leg, then the bank, carrying the
+        fewest cords already, lowest number on a tie - so a strip filled one
+        device at a time still ends up with its phases and its bank breakers
+        evenly loaded, as tools/assign_power_terminations.py cables the estate.
+        Counted in cords rather than watts, so the A and B strips of a pair,
+        holding the same cords, pick the same outlet number for the next one.
 
         A PDU with no free outlet of the right type cannot take another cord — you
         cannot plug a C14 into thin air. Callers surface that as a refusal rather
@@ -187,10 +194,21 @@ class TopologyEngine:
         if dev is None or not dev.outlets:
             return None
         used, _ = self._used_power_terminations(pdu_id)
+        three = any(getattr(o, "phase", "L1") != "L1" for o in dev.outlets)
+        bank_n: Dict[int, int] = {}
+        leg_n: Dict[int, int] = {}
         for o in dev.outlets:
-            if o.type == want_type and o.index not in used:
-                return o.index
-        return None
+            if o.index in used:
+                b = int(o.bank)
+                bank_n[b] = bank_n.get(b, 0) + 1
+                lg = (b - 1) % 3 if three else 0
+                leg_n[lg] = leg_n.get(lg, 0) + 1
+        free = [o for o in dev.outlets if o.type == want_type and o.index not in used]
+        if not free:
+            return None
+        best = min(free, key=lambda o: (leg_n.get((int(o.bank) - 1) % 3 if three else 0, 0),
+                                        bank_n.get(int(o.bank), 0), o.index))
+        return best.index
 
     def power_feeds(self, device_id: str) -> dict:
         """psu index -> the cord feeding it: {supply_id, supply_name, outlet, feed}.
