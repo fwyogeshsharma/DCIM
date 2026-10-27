@@ -1591,6 +1591,29 @@ def pdu_phases_breaker(device_type: "DeviceType",
     return (0, 0.0)
 
 
+def pdu_bank_breaker_a(model_name: str = "") -> float:
+    """The breaker on each outlet bank of a rack strip, in amps; 0.0 when the
+    strip has none.
+
+    Not a per-SKU table: the listing rule decides it. Every receptacle on a
+    strip is rated below the strip's inlet - a C13 at 10 A, a C19 at 16 A -
+    so a strip fed above what one receptacle group may carry must protect
+    each group: IEC 60950/62368 strips above 16 A carry 16 A bank breakers,
+    UL 60950 strips above 20 A carry 20 A branch breakers. A 32 A AP8886 is
+    six 16 A banks, two per leg; a 30 A 208 V AP8865 is 20 A banks. A 16 A
+    or 20 A strip has no bank breakers at all - its inlet breaker upstream
+    is the protection. The AP8886 matches its datasheet; the AP8953 and the
+    PX3-5503U follow the rule, not a datasheet line.
+    """
+    spec = PDU_OUTLET_CATALOG.get(model_name or "")
+    if not spec:
+        return 0.0
+    _c13, _c19, _phases, rating_a, volts = spec
+    if volts in (208, 120):
+        return 20.0 if rating_a > 20 else 0.0
+    return 16.0 if rating_a > 16 else 0.0
+
+
 def rated_capacity_w(device_type: "DeviceType", model_name: str = "") -> int:
     """Rated continuous THROUGHPUT (W) for a distribution/backup SKU, for filling
     an unset rated_power_w. 0 if the type isn't a distribution node or the model

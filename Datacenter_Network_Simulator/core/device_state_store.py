@@ -8841,6 +8841,43 @@ class DeviceStateStore:
         st["pdu_outlet_current"] = round(va / max(1.0, _ph * _v), 1)
         _ext_state_cache[device.name] = dict(st)
 
+    def _pdu_bank_currents(self, device: "Device", st: dict) -> list:
+        """RMS current per outlet bank, from what is plugged into each bank.
+
+        A bank is a run of outlets behind one breaker, all on one leg, so its
+        current is the sum of its outlets' live shares over V(L-N) x PF - the
+        same physics as the leg, one level down. This is what trips first: a
+        32 A AP8886 leg is two 16 A banks, and a leg at 60 % can be one bank
+        at 95 % and the other nearly empty. Returns [] when nothing is plugged
+        in or the strip has no outlets, and the bank rows keep the old split.
+        """
+        topo = self._topology
+        outlets = getattr(device, "outlets", None) or []
+        if topo is None or not outlets:
+            return []
+        try:
+            loads = topo.outlet_loads(device.id)
+        except Exception:
+            return []
+        if not loads:
+            return []
+        v_ln = float(st.get("pdu_voltage", 230.0) or 230.0)
+        pf = max(0.5, float(st.get("pdu_power_factor", 0.95) or 0.95))
+        bank_of = {int(o.index): int(o.bank) for o in outlets}
+        n_banks = max(bank_of.values())
+        ctx = self._power_context()
+        watts = [0.0] * n_banks
+        for outlet, info in loads.items():
+            lid = info.get("load_id")
+            if not lid or frozenset((lid, device.id)) in self._dead_cord_pairs:
+                continue
+            w = self._through_live.get(lid, 0.0)
+            if w <= 0.0:
+                continue
+            n = len(self._active_parents(lid, ctx)) or 1
+            watts[bank_of.get(int(outlet), 1) - 1] += w / n
+        return [round(w / (v_ln * pf), 2) for w in watts]
+
     def _pdu_leg_currents(self, device: "Device", st: dict) -> list:
         """RMS current per leg of a rack strip, from what is plugged into it.
 
@@ -9486,6 +9523,9 @@ class DeviceStateStore:
             # the mean - and the walk below only survives for a strip nothing
             # is plugged into, where there is no physics to read.
             _legs = self._pdu_leg_currents(device, st) if _pdu_rated > 0 else None
+            _banks_a = self._pdu_bank_currents(device, st) if _legs else None
+            if _banks_a:
+                st["pdu_bank_current"] = _banks_a
             if _legs:
                 st["pdu_leg_current"] = _legs
                 if len(_legs) >= 2:

@@ -163,6 +163,7 @@ def _replace_with_retry(src: str, dst: str, timeout_ms: int = 200) -> None:
 from core import dataset_fingerprint as _fingerprint
 from core import vendor_oids as _vendor_oids
 from core import lifecycle as _lc
+from core import device_manager as _dm
 from core.device_manager import (Device, DeviceType, Vendor, SERVER_OS_INFO,
                                  bmc_sysoid, device_serial, probe_channels)
 from core.lldp_generator import (generate_lldp_entries, generate_cdp_entries,
@@ -1248,11 +1249,28 @@ class SNMPRecGenerator:
                         updates[f"{A['rpdu2PhaseState']}.{_leg}"]   = ("2", str(_leg_state))
                     # A tripped bank breaker reads as an overload bank state —
                     # PowerNet has no separate "breaker open" object. Each bank
-                    # carries its leg's current split over the banks on it.
+                    # carries what is plugged into it (the store sums its
+                    # outlets); a strip with nothing plugged in splits its leg
+                    # over the banks on it. The bank's own state is judged
+                    # against its breaker, as the NMC does: near overload from
+                    # 80 % (the continuous-load line), overload at the rating.
                     _banks = 6 if _ph_n == 3 else 2
+                    _bk_list = list(ext.get("pdu_bank_current") or [])
+                    _bk_brk = _dm.pdu_bank_breaker_a(getattr(device, "model_name", "") or "")
                     for _bk in range(1, _banks + 1):
-                        _bk_amps = _legs[(_bk - 1) % _ph_n] / (_banks / _ph_n)
-                        updates[f"{A['rpdu2BankState']}.{_bk}"]   = ("2", "4" if pdu_brk != 1 else str(_load_state))
+                        if len(_bk_list) == _banks:
+                            _bk_amps = _bk_list[_bk - 1]
+                        else:
+                            _bk_amps = _legs[(_bk - 1) % _ph_n] / (_banks / _ph_n)
+                        if pdu_brk != 1:
+                            _bk_state = 4
+                        elif _bk_brk > 0:
+                            _bk_pct = 100.0 * _bk_amps / _bk_brk
+                            _bk_state = (4 if _bk_pct >= 100 else 3 if _bk_pct >= 80
+                                         else 1 if _bk_pct < 10 else 2)
+                        else:
+                            _bk_state = _load_state
+                        updates[f"{A['rpdu2BankState']}.{_bk}"]   = ("2", str(_bk_state))
                         updates[f"{A['rpdu2BankCurrent']}.{_bk}"] = ("2", str(int(round(_bk_amps * 10))))
                     updates[f"{A['rpdu2OutletState']}.1"]  = ("2", "1" if pdu_out == 1 else "2")
                     # One row per probe fitted to a sensor port, and no rows
@@ -2012,11 +2030,17 @@ class SNMPRecGenerator:
                     _oid_entry(f"{A['rpdu2PhaseVoltage']}.{_leg}", "2", "230"),
                     _oid_entry(f"{A['rpdu2PhaseState']}.{_leg}",   "2", "2"),
                 ]
+            # The bank breaker rating is a property of the unit, published
+            # only where breakers are fitted - a 16 A strip has none and
+            # returns no row, as PowerNet says.
+            _bk_brk = int(_dm.pdu_bank_breaker_a(getattr(device, "model_name", "") or ""))
             for _bk in range(1, _banks + 1):
                 rows += [
                     _oid_entry(f"{A['rpdu2BankState']}.{_bk}",    "2", "2"),
                     _oid_entry(f"{A['rpdu2BankCurrent']}.{_bk}",  "2", "50"),
                 ]
+                if _bk_brk > 0:
+                    rows.append(_oid_entry(f"{A['rpdu2BankBreakerRating']}.{_bk}", "2", str(_bk_brk)))
             rows += [
                 _oid_entry(f"{A['rpdu2OutletState']}.1",  "2", "1"),    # on
                 _oid_entry(f"{A['identName']}.0",         "4", device.name),

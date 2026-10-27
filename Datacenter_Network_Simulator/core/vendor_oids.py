@@ -150,6 +150,10 @@ APC = {
     "rpdu2PhaseState":  "1.3.6.1.4.1.318.1.1.26.6.3.1.4",    # rPDU2PhaseStatusLoadState
     "rpdu2BankState":   "1.3.6.1.4.1.318.1.1.26.8.3.1.4",    # rPDU2BankStatusLoadState
     "rpdu2BankCurrent": "1.3.6.1.4.1.318.1.1.26.8.3.1.5",    # rPDU2BankStatusCurrent (0.1 A)
+    # rPDU2BankPropertiesBreakerRating, Integer32 amps: "If bank circuit
+    # breakers are present on the device, this OID will return the rating of
+    # the breaker in Amps." (PowerNet-MIB, verified via mibs.observium.org.)
+    "rpdu2BankBreakerRating": "1.3.6.1.4.1.318.1.1.26.8.2.1.5",
     "rpdu2OutletState": "1.3.6.1.4.1.318.1.1.26.9.2.3.1.5",  # rPDU2OutletSwitchedStatusState
     # Which outlet a notification is about. Anchored on the State column above:
     # rPDU2OutletSwitchedStatusTable is (Index, ModuleIndex, OutletIndex,

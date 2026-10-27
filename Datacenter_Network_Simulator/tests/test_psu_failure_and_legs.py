@@ -148,3 +148,47 @@ def test_the_phase_table_has_one_row_per_leg_and_the_bank_table_one_per_bank(rac
     assert [o for o in rows1 if o.startswith(A["rpdu2PhaseCurrent"] + ".")] == [
         f"{A['rpdu2PhaseCurrent']}.1"]
     assert len([o for o in rows1 if o.startswith(A["rpdu2BankCurrent"] + ".")]) == 2
+
+
+def test_bank_currents_come_from_the_outlets_and_the_legs_are_their_sums(rack):
+    """Outlets 1, 8 and 15 sit in banks 1, 2 and 3 (seven outlets a bank) and
+    those banks on legs 1, 2 and 3. Banks 4-6 carry nothing; each leg is the
+    sum of the banks on it."""
+    store, topo, pdua, pdub, srv = rack
+    _flow(store)
+    banks = store._pdu_bank_currents(pdua, {})
+    legs = store._pdu_leg_currents(pdua, {})
+    assert len(banks) == 6
+    assert banks[3:] == [0.0, 0.0, 0.0]
+    for leg in range(3):
+        on_leg = [banks[b] for b in range(6) if b % 3 == leg]
+        assert sum(on_leg) == pytest.approx(legs[leg], abs=0.02)
+
+
+def test_a_failed_supply_moves_its_bank_load_to_the_other_strip(rack):
+    store, topo, pdua, pdub, srv = rack
+    _flow(store)
+    before = store._pdu_bank_currents(pdub, {})[0]
+    store.set_psu_condition(srv[0].id, 1, True)
+    _flow(store)
+    assert store._pdu_bank_currents(pdua, {})[0] == 0
+    assert store._pdu_bank_currents(pdub, {})[0] == pytest.approx(2 * before, rel=0.05)
+
+
+def test_bank_breakers_follow_the_listing_rule():
+    from core.device_manager import pdu_bank_breaker_a
+    assert pdu_bank_breaker_a("APC AP8886") == 16.0   # 32 A IEC strip: 16 A banks
+    assert pdu_bank_breaker_a("APC AP8953") == 16.0
+    assert pdu_bank_breaker_a("APC AP8865") == 20.0   # 30 A 208 V strip: 20 A branch
+    assert pdu_bank_breaker_a("APC AP8681") == 0.0    # 16 A strip: no bank breakers
+    assert pdu_bank_breaker_a("no such strip") == 0.0
+
+
+def test_the_breaker_rating_row_is_published_only_where_breakers_are_fitted(rack):
+    _store, topo, pdua, _pdub, _srv = rack
+    gen = SNMPRecGenerator.__new__(SNMPRecGenerator)
+    A = vendor_oids.APC
+    rows = {oid: val for oid, _t, val in gen._pdu_entries(pdua, topo)}
+    rated = {o: v for o, v in rows.items() if o.startswith(A["rpdu2BankBreakerRating"] + ".")}
+    assert sorted(rated) == [f"{A['rpdu2BankBreakerRating']}.{b}" for b in range(1, 7)]
+    assert set(rated.values()) == {"16"}
