@@ -1327,17 +1327,19 @@ class SNMPRecGenerator:
                     _n_ocp = _raritan_ocp_count(device)
                     _ocp_a = _dm.pdu_bank_breaker_a(getattr(device, "model_name", "") or "")
                     _bk_list = list(ext.get("pdu_bank_current") or [])
+                    _o_open = {int(b) for b in (ext.get("pdu_banks_tripped") or [])}
                     for _o in range(1, _n_ocp + 1):
                         _o_amps = (_bk_list[_o - 1] if len(_bk_list) == _n_ocp
                                    else _pdu_amps / _n_ocp)
-                        if pdu_brk != 1:
+                        _o_tripped = pdu_brk != 1 or _o in _o_open
+                        if _o_tripped:
                             _o_amps = 0.0
                         _o_pct = 100.0 * _o_amps / _ocp_a if _ocp_a else 0.0
                         _o_state = (SS["aboveUpperCritical"] if _o_pct >= 100 else
                                     SS["aboveUpperWarning"] if _o_pct >= 80 else SS["normal"])
                         updates[f"{R['ocpValue']}.1.{_o}.{ST['current']}"] = ("66", str(int(round(_o_amps * 1000))))
                         updates[f"{R['ocpState']}.1.{_o}.{ST['current']}"] = ("2", str(_o_state))
-                        updates[f"{R['ocpState']}.1.{_o}.{ST['trip']}"]    = ("2", str(SS["open"] if pdu_brk != 1 else SS["closed"]))
+                        updates[f"{R['ocpState']}.1.{_o}.{ST['trip']}"]    = ("2", str(SS["open"] if _o_tripped else SS["closed"]))
                     # DPX2 probes on the PDU's sensor port.
                     updates.update(self._pdu_probe_updates(device, pdu_temp_x10,
                                                            pdu_hum_x10))

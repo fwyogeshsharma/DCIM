@@ -431,24 +431,33 @@ def _power_supplies(device: "Device", topology=None) -> list:
     # whole chassis - which is what makes a 1+1 pair a pair. The BMC reports
     # the failed one Critical and offline; the chassis itself keeps running,
     # which is the fact a DCIM has to be able to tell from a dead server.
-    from core.device_state_store import _get_psu_failed
+    from core.device_state_store import _get_cord_dead, _get_psu_failed
     failed = _get_psu_failed(device.id)
-    live_n = max(1, sum(1 for p in psus if p.index not in failed))
+    # A healthy supply whose cord is dead - an opened outlet, a tripped bank,
+    # a strip that lost its feed - has lost its INPUT, which a BMC reports
+    # differently from a failed unit: iDRAC PSU0002 "input lost", iLO "AC
+    # lost". Health goes Critical, the supply stays Enabled, and its line
+    # voltage reads 0. Either way the survivor carries the chassis.
+    no_input = {p.index for p in psus if p.index not in failed
+                and (feeds.get(p.index) or {}).get("supply_id")
+                and _get_cord_dead(device.id, feeds[p.index]["supply_id"])}
+    live_n = max(1, sum(1 for p in psus if p.index not in failed and p.index not in no_input))
     input_per_psu = watts / live_n
     out = []
     for i, p in enumerate(psus):
         feed = feeds.get(p.index)
         volts = outlet_voltage(feed["supply_model"]) if feed else 230
         dead = p.index in failed
+        lost = p.index in no_input
         entry = {
             "@odata.id": f"/redfish/v1/Chassis/{cid}/Power#/PowerSupplies/{i}",
             "MemberId": str(i),
             "Name": p.name,
             "PowerSupplyType": "AC",
-            "LineInputVoltage": 0 if dead else volts,
+            "LineInputVoltage": 0 if (dead or lost) else volts,
             "PowerCapacityWatts": p.capacity_w,
-            "PowerInputWatts": 0.0 if dead else round(input_per_psu, 1),
-            "LastPowerOutputWatts": 0.0 if dead else round(input_per_psu * _PSU_EFFICIENCY, 1),
+            "PowerInputWatts": 0.0 if (dead or lost) else round(input_per_psu, 1),
+            "LastPowerOutputWatts": 0.0 if (dead or lost) else round(input_per_psu * _PSU_EFFICIENCY, 1),
             "InputRanges": [{
                 "InputType": "AC",
                 # Auto-ranging supply: one SKU covers every rack voltage it might
@@ -463,6 +472,7 @@ def _power_supplies(device: "Device", topology=None) -> list:
             # UnavailableOffline is the state a BMC reports for a unit that is
             # present but not supplying - the pair every poller checks.
             "Status": ({"State": "UnavailableOffline", "Health": "Critical"} if dead
+                       else {"State": "Enabled", "Health": "Critical"} if lost
                        else {"State": "Enabled", "Health": "OK"}),
         }
         if feed:

@@ -63,6 +63,10 @@ SYNTHETIC_BASE = f"1.3.6.1.4.1.{SYNTHETIC_PEN}"
 #: 0 C". Sits in the PDU ext block (99999.5.x) beside the readings it belongs
 #: with.
 SYNTH_PDU_OUTLET_NAME = f"{SYNTHETIC_BASE}.5.20"
+#: Which bank a SYNTHETIC branch-breaker reset is about. PowerNet has no
+#: breaker object and so no reset notification: an APC strip's reset rides
+#: this tree, and names its bank here rather than on an APC leaf.
+SYNTH_PDU_BANK = f"{SYNTHETIC_BASE}.5.21"
 
 # ── IANA Private Enterprise Numbers ───────────────────────────────────────────
 # Keyed by the normalised vendor key returned by vendor_key().
@@ -337,6 +341,7 @@ _RARITAN_TRAPS = {
     TrapType.PDU_OUTLET_CURRENT_HIGH: _RARITAN_OUTLET,
     TrapType.PDU_OUTLET_FAILURE:      _RARITAN_OUTLET,
     TrapType.PDU_BREAKER_TRIPPED:     _RARITAN_OCP,
+    TrapType.PDU_BREAKER_RESET:       _RARITAN_OCP,
     TrapType.PDU_GROUND_FAULT:        _RARITAN_UNIT,
     TrapType.PDU_SMOKE_DETECTED:      _RARITAN_EXT,
     TrapType.PDU_TEMP_HIGH:           _RARITAN_EXT,

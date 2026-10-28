@@ -693,6 +693,16 @@ def _get_psu_failed(device_id: str) -> Set[int]:
     return set(_psu_failed_cache.get(device_id, ()))
 
 
+#: {frozenset((load_id, supply_id))} for cords that carry nothing this tick:
+#: an opened outlet, a tripped bank, a dead strip, a failed supply.
+_dead_cord_cache: frozenset = frozenset()
+
+
+def _get_cord_dead(load_id: str, supply_id: str) -> bool:
+    """True when the cord from *supply_id* into *load_id* is dead this tick."""
+    return frozenset((load_id, supply_id)) in _dead_cord_cache
+
+
 def _get_ext_wire(device_name: str) -> dict:
     """The ext state a renderer serves: truth through the active FaultBook."""
     ext = _ext_state_cache.get(device_name, {})
@@ -1175,6 +1185,15 @@ class DeviceStateStore:
         # failure, ground fault, smoke, threshold alarms) is a pinned metric handled
         # through the ordinary override path.
         self._pdu_conditions: Dict[str, set] = {}
+        # PDU id → outlet banks whose branch breaker is open. NOT a _pdu_conditions
+        # entry: any condition there de-energizes the whole strip, and a branch
+        # trip kills only the outlets behind that one breaker. Latching - a branch
+        # breaker on a rack strip is reset by hand.
+        self._pdu_bank_tripped: Dict[str, Set[int]] = {}
+        # (PDU id, bank) → thermal element "heat", for the overload trip model.
+        self._pdu_bank_heat: Dict[tuple, float] = {}
+        self._pdu_bank_heat_ts: Dict[str, float] = {}
+        self._bank_trap_cb: Optional[Callable[["Device", int, bool], None]] = None
         self._ups_input_live: Dict[str, bool] = {}     # UPS id → rectifier input path live (graph)
         self._broken_power: Set[frozenset] = set()     # power feeders currently open (this tick)
         # Plant units whose MCC is currently de-energized. Distinct from
@@ -3027,6 +3046,97 @@ class DeviceStateStore:
     def get_pdu_conditions(self, pdu_id: str) -> list:
         return sorted(self._pdu_conditions.get(pdu_id, set()))
 
+    # ── Branch (bank) breakers ────────────────────────────────────────────
+    #
+    # A strip fed above one receptacle group's rating protects each bank with
+    # its own breaker (pdu_bank_breaker_a). When one opens, the outlets behind
+    # it go dead and nothing else: a dual-corded load rides it on its other
+    # cord, so the strip on the OTHER side takes the whole draw - and if that
+    # bank was already heavy, it can be the next to go. That cascade is the
+    # reason to model the trip rather than pin a status point.
+    #
+    # Thermal element, after IEC 60898-1 (C curve, In <= 32 A): no trip at
+    # 1.13 In, trip within the hour at 1.45 In, 1-60 s at 2.55 In. Heat builds
+    # as (I/In)^2 - 1.13^2 above the no-trip line and bleeds off below it. The
+    # limit puts 2.55 In at ~60 s, 1.45 In at ~6 min, 1.2 In at ~30 min. A
+    # simplification of a real time-current curve, but the one property that
+    # matters holds: a bank at 100 % of its rating carries it indefinitely,
+    # as a breaker must, and a lost side's load lands on the survivor and
+    # trips it only if that pushes the survivor well past its rating.
+    _BANK_NO_TRIP = 1.13
+    _BANK_TRIP_HEAT = 313.0
+    _BANK_COOL_PER_S = 2.0
+
+    def set_bank_trap_callback(self, cb: Callable[["Device", int, bool], None]) -> None:
+        """cb(pdu, bank, tripped) - fired on a trip (True) and a reset (False)."""
+        self._bank_trap_cb = cb
+
+    def get_pdu_banks_tripped(self, pdu_id: str) -> list:
+        return sorted(self._pdu_bank_tripped.get(pdu_id, set()))
+
+    def set_pdu_bank_trip(self, pdu_id: str, bank: int, on: bool) -> bool:
+        """Open (on) or reset (off) one bank's branch breaker. False when the
+        strip has no such bank or no branch breakers at all."""
+        dev = self._dm.get_device(pdu_id) if self._dm else None
+        if dev is None:
+            return False
+        from core import device_manager as _dmod
+        if _dmod.pdu_bank_breaker_a(getattr(dev, "model_name", "") or "") <= 0:
+            return False
+        banks = {int(getattr(o, "bank", 0) or 0) for o in (getattr(dev, "outlets", None) or [])}
+        if bank not in banks:
+            return False
+        cur = self._pdu_bank_tripped.setdefault(pdu_id, set())
+        changed = (bank not in cur) if on else (bank in cur)
+        if on:
+            cur.add(bank)
+        else:
+            cur.discard(bank)
+            self._pdu_bank_heat.pop((pdu_id, bank), None)
+        if not cur:
+            self._pdu_bank_tripped.pop(pdu_id, None)
+        self.invalidate_power_context()
+        if changed and self._bank_trap_cb is not None:
+            try:
+                self._bank_trap_cb(dev, bank, on)
+            except Exception:
+                log.exception("[Power] bank trap callback failed")
+        return True
+
+    def _step_bank_breakers(self, device: "Device", banks_a: list) -> None:
+        """Advance each bank's thermal element by the time since the last tick
+        and open any breaker whose element is spent."""
+        from core import device_manager as _dmod
+        rating = _dmod.pdu_bank_breaker_a(getattr(device, "model_name", "") or "")
+        if rating <= 0 or not banks_a:
+            return
+        now = time.monotonic()
+        last = self._pdu_bank_heat_ts.get(device.id)
+        self._pdu_bank_heat_ts[device.id] = now
+        if last is None:
+            return
+        dt = min(30.0, max(0.0, now - last))
+        tripped = self._pdu_bank_tripped.get(device.id, set())
+        for b, amps in enumerate(banks_a, 1):
+            if b in tripped:
+                continue
+            key = (device.id, b)
+            ratio = float(amps) / rating
+            heat = self._pdu_bank_heat.get(key, 0.0)
+            if ratio > self._BANK_NO_TRIP:
+                heat += (ratio * ratio - self._BANK_NO_TRIP ** 2) * dt
+            else:
+                heat = max(0.0, heat - self._BANK_COOL_PER_S * dt)
+            if heat >= self._BANK_TRIP_HEAT:
+                log.warning("[Power] %s bank %d tripped on overload (%.1f A on %.0f A)",
+                            device.name, b, amps, rating)
+                self.set_pdu_bank_trip(device.id, b, True)
+                continue
+            if heat > 0:
+                self._pdu_bank_heat[key] = heat
+            else:
+                self._pdu_bank_heat.pop(key, None)
+
     def set_psu_condition(self, device_id: str, psu_index: int, on: bool) -> None:
         """Fail (on) or replace (off) one power supply in a load.
 
@@ -3322,8 +3432,16 @@ class DeviceStateStore:
                 # SNMP agent, its BMC and its gNMI all answering - so a rack with
                 # both strips tripped never raised a single unreachable alarm.
                 off_by_pdu[dev.id] = None
-            elif offs:
-                off_by_pdu[dev.id] = {int(o) for o in offs}
+            else:
+                dead_outlets = {int(o) for o in offs}
+                # An open branch breaker is every outlet on its bank switched off
+                # at once: the loads corded there lose that feed, nothing else.
+                tripped = self._pdu_bank_tripped.get(dev.id)
+                if tripped:
+                    dead_outlets |= {int(o.index) for o in (getattr(dev, "outlets", None) or [])
+                                     if int(getattr(o, "bank", 0) or 0) in tripped}
+                if dead_outlets:
+                    off_by_pdu[dev.id] = dead_outlets
 
         # Supplies the energization walk found dead: an RPP whose feeder opened,
         # a PDU below an exhausted UPS. Last tick's walk, because this tick's has
@@ -3398,7 +3516,8 @@ class DeviceStateStore:
         if dead_plant:
             self._plant_unpowered_names = self._plant_unpowered_names | dead_plant
         self._dead_cord_pairs = dead_cords
-        global _unpowered_cache
+        global _unpowered_cache, _dead_cord_cache
+        _dead_cord_cache = frozenset(dead_cords)
         _unpowered_cache = dead
 
         # A load with no live cord is not a load drawing zero watts. It is off.
@@ -9526,6 +9645,9 @@ class DeviceStateStore:
             _banks_a = self._pdu_bank_currents(device, st) if _legs else None
             if _banks_a:
                 st["pdu_bank_current"] = _banks_a
+                self._step_bank_breakers(device, _banks_a)
+            # What the strip's agent reports as open: the bank rows read it.
+            st["pdu_banks_tripped"] = self.get_pdu_banks_tripped(device.id)
             if _legs:
                 st["pdu_leg_current"] = _legs
                 if len(_legs) >= 2:

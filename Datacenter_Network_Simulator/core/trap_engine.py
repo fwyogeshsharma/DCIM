@@ -948,7 +948,9 @@ class TrapEngine(QObject):
         mv = kwargs.get("metric_value", None)
         _PDU_LOAD = (TrapType.PDU_LOAD_HIGH, TrapType.PDU_LOAD_CRITICAL,
                      TrapType.PDU_LOAD_NORMAL, TrapType.PDU_OUTLET_CURRENT_HIGH,
-                     TrapType.PDU_BREAKER_TRIPPED)
+                     TrapType.PDU_BREAKER_TRIPPED, TrapType.PDU_BREAKER_RESET)
+        # Which branch breaker, for a bank trip and its reset. 0 = the strip.
+        _bank = int(kwargs.get("bank", 0) or 0)
         _PDU_ENV = (TrapType.PDU_TEMP_HIGH, TrapType.PDU_TEMP_NORMAL,
                     TrapType.PDU_HUMIDITY_HIGH, TrapType.PDU_HUMIDITY_NORMAL)
         _AMBIENT = (TrapType.SENSOR_AMBIENT_TEMP_HIGH,
@@ -986,6 +988,14 @@ class TrapEngine(QObject):
                 if _outlet_no and trap_type == TrapType.PDU_OUTLET_CURRENT_HIGH:
                     vbs[4:4] = [_i(APC["rpdu2OutletNumber"], _outlet_no),
                                 _s(APC["rpdu2OutletName"], _outlet_name)]
+                # A branch trip names its bank (rPDULoadStatusBankNumber), the
+                # one varbind that says which outlets went dark.
+                if _bank and trap_type == TrapType.PDU_BREAKER_TRIPPED:
+                    vbs[4:4] = [_i(APC["bankNumber"], _bank)]
+                elif _bank and trap_type == TrapType.PDU_BREAKER_RESET:
+                    # No PowerNet reset exists: this goes out on the plane's
+                    # own tree, so the bank is named there too.
+                    vbs[4:4] = [_i(vendor_oids.SYNTH_PDU_BANK, _bank)]
                 return vbs
             if trap_type in _PDU_ENV or trap_type in _AMBIENT or trap_type in _HUMID:
                 temp = _num(mv if trap_type in (_PDU_ENV[:2] + _AMBIENT) else
@@ -1032,8 +1042,13 @@ class TrapEngine(QObject):
                          TrapType.PDU_OUTLET_CURRENT_HIGH: ss["aboveUpperCritical"],
                          TrapType.PDU_BREAKER_TRIPPED: ss["open"],
                          TrapType.PDU_LOAD_NORMAL: ss["normal"]}.get(trap_type, ss["normal"])
-                if trap_type == TrapType.PDU_BREAKER_TRIPPED:
-                    table, sensor = "unit", st["trip"]
+                if trap_type in (TrapType.PDU_BREAKER_TRIPPED, TrapType.PDU_BREAKER_RESET):
+                    # PDU2-MIB reports a breaker on its own table: the
+                    # overcurrent protector's trip sensor, open or closed,
+                    # with the protector's label. A strip-wide trip (no bank)
+                    # keeps the unit table it always used.
+                    table, sensor = ("ocp" if _bank else "unit"), st["trip"]
+                    state = ss["open"] if trap_type == TrapType.PDU_BREAKER_TRIPPED else ss["closed"]
             elif trap_type in (TrapType.PDU_VOLTAGE_HIGH, TrapType.PDU_VOLTAGE_LOW):
                 table, sensor = "inlet", st["voltage"]
                 value = _num(mv if mv is not None else getattr(device, "pdu_voltage", 0), scale=10)
@@ -1096,8 +1111,13 @@ class TrapEngine(QObject):
                 _i(RARITAN["typeOfSensor"], sensor),
                 _g(RARITAN[f"{table}Value"], value),
                 _i(RARITAN[f"{table}State"], state),
-                _i(RARITAN["oldSensorState"], ss["normal"]),
+                _i(RARITAN["oldSensorState"],
+                   ss["closed"] if trap_type == TrapType.PDU_BREAKER_TRIPPED
+                   else ss["open"] if trap_type == TrapType.PDU_BREAKER_RESET
+                   else ss["normal"]),
             ]
+            if table == "ocp":
+                vbs.insert(2, _s(RARITAN["ocpLabel"], f"C{_bank}"))
             # Which slot on the sensor chain spoke. Only the sensor port has
             # slots: an inlet, a breaker and an outlet are addressed by their
             # own tables, and a condition with no channel of its own sends
@@ -1415,7 +1435,11 @@ class TrapEngine(QObject):
         if trap_type == TrapType.PDU_OUTLET_OFF:
             return "Outlet switched off"
         if trap_type == TrapType.PDU_BREAKER_TRIPPED:
-            return "Circuit breaker tripped"
+            return (f"Bank {kwargs['bank']} breaker tripped" if kwargs.get("bank")
+                    else "Circuit breaker tripped")
+        if trap_type == TrapType.PDU_BREAKER_RESET:
+            return (f"Bank {kwargs['bank']} breaker reset" if kwargs.get("bank")
+                    else "Circuit breaker reset")
         if trap_type == TrapType.PDU_SMOKE_DETECTED:
             return "Smoke sensor triggered"
         if trap_type == TrapType.PDU_GROUND_FAULT:

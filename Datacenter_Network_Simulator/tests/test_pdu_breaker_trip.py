@@ -144,8 +144,10 @@ def test_every_pdu_condition_is_offered_as_a_condition():
     for key in ("pdu_breaker_trip", "pdu_ground_fault", "pdu_smoke",
                 "pdu_outlet_fail", "pdu_volt_low", "pdu_pf_low"):
         assert key in pdu_faults, f"{key} missing from the Conditions group"
-    # Breaker trip is the only one with a power consequence, so it is the only one
-    # that may carry a pducond; the rest must pin their backing metric.
+    # The breaker trips - the strip's and one bank's - are the only ones with a
+    # power consequence, so they are the only ones that may carry store state;
+    # the rest must pin their backing metric.
     assert pdu_faults["pdu_breaker_trip"].get("pducond") == "breaker_trip"
+    assert pdu_faults["pdu_bank_trip"].get("bankcond") is True
     assert all("override" in v or "metric" in v
-               for k, v in pdu_faults.items() if k != "pdu_breaker_trip")
+               for k, v in pdu_faults.items() if k not in ("pdu_breaker_trip", "pdu_bank_trip"))

@@ -1384,6 +1384,14 @@ FAULT_MAP = {
     # as the UPS conditions do, so the existing raise/clear rules fire.
     "pdu_breaker_trip": {"pducond": "breaker_trip", "label": "Breaker Trip",
                          "types": ["pdu", "floor_pdu"]},
+    # One BRANCH breaker: only the outlets on that bank go dead, so a
+    # dual-corded load rides it on the other strip - which takes the whole
+    # draw and can trip in turn if that pushes a bank well past its rating.
+    # `instance` is the bank (1-based, as the strip numbers it; default 1).
+    # Latching: reset by hand. Strips also trip on their own under sustained
+    # overload (the store's thermal model), with the same trap and reset.
+    "pdu_bank_trip":    {"bankcond": True, "label": "Bank Breaker Trip",
+                         "types": ["pdu", "floor_pdu"]},
     # A failed power supply in a dual-corded load: the BMC marks it Critical
     # over Redfish, the survivor carries the whole chassis, and the strip on
     # the dead side sees that cord go quiet. Latching, through the store's
@@ -1524,6 +1532,10 @@ def get_device_faults(device_id: str):
         _pc = set(st.get_pdu_conditions(device_id))
         active += [k for k, v in FAULT_MAP.items()
                    if v.get("pducond") in _pc and dtype in v["types"]]
+    if st and dtype in ("pdu", "floor_pdu") and hasattr(st, "get_pdu_banks_tripped") \
+            and st.get_pdu_banks_tripped(device_id):
+        active += [k for k, v in FAULT_MAP.items()
+                   if "bankcond" in v and dtype in v["types"]]
     return {"device": device_id, "available": available, "active": active}
 
 
@@ -1763,6 +1775,22 @@ def set_device_fault(device_id: str, body: FaultRequest):
         st.set_pdu_condition(device_id, spec["pducond"], on)
         verb = "Injecting" if on else "Clearing"
         return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
+    # One branch breaker. A reset with no bank named resets every open one.
+    if "bankcond" in spec:
+        if on:
+            bank = int(body.instance or 1)
+            if not st.set_pdu_bank_trip(device_id, bank, True):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{dev.name} has no branch breaker on bank {bank} - "
+                           f"a strip fed at or below one receptacle group's rating "
+                           f"has none")
+            return OkResponse(message=f"Tripping bank {bank} breaker on {dev.name}")
+        banks = ([int(body.instance)] if body.instance else st.get_pdu_banks_tripped(device_id))
+        for b in banks:
+            st.set_pdu_bank_trip(device_id, b, False)
+        return OkResponse(message=f"Resetting bank {', '.join(map(str, banks)) or '-'} "
+                                  f"breaker on {dev.name}")
     # A failed power supply: a dead cord with the plug still in.
     if "psucond" in spec:
         st.set_psu_condition(device_id, int(spec["psucond"]), on)

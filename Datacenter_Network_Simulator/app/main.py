@@ -307,6 +307,12 @@ def _run_headless():
     state_store.set_transfer_trap_callback(
         lambda dev, kind: trap_engine.send_trap(dev, _ATS_TRAP[kind]))
 
+    # A branch breaker on a rack strip: tripped (overload or operator) and reset.
+    state_store.set_bank_trap_callback(
+        lambda dev, bank, tripped: trap_engine.send_trap(
+            dev, _TT.PDU_BREAKER_TRIPPED if tripped else _TT.PDU_BREAKER_RESET,
+            bank=bank, rule_name="PDUBankBreakerTripped" if tripped else "PDUBankBreakerReset"))
+
     # Cold-start on power-loss recovery: a load that went dark from total power loss
     # cold-boots when a feed returns (the recovery side of a blackout).
     state_store.set_coldstart_callback(

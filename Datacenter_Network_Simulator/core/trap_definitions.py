@@ -86,6 +86,7 @@ class TrapType(str, Enum):
     PDU_OUTLET_ON             = "outletOn"
     PDU_OUTLET_OFF            = "outletOff"
     PDU_BREAKER_TRIPPED       = "breakerTripped"
+    PDU_BREAKER_RESET         = "breakerReset"
     PDU_LOAD_HIGH             = "loadHigh"
     PDU_LOAD_CRITICAL         = "loadCritical"
     PDU_VOLTAGE_HIGH          = "voltageHigh"
@@ -467,6 +468,12 @@ TrapType.UPS_ON_BATTERY: TrapDefinition(
     TrapType.PDU_BREAKER_TRIPPED: TrapDefinition(
         TrapType.PDU_BREAKER_TRIPPED, "1.3.6.1.4.1.99999.6.3",
         "Breaker Tripped", "PDU circuit breaker has tripped", "critical"),
+    # The reset of a branch breaker, by hand at the strip. Same OID the
+    # PDUBreakerReset rule already sends for a whole-strip reset; PowerNet has
+    # no breaker object at all, so on APC this stays on the simulator's tree.
+    TrapType.PDU_BREAKER_RESET: TrapDefinition(
+        TrapType.PDU_BREAKER_RESET, "1.3.6.1.4.1.99999.6.21",
+        "Breaker Reset", "PDU branch breaker was reset", "informational"),
     TrapType.PDU_LOAD_HIGH: TrapDefinition(
         TrapType.PDU_LOAD_HIGH, "1.3.6.1.4.1.99999.6.4",
         "Load High", "PDU load has exceeded 80%", "major"),
