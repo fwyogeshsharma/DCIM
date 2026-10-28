@@ -163,3 +163,33 @@ def test_the_bmc_reports_lost_input_not_a_failed_supply(rack):
     assert psus[1]["Status"]["Health"] == "OK"
     other = rf._power_supplies(srv[1], topo)
     assert [p["Status"]["Health"] for p in other] == ["OK", "OK"], "bank 2 kept its feed"
+
+
+def test_the_strip_reads_open_before_its_trap_goes_out(tmp_path):
+    """Firmware updates its tables, then notifies. A poll prompted by the trap
+    read the breaker still closed - the files are rewritten on a cycle - and
+    the rule closed the alarm the trap had just raised (live, 2026-10-28)."""
+    from core.snmprec_generator import SNMPRecGenerator
+
+    dm, topo = DeviceManager(), TopologyEngine()
+    px = _dev(dm, topo, "PDUA-DC1-NR-R1-01", "pdu", "10.0.1.9", "Raritan PX3-5503U", Vendor.RARITAN)
+    gen = SNMPRecGenerator(str(tmp_path))
+    path = gen.generate_device(px, topo)
+    store = DeviceStateStore(dm, topo, str(tmp_path), tick_interval=1.0)
+    store._ext_states.setdefault(px.name, {})
+    R, ST, SS = (vendor_oids.RARITAN, vendor_oids.RARITAN_SENSOR_TYPE,
+                 vendor_oids.RARITAN_SENSOR_STATE)
+    trip_oid = f"{R['ocpState']}.1.1.{ST['trip']}"
+
+    def wire_state():
+        for line in open(path, encoding="utf-8"):
+            oid, _t, val = line.rstrip("\n").split("|", 2)
+            if oid == trip_oid:
+                return int(val)
+        return None
+
+    seen = []
+    store.set_bank_trap_callback(lambda dev, bank, tripped: seen.append(wire_state()))
+    assert store.set_pdu_bank_trip(px.id, 1, True)
+    store.set_pdu_bank_trip(px.id, 1, False)
+    assert seen == [SS["open"], SS["closed"]], "the poll must read what the trap says"

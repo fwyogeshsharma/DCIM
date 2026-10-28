@@ -3096,12 +3096,37 @@ class DeviceStateStore:
         if not cur:
             self._pdu_bank_tripped.pop(pdu_id, None)
         self.invalidate_power_context()
+        if changed:
+            self._publish_bank_state_now(dev)
         if changed and self._bank_trap_cb is not None:
             try:
                 self._bank_trap_cb(dev, bank, on)
             except Exception:
                 log.exception("[Power] bank trap callback failed")
         return True
+
+    def _publish_bank_state_now(self, dev: "Device") -> None:
+        """Put the strip's breaker rows on the wire BEFORE its trap goes out.
+
+        Real firmware updates its own tables and then notifies, so a poll
+        prompted by the trap reads the new state. Here the SNMP answers are
+        files rewritten on a sharded cycle: left to it, the poll that follows a
+        trip read the breaker still closed and the rule closed the alarm the
+        trap had just raised, then raised it again a cycle later (2026-10-28,
+        PDUA-DC1-HA-R1-01, 6 s after the trap). Same idea as the generator's
+        low-fuel gauge, which drops before its trap fires.
+        """
+        st = self._ext_states.get(dev.name)
+        if st is not None:
+            st["pdu_banks_tripped"] = self.get_pdu_banks_tripped(dev.id)
+            _ext_state_cache[dev.name] = dict(st)
+        if not getattr(self, "_datasets_dir", None):
+            return
+        try:
+            from core.snmprec_generator import SNMPRecGenerator
+            SNMPRecGenerator(self._datasets_dir).patch_metrics(dev)
+        except Exception:
+            log.exception("[Power] immediate snmprec patch failed for %s", dev.name)
 
     def _step_bank_breakers(self, device: "Device", banks_a: list) -> None:
         """Advance each bank's thermal element by the time since the last tick
