@@ -245,6 +245,16 @@ UCD_DISK    = f"{UCD_BASE}.9.1"
 # Vendor enterprise bases for environmental sensor OIDs
 _ENTITY_SENSOR  = "1.3.6.1.2.1.99.1.1.1"          # ENTITY-SENSOR-MIB entPhySensorEntry
 _RARITAN_SENSOR = "1.3.6.1.4.1.13742.6.5.5.3.1"   # Raritan PX2/DPX2 external sensor table
+
+
+def _raritan_ocp_count(device) -> int:
+    """Overcurrent protectors on a Raritan strip: one per outlet bank where the
+    listing rule fits bank breakers (2 on a single-phase unit, 6 on a 3-phase
+    one), none on a strip fed at or below one receptacle group's rating."""
+    if _dm.pdu_bank_breaker_a(getattr(device, "model_name", "") or "") <= 0:
+        return 0
+    phases = max(1, int(getattr(device, "pdu_phases", 0) or 1))
+    return 6 if phases == 3 else 2
 _GEIST_SENSOR   = "1.3.6.1.4.1.21239.5.1"           # Vertiv Geist probe tables
 _APC_NETBOTZ    = "1.3.6.1.4.1.318.1.1.10.4.2.2.1"  # APC NetBotz sensor value table
 _CISCO_ENVMON_TEMP = "1.3.6.1.4.1.9.9.13.1.3.1"      # CISCO-ENVMON-MIB ciscoEnvMonTemperatureStatusTable
@@ -1309,7 +1319,25 @@ class SNMPRecGenerator:
                         updates[f"{R['inletDecimals']}.1.1.{_stype}"] = ("66", str(_dec))
                     updates[f"{R['outletValue']}.1.1.{ST['current']}"] = ("66", str(int(round(_pdu_amps * 1000))))
                     updates[f"{R['outletState']}.1.1.{ST['onOff']}"]   = ("2", str(SS["on"] if pdu_out == 1 else SS["off"]))
-                    updates[f"{R['ocpState']}.1.1.{ST['trip']}"]       = ("2", str(SS["open"] if pdu_brk != 1 else SS["closed"]))
+                    # Each overcurrent protector carries the bank behind it
+                    # (the store sums its outlets), judged against its own
+                    # rating: warning from 80 % (continuous load), critical
+                    # at the rating. A strip whose breaker is open reads
+                    # every protector tripped, as the single row did before.
+                    _n_ocp = _raritan_ocp_count(device)
+                    _ocp_a = _dm.pdu_bank_breaker_a(getattr(device, "model_name", "") or "")
+                    _bk_list = list(ext.get("pdu_bank_current") or [])
+                    for _o in range(1, _n_ocp + 1):
+                        _o_amps = (_bk_list[_o - 1] if len(_bk_list) == _n_ocp
+                                   else _pdu_amps / _n_ocp)
+                        if pdu_brk != 1:
+                            _o_amps = 0.0
+                        _o_pct = 100.0 * _o_amps / _ocp_a if _ocp_a else 0.0
+                        _o_state = (SS["aboveUpperCritical"] if _o_pct >= 100 else
+                                    SS["aboveUpperWarning"] if _o_pct >= 80 else SS["normal"])
+                        updates[f"{R['ocpValue']}.1.{_o}.{ST['current']}"] = ("66", str(int(round(_o_amps * 1000))))
+                        updates[f"{R['ocpState']}.1.{_o}.{ST['current']}"] = ("2", str(_o_state))
+                        updates[f"{R['ocpState']}.1.{_o}.{ST['trip']}"]    = ("2", str(SS["open"] if pdu_brk != 1 else SS["closed"]))
                     # DPX2 probes on the PDU's sensor port.
                     updates.update(self._pdu_probe_updates(device, pdu_temp_x10,
                                                            pdu_hum_x10))
@@ -2081,7 +2109,22 @@ class SNMPRecGenerator:
             rows += [
                 _oid_entry(f"{R['outletValue']}.1.1.{ST['current']}", "66", "10000"),
                 _oid_entry(f"{R['outletState']}.1.1.{ST['onOff']}",   "2",  str(SS["on"])),
-                _oid_entry(f"{R['ocpState']}.1.1.{ST['trip']}",       "2",  str(SS["closed"])),
+            ]
+            # One overcurrent protector per outlet bank, and none on a strip
+            # fed at or below what one receptacle group may carry - the same
+            # listing rule the APC bank breakers follow. A 32 A PX3-5503U is
+            # two 16 A breakers, labelled C1 and C2 on the faceplate.
+            _ocp_a = int(_dm.pdu_bank_breaker_a(getattr(device, "model_name", "") or ""))
+            for _o in range(1, _raritan_ocp_count(device) + 1):
+                rows += [
+                    _oid_entry(f"{R['ocpLabel']}.1.{_o}",        "4",  f"C{_o}"),
+                    _oid_entry(f"{R['ocpRatedCurrent']}.1.{_o}", "4",  f"{_ocp_a}A"),
+                    _oid_entry(f"{R['ocpValue']}.1.{_o}.{ST['current']}",    "66", "5000"),
+                    _oid_entry(f"{R['ocpState']}.1.{_o}.{ST['current']}",    "2",  str(SS["normal"])),
+                    _oid_entry(f"{R['ocpDecimals']}.1.{_o}.{ST['current']}", "66", "3"),
+                    _oid_entry(f"{R['ocpState']}.1.{_o}.{ST['trip']}",       "2",  str(SS["closed"])),
+                ]
+            rows += [
                 _oid_entry(f"{R['pduName']}.1",   "4", device.name),
                 _oid_entry(f"{R['pduModel']}.1",  "4", getattr(device, "model_name", "") or "PX3"),
                 _oid_entry(f"{R['pduSerial']}.1", "4", device_serial(device)),

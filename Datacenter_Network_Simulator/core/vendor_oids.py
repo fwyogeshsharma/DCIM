@@ -193,6 +193,13 @@ RARITAN = {
     "unitState":        "1.3.6.1.4.1.13742.6.5.1.3.1.3",     # measurementsUnitSensorState
     "ocpValue":         "1.3.6.1.4.1.13742.6.5.3.3.1.4",     # measurementsOverCurrentProtectorSensorValue
     "ocpState":         "1.3.6.1.4.1.13742.6.5.3.3.1.3",     # ...SensorState
+    # overCurrentProtectorConfigurationTable [pduId][ocpIndex] and its sensor
+    # configuration table [pduId][ocpIndex][sensorType]. VERIFIED against
+    # PDU2-MIB on mibs.observium.org 2026-10-28. RatedCurrent is a
+    # DisplayString, not a number - a poller has to read the figure out of it.
+    "ocpLabel":         "1.3.6.1.4.1.13742.6.3.4.3.1.2",     # overCurrentProtectorLabel
+    "ocpRatedCurrent":  "1.3.6.1.4.1.13742.6.3.4.3.1.5",     # overCurrentProtectorRatedCurrent
+    "ocpDecimals":      "1.3.6.1.4.1.13742.6.3.4.4.1.7",     # overCurrentProtectorSensorDecimalDigits
     # Raritan readings are unsigned integers scaled by the sensor's own
     # decimal-digits attribute, so a poller MUST be able to read that attribute
     # too — emitting the value alone would leave 23.5 °C indistinguishable
