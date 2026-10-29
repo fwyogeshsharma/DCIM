@@ -980,6 +980,10 @@ class SNMPRecGenerator:
                     "2", str(int(round((device.inlet_temp or 22.0) * 10))))
                 updates["1.3.6.1.2.1.99.1.1.1.4.2"] = (
                     "2", str(int(round((device.cpu_temp or 45.0) * 10))))
+                # ...and the supplies' input power, which follows the CPU the
+                # way the Redfish figure on a server does.
+                for _i, _w in enumerate(self._psu_input_watts(device), 1):
+                    updates[f"1.3.6.1.2.1.99.1.1.1.4.{2 + _i}"] = ("2", str(_w))
 
             # CISCO-ENVMON-MIB temperature — Cisco switches / routers
             _CISCO_NET = (DeviceType.SWITCH, DeviceType.ROUTER,
@@ -3222,7 +3226,54 @@ class SNMPRecGenerator:
                        str(int(round((device.cpu_temp or 45.0) * 10)))),
             _oid_entry(f"{_ENTITY_SENSOR}.5.1", "2", "1"),   # status: ok
             _oid_entry(f"{_ENTITY_SENSOR}.5.2", "2", "1"),
-        ]
+        ] + self._network_psu_entries(device)
+
+    @staticmethod
+    def _psu_input_watts(device: "Device") -> List[int]:
+        """Input power per supply, W, for a box that reports its own draw.
+
+        The chassis draw is the Redfish figure (idle floor plus a CPU-driven
+        share of nameplate), split evenly over the supplies fitted - a 1+1
+        pair shares the load in current-sharing mode, which is how every
+        modern switch PSU runs. A box with no supplies modelled reports one
+        input carrying all of it.
+        """
+        from core.redfish_data_generator import _live_watts
+        watts = int(_live_watts(device))
+        n = max(1, len(getattr(device, "psus", None) or []))
+        share, rem = divmod(watts, n)
+        return [share + (1 if i < rem else 0) for i in range(n)]
+
+    @classmethod
+    def _network_psu_entries(cls, device: "Device") -> List[OidEntry]:
+        """One ENTITY-SENSOR row per power supply, in watts, after the two
+        temperatures: index 3 is PSU1's input, 4 is PSU2's.
+
+        This is the vendor-neutral place a switch says what it draws. NX-OS,
+        EOS, Junos and IOS-XE all list their supplies in entPhySensorTable
+        with entPhySensorType watts(6), one row per PSU input (and often one
+        per output), named in ENTITY-MIB; Cisco adds CISCO-ENTITY-FRU-CONTROL
+        beside it. A DCIM that reads these sums the inputs for the chassis
+        draw, which is exactly what the rack load on the Power page wants and
+        what a metered-by-outlet strip would otherwise have to supply.
+
+        Full rows - type, scale, precision, value, status - because a poller
+        finds these by walking the table and filtering on the type column; the
+        two temperatures above are read at fixed indices and never needed one.
+        """
+        rows: List[OidEntry] = []
+        for i, w in enumerate(cls._psu_input_watts(device), 1):
+            idx = 2 + i
+            rows += [
+                _oid_entry(f"{_ENTITY_SENSOR}.1.{idx}", "2", "6"),        # type: watts
+                _oid_entry(f"{_ENTITY_SENSOR}.2.{idx}", "2", "9"),        # scale: units
+                _oid_entry(f"{_ENTITY_SENSOR}.3.{idx}", "2", "0"),        # precision: whole W
+                _oid_entry(f"{_ENTITY_SENSOR}.4.{idx}", "2", str(w)),     # value
+                _oid_entry(f"{_ENTITY_SENSOR}.5.{idx}", "2", "1"),        # status: ok
+                # ENTITY-MIB entPhysicalName, so a walk can tell PSU1 from PSU2.
+                _oid_entry(f"1.3.6.1.2.1.47.1.1.1.1.7.{idx}", "4", f"PSU{i} input power"),
+            ]
+        return rows
 
     def _sensor_entries(self, device: Device) -> List[OidEntry]:
         """Return vendor-specific OIDs for temp, humidity, dewpoint, and airflow."""

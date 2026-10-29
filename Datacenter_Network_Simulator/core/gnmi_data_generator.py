@@ -382,6 +382,39 @@ class GNMIDataGenerator:
             },
         ]
 
+        # One POWER_SUPPLY component per supply fitted, carrying the
+        # openconfig-platform-psu augmentation: input and output power, the
+        # input voltage and the supply's capacity. The chassis draw is split
+        # over the supplies the way the SNMP ENTITY-SENSOR rows split it, so
+        # the two planes agree to the watt. Output is input less the supply's
+        # conversion loss (a Platinum-class 94 %). Input voltage is the site's
+        # 230 V line-to-neutral; this builder has no topology to read the
+        # feeding outlet from, which is what the Redfish power() does.
+        from core.snmprec_generator import SNMPRecGenerator
+        psus = getattr(device, "psus", None) or []
+        for i, w in enumerate(SNMPRecGenerator._psu_input_watts(device), 1):
+            cap = int(getattr(psus[i - 1], "capacity_w", 0) or 0) if i <= len(psus) else 0
+            components.append({
+                "name":   f"PSU{i}",
+                "config": {"name": f"PSU{i}"},
+                "state": {
+                    "name":        f"PSU{i}",
+                    "type":        "openconfig-platform-types:POWER_SUPPLY",
+                    "description": f"Power supply {i}",
+                    "oper-status": "openconfig-platform-types:ACTIVE",
+                },
+                "power-supply": {
+                    "state": {
+                        "enabled":       True,
+                        "capacity":      float(cap) if cap else None,
+                        "input-voltage": 230.0,
+                        "input-current": round(w / 230.0, 2),
+                        "input-power":   float(w),
+                        "output-power":  round(w * 0.94, 1),
+                    },
+                },
+            })
+
         return {"component": components}
 
     # ------------------------------------------------------------------ #
