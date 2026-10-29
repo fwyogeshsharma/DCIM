@@ -89,11 +89,22 @@ TARGETS = {
     # budget at ~600W/server, which nothing else here has. It replaces a pair that was
     # fabricated on both sides: the AP8865 is really an 8.6 kW strip (it would OVERLOAD
     # by 5.9 kW on an A/B failover of these racks), and the PX3-5878 really carries 6 C13.
-    ("hall",  3): ("APC AP8886",        "APC by Schneider Electric"),
+    # 2026-10-29: the AP8886 is a Metered unit - inlet, legs and banks, no current
+    # transformer behind its receptacles - so the compute rows could never show a
+    # per-outlet current. The PX3-5730V-V2 is the datasheet-verified 3-phase 32 A
+    # 400 V unit that meters each receptacle (22.2 kVA, 24 C13 + 12 C19). It gives
+    # up six C13 against the AP8886; the densest strip here carries 19. The halls
+    # are now Raritan end to end, which is how a room is bought; the APC MIB stays
+    # exercised on the Network Room and Central Plant strips.
+    ("hall",  3): ("Raritan PX3-5730V-V2", "Raritan"),
     # Hall network rows: ~0.3 kW. The 5 kW 1-phase strip is right-sized; a 22 kW 3-phase
     # one there would be absurd.
-    ("hall",  1): ("Raritan PX2-5170CR", "Raritan"),
-    ("other", 1): ("APC AP8941",         "APC by Schneider Electric"),  # Network Room / Central Plant
+    # 2026-10-23: the 208 V strips left a 230/400 V site - the hall network rows
+    # went PX2-5170CR -> PX3-5503U and the Network Room / Central Plant AP8941 ->
+    # AP8953 (both 32 A 230 V 1-phase, 21 C13 + 3 C19). This table lagged that
+    # swap until 2026-10-29 and would have rolled it back.
+    ("hall",  1): ("Raritan PX3-5503U", "Raritan"),
+    ("other", 1): ("APC AP8953",        "APC by Schneider Electric"),  # Network Room / Central Plant
 }
 
 

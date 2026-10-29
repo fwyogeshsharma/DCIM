@@ -477,6 +477,7 @@ MODEL_SYSDESCR = {
     "Raritan PX3-5161R":  "Raritan PX3 Rack PDU, 1U, 16A, 208V, (12)C13&(4)C19, fw 3.7.0",
     "Raritan PX2-5170CR": "Raritan PX2 Rack PDU, 0U, 30A, 208V, (24)C13&(6)C19, fw 3.5.20",
     "Raritan PX3-5503U":  "Raritan PX3 Rack PDU, 0U, 32A, 230V, (21)C13&(3)C19, fw 3.7.0",
+    "Raritan PX3-5730V-V2": "Raritan PX3 Rack PDU, 0U, 32A, 400V 3-phase, (24)C13&(12)C19, fw 4.0.20",
     # Eaton ePDU G3
     "Eaton ePDU G3 MA 1U 16A":  "Eaton ePDU G3 Managed, 1U, 16A, 230V, (12)C13&(4)C19, fw 3.0.8",
     "Eaton ePDU G3 MA 1U 32A":  "Eaton ePDU G3 Managed, 1U, 32A, 230V, (18)C13&(6)C19, fw 3.0.8",
@@ -678,6 +679,7 @@ MODEL_SYSDESCR = {
     "Dell N1148T-ON":          "Dell EMC Networking N1148T-ON, DNOS 6.5.1.9, 48-port GbE + 4-port SFP+",
     "Dell N1124T-ON":          "Dell EMC Networking N1124T-ON, DNOS 6.5.1.9, 24-port GbE + 4-port SFP+",
     # Environmental Sensors
+    "Raritan DPX2-T1":    "Raritan DPX2 Environmental Sensor, 1x temperature, fw 3.7.0",
     "Raritan DPX2-T1H1":  "Raritan DPX2 Environmental Sensor, 1x temperature, 1x humidity, fw 3.7.0",
     "Raritan DPX2-T3H1":  "Raritan DPX2 Environmental Sensor, 3x temperature, 1x humidity, fw 3.7.0",
     "Raritan DPX2-CC2":   "Raritan DPX2 Contact Closure Sensor, 2x contact closure (water rope + temp probe), fw 3.7.0",
@@ -719,6 +721,7 @@ MODEL_SYSOID = {
     "Raritan PX3-5161R":  "1.3.6.1.4.1.13742.6.3.2.22",
     "Raritan PX2-5170CR": "1.3.6.1.4.1.13742.6.3.2.14",
     "Raritan PX3-5503U":  "1.3.6.1.4.1.13742.6.3.2.23",
+    "Raritan PX3-5730V-V2": "1.3.6.1.4.1.13742.6.3.2.29",
     # Schneider Electric enterprise root (IANA PEN 3833). It was falling through to
     # VENDOR_SYSOID's "1.3.6.1.4.1.0.0" placeholder, which is not an assignable OID
     # at all - a discovery tool matching on it learns nothing and may well treat the
@@ -779,6 +782,7 @@ MODEL_SYSOID = {
     "Dell N1124T-ON":          "1.3.6.1.4.1.674.10895.5001",
     # Environmental Sensor OIDs
     "Raritan DPX2-T1H1":  "1.3.6.1.4.1.13742.8.1.1",
+    "Raritan DPX2-T1":    "1.3.6.1.4.1.13742.8.1.4",
     "Raritan DPX2-T3H1":  "1.3.6.1.4.1.13742.8.1.2",
     "Raritan DPX2-CC2":   "1.3.6.1.4.1.13742.8.1.3",
     "Vertiv Geist GTHD":  "1.3.6.1.4.1.21239.5.2.1",
@@ -814,6 +818,7 @@ SERVER_OS_INFO = {
 PROBE_CHANNELS = {
     "Raritan DPX2-T3H1": ("inlet", "mid", "outlet", "humidity"),
     "Raritan DPX2-T1H1": ("inlet", "humidity"),
+    "Raritan DPX2-T1": ("inlet",),
     "Raritan DPX2-CC2": ("water", "inlet"),
     "APC AP9335TH": ("inlet", "humidity"),
     "APC AP9335T": ("inlet",),
@@ -1018,6 +1023,15 @@ PDU_OUTLET_CATALOG = {
     # metered + outlet switching. Chosen over an APC strip because PX3 hosts the
     # DPX2 probes these racks carry.
     "Raritan PX3-5503U": (21,  3, 1, 32, 230),
+    # VERIFIED - Raritan spec sheet PX3-5730V-V2 rev20250625 (cdn.raritan.com
+    # product-selector): "400V, 3Φ Wye, 32A, 22.2kVA", input IEC 60309 3P+N+E 6h
+    # 32A, nominal 400 V 3-phase (380-415 V), "(24) IEC320 C13, 10A / (12) IEC320
+    # C19, 16A", metering per input line, per branch circuit breaker AND per
+    # output receptacle, remote outlet switching. The compute-rack strip: the
+    # only verified 3-phase 32 A unit here that meters each receptacle. Its 24
+    # C13 bind an all-1U rack at 24 loads (the AP8886 it replaces had 30); the
+    # fleet's densest strip carries 19, so nothing is stranded today.
+    "Raritan PX3-5730V-V2": (24, 12, 3, 32, 400),
     "Raritan PX3-5878":  (24, 12, 3, 32, 415),
     "Raritan PX3-5190R": (24,  6, 1, 30, 208),
     "Raritan PX3-5161R": (12,  4, 1, 16, 208),
@@ -1375,6 +1389,7 @@ _MODEL_RATED_W = {
     # strips are not de-rated to 80 % the way NEC 210.20(A) rates North American ones.
     "ap8953":        7360,   # APC Switched ZeroU, 32A 230V 1-phase (IEC 309 2P+E)
     "px3-5503u":     7360,   # Raritan 0U, 32A 230V 1-phase, 7.4 kVA (UNVERIFIED)
+    "px3-5730v":    22200,   # Raritan 0U, 32A 400V 3-phase, 22.2 kVA (spec sheet rev20250625)
     "px3-5878":     22000,   # UNVERIFIED — real unit looks like 6xC13/18xC19 @415V, not this
     "ap8959":        8600,   # UNVERIFIED
     "ap8681":        3700,   # APC Metered-by-Outlet 1U, 16A 230V single-phase
@@ -1499,6 +1514,7 @@ _MODEL_PHASES_BREAKER: dict[str, tuple[int, float]] = {
     "ap8941":       (1, 30.0),   # 4992 VA, 208 V 1-phase, L6-30P
     "ap8953":       (1, 32.0),   # 7.4 kVA, 230 V 1-phase, IEC 309 32 A
     "px3-5503u":    (1, 32.0),   # 7.4 kVA, 230 V 1-phase (UNVERIFIED)
+    "px3-5730v":    (3, 32.0),   # 22.2 kVA, 400 V 3-phase, 32 A/phase (spec sheet)
     "ap8959":       (1, 30.0),   # 208 V 1-phase 30 A
     "ap8681":       (1, 16.0),   # 3.7 kW, 230 V 1-phase 16 A
     "px3-5878":     (3, 32.0),   # UNVERIFIED — rating unconfirmed, see above
@@ -1536,6 +1552,7 @@ _MODEL_OUTLET_SWITCHING: dict[str, bool] = {
     "ap8941":            True,   # APC Switched ZeroU
     "ap8953":            True,   # APC Switched ZeroU
     "px3-5503u":         True,   # Raritan, outlet switching per the listing
+    "px3-5730v":         True,   # Raritan PX3-5xxx, "Remote Outlet Switching: Yes" (spec sheet)
     "ap8959":            True,   # APC Switched 1U
     "px2-5170cr":        True,   # Raritan Switched 0U
     "px3-5878":          True,   # Raritan Switched 0U
@@ -1592,6 +1609,7 @@ _MODEL_OUTLET_METERING: dict[str, bool] = {
     "ap8681":            True,   # APC Metered-by-Outlet ZeroU
     "ap8653":            True,   # APC Metered-by-Outlet with Switching ZeroU (32 A 230 V)
     "px3-5503u":         True,   # Raritan PX3-5xxx: outlet metered + switched
+    "px3-5730v":         True,   # Raritan PX3-5730V-V2, "Metering per Output Receptacle: Yes" (spec sheet)
     "px3-5878":          True,   # Raritan PX3-5xxx
     "px3-5190r":         True,   # Raritan PX3-5xxx
     "px3-5161r":         True,   # Raritan PX3-5xxx

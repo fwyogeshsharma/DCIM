@@ -84,7 +84,7 @@ export const MODELS: Record<string, string[]> = {
   'ups:Eaton':                   ['Eaton 5PX 2200','Eaton 9PX 5000','Eaton 9E 20kVA','Eaton 93E 40kVA'],
   'ups:Vertiv (Liebert)':        ['Vertiv Liebert GXT5 2000VA','Vertiv Liebert EXL S1 20kVA','Vertiv Liebert APS 20kVA'],
   'pdu:APC by Schneider Electric': ['APC AP8953','APC AP8941','APC AP8886','APC AP8959','APC AP8681'],
-  'pdu:Raritan':                 ['Raritan PX3-5503U','Raritan PX3-5190R','Raritan PX3-5161R','Raritan PX2-5170CR'],
+  'pdu:Raritan':                 ['Raritan PX3-5730V-V2','Raritan PX3-5503U','Raritan PX3-5190R','Raritan PX3-5161R','Raritan PX2-5170CR'],
   'pdu:Eaton':                   ['Eaton ePDU G3 MA 1U 16A','Eaton ePDU G3 MA 1U 32A','Eaton ePDU G3 MI 1U 32A'],
   'pdu:Vertiv (Liebert)':        ['Vertiv Geist rPDU2 15A','Vertiv Geist rPDU2 30A'],
   'pdu:Server Technology':       ['Sentry PT40','Sentry 4805-XLS'],
@@ -110,7 +110,7 @@ export const MODELS: Record<string, string[]> = {
   'oob_switch:Cisco Systems':    ['Cisco Catalyst 1000-48T','Cisco Catalyst 1000-24T'],
   'oob_switch:Hewlett Packard Enterprise': ['HPE Aruba 2530-48G','HPE Aruba 2530-24G'],
   'oob_switch:Dell Technologies': ['Dell N1148T-ON','Dell N1124T-ON'],
-  'sensor:Raritan':              ['Raritan DPX2-T1H1','Raritan DPX2-T3H1'],
+  'sensor:Raritan':              ['Raritan DPX2-T1H1','Raritan DPX2-T1','Raritan DPX2-T3H1'],
   'sensor:Vertiv (Liebert)':     ['Vertiv Geist GTHD','Vertiv Geist IMD-3'],
   'sensor:APC by Schneider Electric': ['APC NetBotz 250','APC NetBotz 355'],
 }
