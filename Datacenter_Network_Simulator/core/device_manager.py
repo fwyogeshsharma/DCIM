@@ -1237,6 +1237,25 @@ _MODEL_NAMEPLATE_W = {
     "power system s922": 1000,  # 2U 2S POWER9
     "x3850 x6":          1400,  # 4U 4S
     "flexsystem x240":    450,  # 2S blade
+    # ── Network gear (2026-10-29) ──
+    # Until now every switch fell through to the 250 W type default, a ToR-
+    # class guess that sat on a 64 x 100G spine and on a 48-port access switch
+    # alike. These are the vendors' own "typical" figures - the draw at
+    # representative load, which is what this table means by nameplate
+    # (the sim runs a box between 55 % and 100 % of it) - with the maximum
+    # noted beside them for anyone sizing a breaker rather than a budget.
+    "nexus 9364c":       429,   # Cisco data sheet c78-739886: typical 429 W, max 1245 W, 1200 W PSUs
+    "nexus 93180yc-fx":  260,   # Cisco data sheet c78-742284: typical 260 W, max 425 W
+    "s5248f":            310,   # Dell spec / STH review: typical 310 W, max 647 W
+    "z9264f":            900,   # Dell Z9264F-ON install guide: typical 900 W, max 1104 W
+    "pa-5220":           870,   # PA-5200 series electrical spec: 870 W (series-wide), 2 x 1100 W PSUs
+    "big-ip i5800":      265,   # F5 i5000 platform guide: typical 265 W at 50 % load, max 325 W
+    "asr 1001-x":        250,   # Cisco ASR 1001-X HIG: maximum 250 W (AC); 250 W PSUs
+    "isr 4431":          250,   # Cisco data sheet (reseller copy): max 250 W without PoE; typical 65 W bare
+    "catalyst 1000-48t":  54,   # Cisco data sheet (reseller copy): 53.66 W at 100 % traffic
+    "catalyst 9300-48t":  90,   # UNVERIFIED: 350 W PSU; an older Cisco table measured 72 W at full traffic
+    "n1148t":             30,   # Dell N1100 series page: max 30.18 W
+    "n3248te":           212,   # Dell N3248TE-ON spec sheet: max 212 W
     # ── Cooling plant ──
     # These are MOTOR / COMPRESSOR nameplates off the spec sheet, not the tiny
     # placeholder values the curated topology used to carry (a 7.3 kW "800 kW
