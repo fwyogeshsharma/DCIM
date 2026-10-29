@@ -29,14 +29,16 @@ def _rows(pdu, topo):
 
 @pytest.fixture
 def rack():
-    """One AP8941 (21 C13 + 3 C19), three 1U servers on C13s, one big box on a C19.
+    """One PX3-5503U (21 C13 + 3 C19, metered by outlet), three 1U servers on C13s,
+    one big box on a C19.
 
     The big box is named so it sorts FIRST — under name-ranked numbering it landed on
-    outlet 1, which is a C13 it physically cannot plug into.
+    outlet 1, which is a C13 it physically cannot plug into. A metered-by-outlet SKU,
+    because the current and power columns exist only on one.
     """
     topo = TopologyEngine()
     pdu = Device(name="PDUA-DC1-HA-R1-01", device_type=DeviceType.PDU,
-                 vendor=Vendor.APC, model_name="APC AP8941", ip_address="10.1.1.1")
+                 vendor=Vendor.RARITAN, model_name="Raritan PX3-5503U", ip_address="10.1.1.1")
     topo.add_device(pdu)
 
     loads = []
@@ -62,7 +64,7 @@ def test_every_receptacle_is_published(rack):
     topo, pdu, _big, _srv = rack
     rows = _rows(pdu, topo)
     assert sorted(rows) == [o.index for o in pdu.outlets]
-    assert len(rows) == 24, "AP8941 is a 24-outlet strip"
+    assert len(rows) == 24, "PX3-5503U is a 24-outlet strip"
 
 
 def test_row_index_is_the_outlet_the_cord_lands_on(rack):
@@ -93,7 +95,7 @@ def test_dual_corded_load_splits_its_draw_across_both_strips(rack):
     single = int(_rows(pdu_a, topo)[1]["5"])
 
     pdu_b = Device(name="PDUB-DC1-HA-R1-01", device_type=DeviceType.PDU,
-                   vendor=Vendor.APC, model_name="APC AP8941", ip_address="10.1.1.2")
+                   vendor=Vendor.RARITAN, model_name="Raritan PX3-5503U", ip_address="10.1.1.2")
     topo.add_device(pdu_b)
     topo.add_link(pdu_b.id, srv.id, layer="power",
                   outlet=topo.next_free_outlet(pdu_b.id, "C13"), psu=2)
@@ -103,3 +105,22 @@ def test_dual_corded_load_splits_its_draw_across_both_strips(rack):
         "charging the full chassis draw to the outlet on BOTH strips double-counts "
         "the rack"
     )
+
+
+def test_a_strip_without_outlet_cts_publishes_no_current_column(rack):
+    """A Metered AP8886 and a Switched AP8953 have no current transformer behind
+    their receptacles. Their outlet table carries index, name and state and
+    stops - a figure in the current column would be a measurement the hardware
+    cannot make, and a consumer could not tell it from a real one."""
+    topo, _pdu, _big, srv = rack
+    for model, vendor in (("APC AP8886", Vendor.APC), ("APC AP8953", Vendor.APC)):
+        strip = Device(name=f"PDUC-{model[-6:]}", device_type=DeviceType.PDU,
+                       vendor=vendor, model_name=model, ip_address="10.1.1.9")
+        topo.add_device(strip)
+        topo.add_link(strip.id, srv.id, layer="power",
+                      outlet=topo.next_free_outlet(strip.id, "C13"), psu=2)
+        rows = _rows(strip, topo)
+        assert len(rows) == len(strip.outlets), model
+        assert all(set(r) == {"1", "2", "3"} for r in rows.values()), (
+            f"{model}: an outlet row carries a current/power column it cannot measure")
+        topo.remove_device(strip.id) if hasattr(topo, "remove_device") else None

@@ -1177,6 +1177,9 @@ class SNMPRecGenerator:
                 pdu_smk  = 1 if ext.get("pdu_smoke", "no") == "no" else 2
                 pdu_cur  = int(round(ext.get("pdu_outlet_current", 10.0) * 10))
                 pdu_gf   = 1 if ext.get("pdu_ground_fault", "no") == "no" else 2
+                # Which receptacles have their relay open, read here so the
+                # vendor rows below and the synthetic table after them agree.
+                _pdu_ol_off_now = {int(o) for o in (ext.get("pdu_outlets_off") or [])}
                 # Vendors with a verified MIB publish on their own tree instead
                 # (below); a device that says "APC Rack PDU 2G" in sysDescr must
                 # not also answer on a placeholder enterprise tree.
@@ -1317,8 +1320,14 @@ class SNMPRecGenerator:
                         updates[f"{R['inletValue']}.1.1.{_stype}"]    = ("66", str(max(0, _val)))
                         updates[f"{R['inletState']}.1.1.{_stype}"]    = ("2",  str(_state))
                         updates[f"{R['inletDecimals']}.1.1.{_stype}"] = ("66", str(_dec))
-                    updates[f"{R['outletValue']}.1.1.{ST['current']}"] = ("66", str(int(round(_pdu_amps * 1000))))
-                    updates[f"{R['outletState']}.1.1.{ST['onOff']}"]   = ("2", str(SS["on"] if pdu_out == 1 else SS["off"]))
+                    # outletSensorMeasurementsTable [pdu][outlet][sensorType]:
+                    # a current (and the power it implies) per RECEPTACLE on
+                    # a metered-by-outlet unit, following the load plugged
+                    # into it; the on/off sensor on every outlet a switched
+                    # unit has. A unit with neither tier publishes no outlet
+                    # rows, as its agent would not.
+                    updates.update(self._raritan_outlet_updates(device, ext, pdu_volt,
+                                                                pdu_out, _pdu_ol_off_now))
                     # Each overcurrent protector carries the bank behind it
                     # (the store sums its outlets), judged against its own
                     # rating: warning from 80 % (continuous load), critical
@@ -1429,6 +1438,11 @@ class SNMPRecGenerator:
                 _ol_cur_pfx  = _PDU_OUTLET_ENT + ".4."
                 _ol_pwr_pfx  = _PDU_OUTLET_ENT + ".5."
                 _ol_off      = _is_pdu and _pdu_ol_out == 2
+                # Live per-receptacle current from the store, {outlet: A}. The
+                # rows exist only on a metered-by-outlet SKU, so a strip that
+                # has none simply never matches below.
+                _ol_amps     = (ext.get("pdu_outlet_amps") or {}) if _is_pdu else {}
+                _ol_volt     = float(ext.get("pdu_voltage", 230.0) or 230.0) if _is_pdu else 230.0
 
                 # hrProcessorLoad is a TABLE with one row per core, written at
                 # generation time from the device's CPU. Patched here by prefix
@@ -1479,6 +1493,16 @@ class SNMPRecGenerator:
                                 _n = _ol_idx(oid, _pfx)
                                 if _ol_off or _n in _pdu_ol_off:
                                     patched.append(f"{oid}|2|0")
+                                    continue
+                                # ...and a live one follows the load the store
+                                # puts on it, where the store has read the
+                                # cords (a strip nothing is plugged into keeps
+                                # its generated figure).
+                                _a = _ol_amps.get(str(_n))
+                                if _a is not None:
+                                    _v = (int(round(float(_a) * 10)) if _pfx == _ol_cur_pfx
+                                          else int(round(float(_a) * _ol_volt)))
+                                    patched.append(f"{oid}|2|{_v}")
                                     continue
                     patched.append(line)
 
@@ -2108,10 +2132,11 @@ class SNMPRecGenerator:
                     _oid_entry(f"{R['inletState']}.1.1.{stype}",    "2",  str(SS["normal"])),
                     _oid_entry(f"{R['inletDecimals']}.1.1.{stype}", "66", str(dec)),
                 ]
-            rows += [
-                _oid_entry(f"{R['outletValue']}.1.1.{ST['current']}", "66", "10000"),
-                _oid_entry(f"{R['outletState']}.1.1.{ST['onOff']}",   "2",  str(SS["on"])),
-            ]
+            # One row per receptacle the tier allows: current (3 decimals,
+            # PDU2-MIB's outletSensorDecimalDigits says so) and active power
+            # on an outlet-metered unit, the on/off sensor on a switched one.
+            # Seeded at zero; the live patch puts the plugged load on it.
+            rows += self._raritan_outlet_rows(device)
             # One overcurrent protector per outlet bank, and none on a strip
             # fed at or below what one receptacle group may carry - the same
             # listing rule the APC bank breakers follow. A 32 A PX3-5503U is
@@ -2186,8 +2211,17 @@ class SNMPRecGenerator:
         de-power a receptacle because nothing is in it, and only a switched SKU can
         turn one off at all. It reads zero current, which is how a metered PDU reports
         an idle outlet.
+
+        The current and power columns exist only on a METERED-BY-OUTLET SKU
+        (device_manager.pdu_outlet_metering). A Metered AP8886 has no current
+        transformer behind its receptacles, and an agent that published a
+        figure there would be inventing a measurement the hardware cannot make;
+        its walk carries index, name and state and stops, which is how a
+        consumer tells "not metered" from "idle".
         """
         entries: List[OidEntry] = []
+        _metered = bool(_dm.pdu_outlet_metering(device.device_type,
+                                                getattr(device, "model_name", "") or ""))
         # Typical power draw (W) by device type — fallback when power_draw_w unset
         _DEFAULT_W = {
             DeviceType.SERVER: 450, DeviceType.SWITCH: 150, DeviceType.ROUTER: 300,
@@ -2219,9 +2253,12 @@ class SNMPRecGenerator:
                     _oid_entry(f"{_PDU_OUTLET_ENT}.1.{n}", "2", str(n)),
                     _oid_entry(f"{_PDU_OUTLET_ENT}.2.{n}", "4", f"Outlet {n}"),
                     _oid_entry(f"{_PDU_OUTLET_ENT}.3.{n}", "2", "1"),
-                    _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", "0"),
-                    _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", "0"),
                 ]
+                if _metered:
+                    entries += [
+                        _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", "0"),
+                        _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", "0"),
+                    ]
                 continue
 
             pwr_w = int(getattr(load, "power_draw_w", 0) or 0)
@@ -2254,9 +2291,12 @@ class SNMPRecGenerator:
                 # belongs here is the number printed on the strip.
                 _oid_entry(f"{_PDU_OUTLET_ENT}.2.{n}", "4", f"Outlet {n}"),
                 _oid_entry(f"{_PDU_OUTLET_ENT}.3.{n}", "2", "1"),           # status=on
-                _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", str(cur_x10)),  # current ×10 A
-                _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", str(pwr_w)),    # power W
             ]
+            if _metered:
+                entries += [
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.4.{n}", "2", str(cur_x10)),  # current ×10 A
+                    _oid_entry(f"{_PDU_OUTLET_ENT}.5.{n}", "2", str(pwr_w)),    # power W
+                ]
         return entries
 
     # ------------------------------------------------------------------ #
@@ -2881,6 +2921,86 @@ class SNMPRecGenerator:
                 _oid_entry(f"{ent}.7.{idx}", "4", child),        # entPhysicalName
             ]
         return entries
+
+    @staticmethod
+    def _raritan_outlet_tiers(device: Device) -> tuple:
+        """(metered, switched, outlet indices) for a Raritan strip's outlet table.
+
+        A unit with neither tier - or one the catalog has no receptacles for
+        - gets no outlet rows: PDU2-MIB's outletSensorMeasurementsTable is
+        empty on an inlet-metered PX3-1xxx, and a walk that found rows there
+        would be reading a different product.
+        """
+        model = getattr(device, "model_name", "") or ""
+        metered = bool(_dm.pdu_outlet_metering(device.device_type, model))
+        switched = bool(_dm.pdu_outlet_switching(device.device_type, model))
+        outlets = [int(o.index) for o in (getattr(device, "outlets", None) or [])]
+        if not outlets:
+            metered = switched = False
+        return metered, switched, outlets
+
+    @classmethod
+    def _raritan_outlet_rows(cls, device: Device) -> List[OidEntry]:
+        """Generation-time outlet rows for a Raritan strip (see _raritan_outlet_tiers)."""
+        R  = _vendor_oids.RARITAN
+        ST = _vendor_oids.RARITAN_SENSOR_TYPE
+        SS = _vendor_oids.RARITAN_SENSOR_STATE
+        metered, switched, outlets = cls._raritan_outlet_tiers(device)
+        rows: List[OidEntry] = []
+        for n in outlets:
+            if metered:
+                rows += [
+                    _oid_entry(f"{R['outletValue']}.1.{n}.{ST['current']}",       "66", "0"),
+                    _oid_entry(f"{R['outletState']}.1.{n}.{ST['current']}",       "2",  str(SS["normal"])),
+                    _oid_entry(f"{R['outletDecimals']}.1.{n}.{ST['current']}",    "66", "3"),
+                    _oid_entry(f"{R['outletValue']}.1.{n}.{ST['activePower']}",   "66", "0"),
+                    _oid_entry(f"{R['outletState']}.1.{n}.{ST['activePower']}",   "2",  str(SS["normal"])),
+                    _oid_entry(f"{R['outletDecimals']}.1.{n}.{ST['activePower']}", "66", "0"),
+                ]
+            if switched:
+                rows.append(_oid_entry(f"{R['outletState']}.1.{n}.{ST['onOff']}", "2", str(SS["on"])))
+        return rows
+
+    @classmethod
+    def _raritan_outlet_updates(cls, device: Device, ext: dict, volt: float,
+                                strip_on: int, outlets_off: set) -> dict:
+        """Live values for the rows _raritan_outlet_rows laid down.
+
+        Current is the store's per-receptacle figure (pdu_outlet_amps, A) in
+        mA; power is that current at the strip's voltage and power factor.
+        The per-outlet state is judged against the receptacle's own rating
+        (a C13 is a 10 A device, a C19 16 A): warning from 80 %, critical at
+        the rating, as the PX3 ships configured. An outlet whose relay is open
+        - its own, or the whole strip's - reads off and 0 A.
+        """
+        R  = _vendor_oids.RARITAN
+        ST = _vendor_oids.RARITAN_SENSOR_TYPE
+        SS = _vendor_oids.RARITAN_SENSOR_STATE
+        metered, switched, outlets = cls._raritan_outlet_tiers(device)
+        if not outlets:
+            return {}
+        amps = ext.get("pdu_outlet_amps") or {}
+        pf = float(ext.get("pdu_power_factor", 0.95) or 0.95)
+        rated = {int(o.index): float(getattr(o, "rated_a", 10.0) or 10.0)
+                 for o in (getattr(device, "outlets", None) or [])}
+        tripped = {int(b) for b in (ext.get("pdu_banks_tripped") or [])}
+        bank_of = {int(o.index): int(getattr(o, "bank", 1) or 1)
+                   for o in (getattr(device, "outlets", None) or [])}
+        updates: dict = {}
+        for n in outlets:
+            off = strip_on != 1 or n in outlets_off or bank_of.get(n) in tripped
+            a = 0.0 if off else float(amps.get(str(n), 0.0) or 0.0)
+            if metered:
+                pct = 100.0 * a / rated.get(n, 10.0)
+                state = (SS["aboveUpperCritical"] if pct >= 100 else
+                         SS["aboveUpperWarning"] if pct >= 80 else SS["normal"])
+                updates[f"{R['outletValue']}.1.{n}.{ST['current']}"]     = ("66", str(int(round(a * 1000))))
+                updates[f"{R['outletState']}.1.{n}.{ST['current']}"]     = ("2",  str(state))
+                updates[f"{R['outletValue']}.1.{n}.{ST['activePower']}"] = ("66", str(int(round(a * volt * pf))))
+                updates[f"{R['outletState']}.1.{n}.{ST['activePower']}"] = ("2",  str(state))
+            if switched:
+                updates[f"{R['outletState']}.1.{n}.{ST['onOff']}"] = ("2", str(SS["off"] if off else SS["on"]))
+        return updates
 
     @staticmethod
     def _attached_probes(device: Device, topology=None) -> List[dict]:

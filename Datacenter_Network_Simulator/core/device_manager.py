@@ -1572,6 +1572,65 @@ def pdu_outlet_switching(device_type: "DeviceType",
     return None
 
 
+#: Whether a PDU SKU has a CURRENT TRANSFORMER BEHIND EACH RECEPTACLE - i.e.
+#: whether it can report per-outlet current at all.
+#:
+#: This is a tier the vendor sells, not a firmware option. APC's 2G line is
+#: Basic / Metered / Switched / Metered-by-Outlet / Metered-by-Outlet with
+#: Switching: a Metered AP8886 measures its inlet, its three legs and its six
+#: banks and has no rPDU2OutletMeteredStatusTable at all; a Switched AP8953
+#: has a relay and a state per outlet and no CT. Raritan's PX3 families run
+#: the same way - PX3-1xxx inlet metered, PX3-3xxx switched, PX3-4xxx outlet
+#: metered, PX3-5xxx outlet metered AND switched - and only the 4xxx/5xxx
+#: units populate outletSensorMeasurementsTable with a current row.
+#:
+#: Independent of the switching map above: AP8681 meters per outlet and cannot
+#: switch, AP8953 switches and cannot meter. None means the catalog does not
+#: know the SKU, which callers must not read as False.
+_MODEL_OUTLET_METERING: dict[str, bool] = {
+    # ── metered-by-outlet: a CT per receptacle ──
+    "ap8681":            True,   # APC Metered-by-Outlet ZeroU
+    "ap8653":            True,   # APC Metered-by-Outlet with Switching ZeroU (32 A 230 V)
+    "px3-5503u":         True,   # Raritan PX3-5xxx: outlet metered + switched
+    "px3-5878":          True,   # Raritan PX3-5xxx
+    "px3-5190r":         True,   # Raritan PX3-5xxx
+    "px3-5161r":         True,   # Raritan PX3-5xxx
+    "px2-5170cr":        True,   # Raritan PX2-5xxx: outlet metered + switched
+    "epdu g3 ma":        True,   # Eaton Managed: metered per outlet + switched
+    # ── no CT per outlet: inlet / leg / bank metering only ──
+    "ap8886":            False,  # APC Metered ZeroU
+    "ap8865":            False,  # APC Metered ZeroU
+    "ap8941":            False,  # APC Switched ZeroU - relays, no per-outlet CT
+    "ap8953":            False,  # APC Switched ZeroU
+    "ap8959":            False,  # APC Switched 1U
+    "epdu g3 mi":        False,  # Eaton Metered Input
+    # ── floor PDUs: breakers, not receptacles ──
+    "flexpdu":           False,
+    "eaton pdu":         False,
+    "px3-5000 floor":    False,
+}
+
+
+def pdu_outlet_metering(device_type: "DeviceType",
+                        model_name: str = "") -> bool | None:
+    """Does this SKU meter current per outlet? None when the catalog cannot say.
+
+    Substring-matched on the lowercased model name like the switching map.
+    A publisher (the SNMP agent, a Redfish PowerDistribution) reads True as
+    "emit one current row per receptacle" and anything else as "emit none":
+    a Metered strip's walk ends at its bank table, which is how the platform
+    tells an unmetered outlet from an idle one.
+    """
+    if device_type not in (DeviceType.PDU, DeviceType.FLOOR_PDU):
+        return None
+    m = (model_name or "").lower()
+    if m:
+        for key, metered in _MODEL_OUTLET_METERING.items():
+            if key in m:
+                return metered
+    return None
+
+
 def pdu_phases_breaker(device_type: "DeviceType",
                        model_name: str = "") -> tuple[int, float]:
     """(phases, per-phase breaker A) for a PDU SKU.

@@ -9022,6 +9022,53 @@ class DeviceStateStore:
             watts[bank_of.get(int(outlet), 1) - 1] += w / n
         return [round(w / (v_ln * pf), 2) for w in watts]
 
+    def _pdu_outlet_amps(self, device: "Device", st: dict) -> dict:
+        """RMS current per RECEPTACLE, {outlet index: A}, from the load on it.
+
+        The bank figure one level down: one outlet carries its load's share
+        of that load's own draw (half on a 1+1 pair, all of it when the other
+        supply is gone), over V(L-N) x PF. A receptacle whose relay is open,
+        or whose bank breaker has tripped, reads 0.0 - it is still a row, the
+        way an idle outlet is. Keys are strings because this rides the ext
+        wire as JSON. Returns {} when nothing is plugged in or the strip has
+        no outlets.
+
+        Every strip is modelled; only a metered-by-outlet SKU PUBLISHES it
+        (device_manager.pdu_outlet_metering) - the physics is there whether
+        or not the unit has a CT to read it with.
+        """
+        topo = self._topology
+        outlets = getattr(device, "outlets", None) or []
+        if topo is None or not outlets:
+            return {}
+        try:
+            loads = topo.outlet_loads(device.id)
+        except Exception:
+            return {}
+        if not loads:
+            return {}
+        v_ln = float(st.get("pdu_voltage", 230.0) or 230.0)
+        pf = max(0.5, float(st.get("pdu_power_factor", 0.95) or 0.95))
+        offs = {int(o) for o in (st.get("pdu_outlets_off") or [])}
+        tripped = {int(b) for b in (st.get("pdu_banks_tripped") or [])}
+        bank_of = {int(o.index): int(o.bank) for o in outlets}
+        ctx = self._power_context()
+        amps: dict = {}
+        for outlet, info in loads.items():
+            n = int(outlet)
+            lid = info.get("load_id")
+            if (not lid or n in offs or bank_of.get(n) in tripped
+                    or frozenset((lid, device.id)) in self._dead_cord_pairs):
+                amps[str(n)] = 0.0
+                continue
+            w = self._through_live.get(lid, 0.0)
+            if w <= 0.0:
+                amps[str(n)] = 0.0
+                continue
+            share = len(self._active_parents(lid, ctx)) or 1
+            amps[str(n)] = round(w / share / (v_ln * pf), 3)
+        return amps
+
     def _pdu_leg_currents(self, device: "Device", st: dict) -> list:
         """RMS current per leg of a rack strip, from what is plugged into it.
 
@@ -9673,6 +9720,11 @@ class DeviceStateStore:
                 self._step_bank_breakers(device, _banks_a)
             # What the strip's agent reports as open: the bank rows read it.
             st["pdu_banks_tripped"] = self.get_pdu_banks_tripped(device.id)
+            # Per receptacle, after the relays and breakers above have had
+            # their say, so an opened outlet or a tripped bank reads 0 A on
+            # the same tick the strip reports it.
+            if _legs:
+                st["pdu_outlet_amps"] = self._pdu_outlet_amps(device, st)
             if _legs:
                 st["pdu_leg_current"] = _legs
                 if len(_legs) >= 2:
