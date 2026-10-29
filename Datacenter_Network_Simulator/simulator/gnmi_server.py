@@ -267,6 +267,24 @@ def _walk_apply(node, metrics: dict, _iface: str = ""):
         node["max"]          = round(min(99.0, temp + random.uniform(1, 6)), 1)
         node["alarm-status"] = node["instant"] >= threshold
 
+    # ── platform power-supply/state (openconfig-platform-psu) ───────────
+    # The component name context names the supply ("PSU1"); its input is
+    # the store's per-PSU figure, output is input less the conversion loss,
+    # current follows at the published input voltage. A supply the store
+    # has no figure for keeps what it was generated with.
+    if {"input-power", "output-power"}.issubset(node):
+        psu_w = metrics.get("psu_input_w") or []
+        try:
+            n = int(str(_iface).upper().replace("PSU", "")) if str(_iface).upper().startswith("PSU") else 0
+        except ValueError:
+            n = 0
+        if 1 <= n <= len(psu_w):
+            w = float(psu_w[n - 1])
+            volts = float(node.get("input-voltage") or 230.0)
+            node["input-power"]   = w
+            node["output-power"]  = round(w * 0.94, 1)
+            node["input-current"] = round(w / volts, 2) if volts else node.get("input-current")
+
     # ── interface/state/counters ─────────────────────────────────────────
     if "in-octets" in node and "out-octets" in node:
         iface_data = metrics.get("interfaces", {}).get(_iface, {})

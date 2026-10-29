@@ -52,6 +52,24 @@ def test_the_draw_follows_the_cpu_like_a_server():
     assert w_idle < w_busy == 500, "nameplate at full load, an idle floor below it"
 
 
+def test_the_gnmi_server_moves_the_supplies_with_the_store():
+    """A generated document is a snapshot; the server rewrites it from the
+    store's metrics on every response, the PSU figures included - so the
+    gNMI stream and the SNMP walk say the same watts at the same moment."""
+    from simulator.gnmi_server import _walk_apply
+    topo = TopologyEngine()
+    sw = _switch(100.0); topo.add_device(sw)
+    doc = json.load(open(GNMIDataGenerator(tempfile.mkdtemp()).generate_device(sw, topo), encoding="utf-8"))
+    comps = doc["openconfig-platform:components"]
+    sw.cpu_usage = 0.0                                     # the box went idle since generation
+    live = SNMPRecGenerator._psu_input_watts(sw)
+    _walk_apply(comps, {"cpu_usage": 0.0, "cpu_temp": 40.0, "inlet_temp": 22.0, "psu_input_w": live})
+    psus = [c for c in comps["component"] if c["state"]["type"].endswith("POWER_SUPPLY")]
+    assert [c["power-supply"]["state"]["input-power"] for c in psus] == [float(w) for w in live]
+    assert psus[0]["power-supply"]["state"]["output-power"] == round(live[0] * 0.94, 1)
+    assert sum(live) < 500, "the generated figure was full load; the served one is idle"
+
+
 def test_gnmi_publishes_the_same_supplies_as_power_supply_components():
     topo = TopologyEngine()
     sw = _switch(); topo.add_device(sw)

@@ -1852,11 +1852,17 @@ class DeviceStateStore:
             uptime_ns = device.sys_uptime * 10_000_000  # centiseconds → ns
             self._boot_times[ip] = int(time.time() * 1e9) - uptime_ns
 
+        # The supplies' input power, W, one per PSU - the figure the SNMP
+        # ENTITY-SENSOR rows carry, so the gNMI POWER_SUPPLY components move
+        # with the same number every tick instead of the one they were
+        # generated with. Local import: the generator imports this module.
+        from core.snmprec_generator import SNMPRecGenerator
         return {
             "cpu_usage":    device.cpu_usage,
             "memory_total": device.memory_total,
             "memory_used":  device.memory_used,
             "boot_time_ns": self._boot_times[ip],
+            "psu_input_w":  SNMPRecGenerator._psu_input_watts(device),
             "cpu_temp":     device.cpu_temp,
             "inlet_temp":   device.inlet_temp,
             "outlet_temp":  device.outlet_temp,
