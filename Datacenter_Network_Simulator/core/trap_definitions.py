@@ -792,6 +792,17 @@ _SENSOR_MODEL_TRAPS: dict[str, list[TrapType]] = {
         TrapType.SENSOR_MID_TEMP_HIGH, TrapType.SENSOR_MID_TEMP_NORMAL,
         TrapType.SENSOR_OUTLET_TEMP_HIGH, TrapType.SENSOR_OUTLET_TEMP_NORMAL,
     ],
+    # One thermistor and one hygrometer on a PX sensor port: the strip raises
+    # temperature and humidity threshold traps for it, nothing else.
+    "Raritan DPX2-T1H1": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+        TrapType.HUMIDITY_ALERT,
+    ],
+    "Raritan DPX2-T1": [
+        TrapType.COLD_START, TrapType.AUTH_FAILURE,
+        TrapType.TEMPERATURE_ALERT,
+    ],
     "Raritan DPX2-CC2": [
         TrapType.COLD_START, TrapType.AUTH_FAILURE,
         TrapType.TEMPERATURE_ALERT,

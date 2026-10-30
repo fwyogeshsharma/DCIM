@@ -83,11 +83,28 @@ def point_span(point: str) -> Optional[tuple]:
     return None
 
 
+_EXT_BITS: Optional[frozenset] = None
+
+
+def _ext_bits() -> frozenset:
+    """The one-bit ext keys the BMS-trunk instruments publish (a door contact,
+    a fire panel's three relays, a tank's low-level switch). Read off the
+    Modbus maps once, lazily, so this module stays import-light."""
+    global _EXT_BITS
+    if _EXT_BITS is None:
+        from core.modbus_register_map import BIT_SPACES, PROBE_MAPS
+        _EXT_BITS = frozenset(p.key for m in PROBE_MAPS.values()
+                              for space in BIT_SPACES for p in m.points.get(space, ())
+                              if p.key and not p.presence_of)
+    return _EXT_BITS
+
+
 def is_binary(point: str) -> bool:
     p = point
     return (p.startswith("Alarm_") or p in ("Chiller_Running", "Run_Status", "Fan_Status",
                                              "Unit_Running", "Status_Modulating",
-                                             "Filter_Dirty"))
+                                             "Filter_Dirty")
+            or p in _ext_bits())
 
 
 def plant_sigma(dtype: str, point: str) -> float:

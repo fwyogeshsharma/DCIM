@@ -809,14 +809,14 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.24",
           severity="major", priority=175,
           device_types=["sensor"],
-          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
+          model_names=["Raritan DPX2-T3H1", "Raritan DPX2-T1H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     _rule("SensorCriticalHumidity",
           _threshold("humidity", ">", 80.0),
           "1.3.6.1.4.1.99999.1.25",
           severity="critical", priority=180,
           device_types=["sensor"],
-          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
+          model_names=["Raritan DPX2-T3H1", "Raritan DPX2-T1H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     # Separate from SensorHumidityNormal (the 30-70 band, which clears the major):
     # recovery_of names one alarm, and crossing 80 raised both. Clearing the critical
@@ -828,7 +828,7 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.34",
           severity="informational", priority=100,
           device_types=["sensor"],
-          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
+          model_names=["Raritan DPX2-T3H1", "Raritan DPX2-T1H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
           recovery=True, recovery_of="SensorCriticalHumidity"),
 
     _rule("SensorLowHumidity",
@@ -836,7 +836,7 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.26",
           severity="major", priority=175,
           device_types=["sensor"],
-          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
+          model_names=["Raritan DPX2-T3H1", "Raritan DPX2-T1H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"]),
 
     # Clears at 34, not 35, on purpose: the humidity walk is clamped to a 35-65 band
     # (the CRAC humidifier holds it there), so a released low-humidity injection lands
@@ -848,7 +848,7 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.35",
           severity="informational", priority=100,
           device_types=["sensor"],
-          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
+          model_names=["Raritan DPX2-T3H1", "Raritan DPX2-T1H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
           recovery=True, recovery_of="SensorLowHumidity"),
 
     _rule("SensorHumidityNormal",
@@ -860,7 +860,7 @@ DEFAULT_RULES: List[Rule] = [
           "1.3.6.1.4.1.99999.1.17",
           severity="informational", priority=100,
           device_types=["sensor"],
-          model_names=["Raritan DPX2-T3H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
+          model_names=["Raritan DPX2-T3H1", "Raritan DPX2-T1H1", "APC NetBotz 355", "APC NetBotz 250", "Vertiv Geist GTHD"],
           recovery=True, recovery_of="SensorHighHumidity"),
 
     # ── Dew-point alert (Vertiv Geist GTHD — condensation risk) ──────────────

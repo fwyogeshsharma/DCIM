@@ -110,6 +110,29 @@ ATTR_POINTS: Dict[str, List[str]] = {
     "server": ["inlet_temp", "outlet_temp", "cpu_temp", "fan_rpm"],
     "sensor": ["inlet_temp", "mid_temp", "outlet_temp", "humidity", "dewpoint"],
 }
+#: A rack probe serves the channels its model has and no others: a DPX2-T1 is
+#: one thermistor, a T1H1 adds a hygrometer, a T3H1 fills four slots. The
+#: catalogue follows core.device_manager.PROBE_CHANNELS; a model not listed
+#: there (Geist GTHD, NetBotz) keeps the full head, dew point included.
+_CHANNEL_ATTR = {"inlet": "inlet_temp", "mid": "mid_temp", "outlet": "outlet_temp",
+                 "humidity": "humidity"}
+
+#: The ext keys a device type's OWN renderer serves, by prefix. The store seeds
+#: every device's ext with the whole electrical template (ups_*, gen_*, mcc_*,
+#: util_* ...) so any renderer can read any key; the catalogue must not mistake
+#: that seed for instrumentation a door contact or a switch carries. A type not
+#: listed here has no ext instrumentation of its own.
+TYPE_EXT_PREFIX: Dict[str, tuple] = {
+    "ups": ("ups_",), "pdu": ("pdu_",), "floor_pdu": ("pdu_",),
+    "generator": ("gen_",), "ats": ("ats_",), "mcc": ("mcc_",), "mpp": ("mpp_",),
+    "switchgear": ("swgr_",), "utility_feed": ("util_",), "transformer": ("xfmr_",),
+}
+#: Ext keys that are read off the wire but are not a sensor a fault can bend:
+#: an enum a controller derives, a bitmask, a tap changer's position.
+_EXT_NOT_SENSOR_KEYS = frozenset({
+    "fire_zones", "fire_zone_count", "smoke_stage", "gas_state", "gas_countdown_s",
+    "xfmr_tap", "tank_volume_l",
+})
 ATTR_HINTS: Dict[str, tuple] = {
     "inlet_temp": ("inlet_temperature", ""), "outlet_temp": ("exhaust_temperature", ""),
     "mid_temp": ("ambient_temperature", "MID"), "cpu_temp": ("cpu_temperature", ""),
@@ -126,6 +149,19 @@ EXT_HINTS: Dict[str, tuple] = {
     "pdu_humidity": ("relative_humidity", ""), "water_temp": ("water_supply_temp", ""),
     "water_flow_lps": ("water_flow", ""), "tank_level_pct": ("fuel_level_pct", ""),
     "h2_pct_lel": ("hydrogen_lel_pct", ""),
+    # S3 instruments and life safety (templates.yaml, same file as above).
+    "door_open": ("door_open", ""), "fire_alarm": ("fire_alarm", ""),
+    "fire_trouble": ("fire_trouble", ""), "fire_supervisory": ("fire_supervisory", ""),
+    "smoke_obsc_pct_m": ("smoke_obscuration", ""), "asd_flow_fault": ("alarm_state", "Airflow_Fault"),
+    "agent_pressure_bar": ("agent_pressure", ""), "agent_released": ("agent_released", ""),
+    "agent_low_pressure": ("alarm_state", "Agent_Low_Pressure"), "gas_abort": ("alarm_state", "Abort_Active"),
+    "h2_alarm": ("alarm_state", "Alarm_High"), "tank_low": ("alarm_state", "Alarm_Low_Level"),
+    "xfmr_load_pct": ("load_pct", ""), "xfmr_ia": ("current", "A"), "xfmr_ib": ("current", "B"),
+    "xfmr_ic": ("current", "C"),
+}
+#: The same transmitter on the makeup water tank binds to the towers' key.
+_ROLE_HINTS: Dict[str, Dict[str, tuple]] = {
+    "water_level": {"tank_level_pct": ("water_level_pct", "")},
 }
 #: Ext keys that are identities, counters or states, never sensor readings.
 _EXT_NOT_SENSOR_SUFFIX = ("_status", "_state", "_count", "_kwh", "_hours", "_s", "_slot")
@@ -150,13 +186,50 @@ def metric_hint(dtype: str, point: str) -> Optional[dict]:
     return _hint(ATTR_HINTS.get(point) or EXT_HINTS.get(point))
 
 
+def _probe_role(device) -> Optional[str]:
+    """The BMS-trunk instrument a SENSOR is (door contact, fire panel,
+    thermowell ...), or None for a rack air probe. Identity only, as the
+    store reads it."""
+    from core.device_state_store import _probe_role as _role
+    return _role(device)
+
+
+def own_ext_keys(device, ext: Optional[Dict[str, Any]] = None):
+    """``(keys, bits)``: the ext keys *device*'s own renderer serves, and the
+    subset that are one-bit states (a contact, a relay, an alarm output)."""
+    dt = _dtype(device)
+    if dt == "sensor":
+        role = _probe_role(device)
+        if not role:
+            return set(), set()
+        from core.modbus_register_map import BIT_SPACES, get_probe_map
+        m = get_probe_map(role)
+        if m is None:
+            return set(), set()
+        keys, bits = set(), set()
+        for space, pts in m.points.items():
+            for p in pts:
+                if not p.key or p.presence_of:
+                    continue
+                keys.add(p.key)
+                if space in BIT_SPACES:
+                    bits.add(p.key)
+        return keys, bits
+    prefixes = TYPE_EXT_PREFIX.get(dt)
+    if not prefixes:
+        return set(), set()
+    return {k for k in (ext or {}) if k.startswith(prefixes)}, set()
+
+
 def _ext_protocols(device) -> List[str]:
     from core.modbus_register_map import MODBUS_DEVICE_TYPES
     dt = _dtype(device)
     out = []
     if dt not in ("transformer", "rpp", "chiller", "pump", "cooling_tower", "valve"):
         out.append("snmp")
-    if dt in MODBUS_DEVICE_TYPES or getattr(device, "modbus_role", "") == "rtu_slave":
+    # A BMS-trunk instrument IS a Modbus slave by identity: the role names the
+    # map, whether or not the topology wrote modbus_role on the device.
+    if dt in MODBUS_DEVICE_TYPES or getattr(device, "modbus_role", "") == "rtu_slave"             or (dt == "sensor" and _probe_role(device)):
         out.append("modbus")
     return out
 
@@ -178,22 +251,36 @@ def device_points(device, ext: Optional[Dict[str, Any]] = None) -> List[dict]:
                         "store_published": nm in STORE_PUBLISHED.get(dt, set()),
                         "metric_hint": metric_hint(dt, nm)})
         return out
-    for nm in ATTR_POINTS.get(dt, []):
+    role = _probe_role(device) if dt == "sensor" else None
+    attrs = ATTR_POINTS.get(dt, [])
+    if dt == "sensor":
+        if role:
+            # A thermowell, a door contact, a fire panel: one instrument with
+            # its own registers, and no air head to fabricate readings for.
+            attrs = []
+        else:
+            from core.device_manager import PROBE_CHANNELS
+            chans = PROBE_CHANNELS.get(str(getattr(device, "model_name", "")))
+            if chans:
+                attrs = [a for a in attrs if a in {_CHANNEL_ATTR.get(c) for c in chans}]
+    for nm in attrs:
         protos = ["snmp"] + (["redfish"] if dt == "server" else [])
         out.append({"point": nm, "surface": "attr", "protocols": protos, "binary": False,
                     "control": False, "store_published": False,
                     "metric_hint": metric_hint(dt, nm)})
     seen = {e["point"] for e in out}
+    keys, bits = own_ext_keys(device, ext)
+    hints = _ROLE_HINTS.get(role or "", {})
     for k, v in sorted((ext or {}).items()):
-        if k in seen or k.startswith("_") or k.startswith("probe_"):
+        if k not in keys or k in seen or k in _EXT_NOT_SENSOR_KEYS:
             continue
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             continue
         if k.endswith(_EXT_NOT_SENSOR_SUFFIX):
             continue
         out.append({"point": k, "surface": "ext", "protocols": _ext_protocols(device),
-                    "binary": False, "control": False, "store_published": False,
-                    "metric_hint": metric_hint(dt, k)})
+                    "binary": k in bits, "control": False, "store_published": False,
+                    "metric_hint": _hint(hints[k]) if k in hints else metric_hint(dt, k)})
     return out
 
 
