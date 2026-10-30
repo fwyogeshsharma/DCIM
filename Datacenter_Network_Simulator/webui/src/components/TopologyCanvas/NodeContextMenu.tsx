@@ -902,6 +902,11 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     <div
       ref={menuRef}
       style={{ ...MENU_S, position: 'fixed', left: pos.x, top: pos.y, zIndex: 9000 }}
+      // The menu opens with its corner under the pointer, so the next
+      // right-click lands on the menu, not the node. Without this the
+      // browser's own menu opened on top of ours. Covers the submenu and
+      // the outlet flyout too: both are DOM children of this div.
+      onContextMenu={e => e.preventDefault()}
     >
       <MenuItem label="Edit Device…"    onClick={() => { onClose(); onEditDevice() }} />
       <MenuItem label="Remove Device"   onClick={removeDevice} danger />
