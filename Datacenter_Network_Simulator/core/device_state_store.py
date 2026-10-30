@@ -7522,6 +7522,19 @@ class DeviceStateStore:
     def door_open(self, name: str) -> bool:
         return self._door_open_until.get(str(name), 0.0) > time.time()
 
+    # Read side of the scenarios below, so a menu can show what is held.
+    def hydrogen_extra(self, dc: str) -> "float | None":
+        return self._h2_extra_lel.get(dc)
+
+    def smoke_level(self, dc: str, room: str) -> "float | None":
+        return self._smoke_room.get((dc, str(room).upper()))
+
+    def asd_flow_faulted(self, name: str) -> bool:
+        return str(name) in self._asd_flow_fault
+
+    def gas_abort_held(self, dc: str, room: str) -> bool:
+        return (dc, str(room).upper()) in self._gas_abort
+
     def set_hydrogen_extra(self, dc: str, pct_lel: float | None) -> None:
         """Add gas to a site's battery room (a scenario: a failed charger
         gassing a string), or clear it with None."""

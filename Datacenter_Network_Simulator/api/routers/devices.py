@@ -1307,6 +1307,27 @@ FAULT_MAP = {
                       "label": "Ambient Temp High", "types": ["sensor"]},
     "humidity_high": {"metric": "humidity",            "target": 82.0, "rate": 4.0,
                       "label": "High Humidity",      "types": ["sensor"]},
+    # BMS-trunk instruments (S3 / life safety). These are PHYSICAL scenarios,
+    # not reading lies: a door held open, a charger gassing a string, smoke in
+    # a hall, a blocked sampling pipe, a hand on the abort switch. Marked by
+    # "role" = the probe role the device must have (_PROBE_ROLES in the store);
+    # offered to that role only, never to a rack air probe. Nothing is sent -
+    # these devices have no SNMP agent - the platform's polled rules raise the
+    # alarm off the Modbus registers, as they do on a real site.
+    "door_held_open":  {"role": "door_contact",     "label": "Door Held Open",
+                        "types": ["sensor"]},
+    "h2_buildup":      {"role": "hydrogen",         "label": "Hydrogen Build-up",
+                        "value": 30.0, "types": ["sensor"]},
+    "smoke_alert":     {"role": "smoke_aspirating", "label": "Smoke: Alert Stage",
+                        "value": 0.10, "types": ["sensor"]},
+    "smoke_fire1":     {"role": "smoke_aspirating", "label": "Smoke: Fire 1 (panel alarm)",
+                        "value": 0.50, "types": ["sensor"]},
+    "smoke_fire2":     {"role": "smoke_aspirating", "label": "Smoke: Fire 2 (gas release)",
+                        "value": 2.50, "types": ["sensor"]},
+    "asd_flow_fault":  {"role": "smoke_aspirating", "label": "Sampling Pipe Airflow Fault",
+                        "types": ["sensor"]},
+    "gas_abort_held":  {"role": "gas_release",      "label": "Abort Switch Held",
+                        "types": ["sensor"]},
     "ups_overload":  {"metric": "ups_output_load",     "target": 93.0, "rate": 10.0,
                       "label": "Output Overload",    "types": ["ups"]},
     "pdu_load_high": {"metric": "pdu_load",            "target": 85.0, "rate": 8.0,
@@ -1470,19 +1491,90 @@ class FaultRequest(BaseModel):
     instance: Optional[int] = None
 
 
+def _sensor_role(dev) -> Optional[str]:
+    """The BMS-trunk instrument a SENSOR is, or None for a rack air probe."""
+    from core.device_state_store import _probe_role
+    return _probe_role(dev)
+
+
+def _sensor_site_room(dev) -> tuple:
+    """(site, room) off the name - DOOR-DC1-HA - which is how the store keys
+    its scenarios too."""
+    parts = str(dev.name).split("-")
+    return (parts[1] if len(parts) > 1 else ""), (parts[2] if len(parts) > 2 else "")
+
+
+def _sensor_fault_fits(dev, role: Optional[str], spec: dict) -> bool:
+    """Does this FAULT_MAP entry belong on this sensor?
+
+    A role-marked scenario goes to its role. The air ramps go to rack probes
+    only - a thermowell has no ambient to raise - and the humidity ramp only
+    to a model with a hygrometer: a DPX2-T1 is one thermistor."""
+    if "role" in spec:
+        return spec["role"] == role
+    if role:
+        return False
+    if spec.get("metric") == "humidity":
+        from core.device_manager import PROBE_CHANNELS, PROBE_DEFAULT_CHANNELS
+        chans = PROBE_CHANNELS.get(str(getattr(dev, "model_name", "")), PROBE_DEFAULT_CHANNELS)
+        return "humidity" in chans
+    return True
+
+
+def _sensor_scenarios_active(st, dev, role: str) -> list:
+    dc, room = _sensor_site_room(dev)
+    out = []
+    if role == "door_contact" and st.door_open(dev.name):
+        out.append("door_held_open")
+    if role == "hydrogen" and st.hydrogen_extra(dc) is not None:
+        out.append("h2_buildup")
+    if role == "smoke_aspirating":
+        lvl = st.smoke_level(dc, room)
+        if lvl is not None:
+            out += [k for k, v in FAULT_MAP.items()
+                    if v.get("role") == role and "value" in v and abs(v["value"] - lvl) < 1e-6]
+        if st.asd_flow_faulted(dev.name):
+            out.append("asd_flow_fault")
+    if role == "gas_release" and st.gas_abort_held(dc, room):
+        out.append("gas_abort_held")
+    return out
+
+
+def _sensor_events(dev, role: Optional[str]) -> list:
+    """The one-shot traps a sensor can send, by model: what the strip or head
+    it hangs off actually raises. A BMS-trunk instrument has no agent and
+    sends nothing."""
+    if role:
+        return []
+    from core.trap_definitions import TRAP_DEFINITIONS, get_applicable_traps
+    vendor = getattr(dev.vendor, "value", dev.vendor)
+    out = []
+    for t in get_applicable_traps("sensor", str(vendor), str(getattr(dev, "model_name", ""))):
+        d = TRAP_DEFINITIONS.get(t)
+        out.append({"type": t.name, "label": d.display_name if d else t.name})
+    return out
+
+
 @router.get("/{device_id}/faults")
 def get_device_faults(device_id: str):
-    """Available faults for this device type + which are currently active."""
+    """Available faults for this device type + which are currently active.
+
+    A sensor also carries ``events``: the traps its model can raise. The menu
+    used to keep its own per-model table and fell back to "temperature only"
+    for every model it did not know (2026-10-30: a DPX2-T1H1 lost its
+    humidity, a door contact gained an air head)."""
     s = _state()
     dev = s.device_manager.get_device(device_id) if s.device_manager else None
     if dev is None:
         raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
     dtype = dev.device_type.value
+    role = _sensor_role(dev) if dtype == "sensor" else None
     available = [{"fault": k, "label": v["label"],
                   # "outlet" means the caller may name a receptacle; anything
                   # else is about the device as a whole.
                   "scope": v.get("scope", "device")}
-                 for k, v in FAULT_MAP.items() if dtype in v["types"]]
+                 for k, v in FAULT_MAP.items()
+                 if dtype in v["types"] and (dtype != "sensor" or _sensor_fault_fits(dev, role, v))]
     st = getattr(s, "state_store", None)
     active_metrics = st.get_faults(device_id) if st else {}
     active = [_METRIC_TO_FAULT[m] for m in active_metrics if m in _METRIC_TO_FAULT]
@@ -1536,7 +1628,12 @@ def get_device_faults(device_id: str):
             and st.get_pdu_banks_tripped(device_id):
         active += [k for k, v in FAULT_MAP.items()
                    if "bankcond" in v and dtype in v["types"]]
-    return {"device": device_id, "available": available, "active": active}
+    if st and role:
+        active += _sensor_scenarios_active(st, dev, role)
+    out = {"device": device_id, "available": available, "active": active}
+    if dtype == "sensor":
+        out["events"] = _sensor_events(dev, role)
+    return out
 
 
 def _fleet_engine(s):
@@ -1711,10 +1808,35 @@ def set_device_fault(device_id: str, body: FaultRequest):
     if dev.device_type.value not in spec["types"]:
         raise HTTPException(status_code=400,
                             detail=f"Fault '{body.fault}' not applicable to {dev.device_type.value}")
+    if dev.device_type.value == "sensor" \
+            and not _sensor_fault_fits(dev, _sensor_role(dev), spec):
+        raise HTTPException(status_code=400,
+                            detail=f"Fault '{body.fault}' not applicable to {dev.name} "
+                                   f"({dev.model_name or 'sensor'})")
     st = getattr(s, "state_store", None)
     if st is None:
         raise HTTPException(status_code=503, detail="State store not initialized")
     on = body.action != "clear"
+    # A BMS-trunk instrument's scenario: the physical condition, held until
+    # cleared, read back off the Modbus registers by whoever polls.
+    if "role" in spec:
+        dc, room = _sensor_site_room(dev)
+        _ledger.device_fault(dev, body.fault, spec, on)
+        if spec["role"] == "door_contact":
+            if on:
+                st.open_door(dev.name, 3600.0)
+            else:
+                st.close_door(dev.name)
+        elif spec["role"] == "hydrogen":
+            st.set_hydrogen_extra(dc, spec["value"] if on else None)
+        elif spec["role"] == "smoke_aspirating" and body.fault == "asd_flow_fault":
+            st.set_asd_flow_fault(dev.name, on)
+        elif spec["role"] == "smoke_aspirating":
+            st.set_smoke(dc, room, spec["value"] if on else None)
+        elif spec["role"] == "gas_release":
+            st.hold_gas_abort(dc, room, on)
+        verb = "Injecting" if on else "Clearing"
+        return OkResponse(message=f"{verb} {spec['label']} on {dev.name}")
     # Per-outlet conditions name a receptacle. Resolved once here so the raise and
     # the clear agree on it - the DCIM keys an alarm on (device, type, instance),
     # so disagreeing would clear a different row than the one that was opened.

@@ -651,6 +651,10 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const [evBusy, setEvBusy] = useState<string | null>(null)
   const [faultsAvail, setFaultsAvail] = useState<{ fault: string; label: string }[]>([])
   const [faultsActive, setFaultsActive] = useState<string[]>([])
+  // Sensors: the one-shot traps this MODEL can raise, served by the backend
+  // (a DPX2-T1H1 has a hygrometer, a door contact has no agent at all). Every
+  // other type still reads the static APPLICABLE_TRAPS table above.
+  const [sensorEvents, setSensorEvents] = useState<TrapEntry[] | null>(null)
   // Per-outlet relays on a rack PDU: one switched receptacle, not the whole strip.
   type Outlet = { index: number; type: string; bank: number; phase: string;
                   state: 'on' | 'off'; feeds: string | null }
@@ -740,9 +744,11 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     try {
       const r = await api.deviceFaults(nodeId) as {
         available: { fault: string; label: string }[]; active: string[]
+        events?: TrapEntry[]
       }
       setFaultsAvail(r.available ?? [])
       setFaultsActive(r.active ?? [])
+      setSensorEvents(r.events ?? null)
     } catch { /* ignore */ }
   }
   useEffect(() => { loadFaults() }, [nodeId])
@@ -836,36 +842,11 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     catch (e) { alert(String(e)) }
   }
 
-  function getSensorTraps(model: string): TrapEntry[] {
-    const base: TrapEntry[] = [
-      { type: 'COLD_START',            label: 'Cold Start' },
-      { type: 'AUTH_FAILURE',          label: 'Auth Failure' },
-      { type: 'TEMPERATURE_ALERT',     label: 'Temperature Alert' },
-    ]
-    const humidity: TrapEntry[] = [
-      { type: 'HUMIDITY_ALERT',        label: 'Humidity Alert' },
-      { type: 'SENSOR_HIGH_HUMIDITY',  label: 'High Humidity' },
-      { type: 'SENSOR_LOW_HUMIDITY',   label: 'Low Humidity' },
-    ]
-    const airflow: TrapEntry[] = [
-      { type: 'AIRFLOW_ALERT',         label: 'Airflow Alert' },
-    ]
-    const dewpoint: TrapEntry[] = [
-      { type: 'DEWPOINT_ALERT',        label: 'Dew Point Alert' },
-    ]
-    const midExhaust: TrapEntry[] = [
-      { type: 'SENSOR_MID_TEMP_HIGH',    label: 'Mid-Rack Temp High' },
-      { type: 'SENSOR_OUTLET_TEMP_HIGH', label: 'Exhaust Temp High' },
-    ]
-    if (model === 'Raritan DPX2-T3H1') return [...base, ...humidity, ...midExhaust]
-    if (model === 'Vertiv Geist GTHD')  return [...base, ...humidity, ...dewpoint]
-    if (model === 'APC NetBotz 355' || model === 'APC NetBotz 250') return [...base, ...humidity, ...airflow]
-    // DPX2-CC2 and unknown sensor models: inlet temp only
-    return base
-  }
-
-  const traps = deviceType === 'sensor'
-    ? getSensorTraps(modelName)
+  // A sensor's events are whatever the backend says its model raises; until
+  // that answer lands (or if it never does) the sensor offers no one-shots
+  // rather than a guessed list. modelName stays a prop for the dialogs.
+  const traps: TrapEntry[] = deviceType === 'sensor'
+    ? (sensorEvents ?? [])
     : APPLICABLE_TRAPS[deviceType] || [
         { type: 'COLD_START', label: 'Cold Start' },
         { type: 'CPU_HIGH',   label: 'CPU High Usage' },
