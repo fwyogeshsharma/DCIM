@@ -28,6 +28,8 @@ import logging
 import math
 import os
 import random
+
+from core import power_draw as _pd
 import threading
 import time
 from pathlib import Path
@@ -981,6 +983,8 @@ class DeviceStateStore:
         # instead of the rating re-sizing itself to the new load.
         self._rated_w_frozen: Dict[str, float] = {}
         self._through_live: Dict[str, float] = {}
+        # link_errors degradation: fractional errors carried between ticks.
+        self._link_err_carry: Dict[str, float] = {}
         # One frequency per grid region (keyed by city). A power grid has a single
         # frequency across its whole interconnect, so every utility meter on the
         # same grid reads an identical value each tick; separate grids drift apart.
@@ -1073,6 +1077,9 @@ class DeviceStateStore:
         # on. Debounces the PlantUnitStopped trap across staging transitions —
         # see _plant_status / _RUN_ALARM_S.
         self._stopped_since: Dict[str, float] = {}
+        # Units that were called, failed to prove running and were locked out.
+        # Their "stopped" status latches: see _plant_status.
+        self._failed_start: set = set()
         # Tower bank (NOT staged with the trains — every healthy cell runs slow):
         # DC → (cells the load needs, cells actually turning).
         self._tower_cells: Dict[str, tuple] = {}
@@ -1135,6 +1142,9 @@ class DeviceStateStore:
         # momentary excursion during a stage change does not annunciate.
         self._chw_high_s: Dict[str, float] = {}
         self._chw_high_alarm: set = set()   # chillers currently annunciating it
+        # DC → the chiller carrying the plant's chilled-water-high alarm. The
+        # dwell in _chw_high_s is keyed by DC: it is the header's condition.
+        self._chw_high_by_dc: Dict[str, str] = {}
         # Live reading for each plant header probe (CHWS/CHWR/CWS/CWR/CTB/FLOW),
         # keyed by device name → (role, value). Published by _compute_chw_loop and
         # consumed by _step_device so the probes report the loop instead of air.
@@ -2671,40 +2681,36 @@ class DeviceStateStore:
     # holding the same die temperature against warmer air means turning faster, and
     # the watts go up with the cube of it. Vendors publish 5–15 % of platform power
     # at elevated inlet, which is what this reproduces at the far end.
-    _FAN_BASE_FRAC = 0.04    # fraction of nameplate at the low speed a cool intake needs
-    _FAN_FULL_FRAC = 0.16    # fraction at full speed
-    _FAN_RAMP_LO_C = 25.0    # below this the fans sit at their floor
-    _FAN_RAMP_HI_C = 40.0    # by this the drive is at 100 %
+    # One formula for draw, shared with what the devices report (core/power_draw.py).
+    _FAN_BASE_FRAC = _pd.FAN_BASE_FRAC
+    _FAN_FULL_FRAC = _pd.FAN_FULL_FRAC
+    _FAN_RAMP_LO_C = _pd.FAN_RAMP_LO_C
+    _FAN_RAMP_HI_C = _pd.FAN_RAMP_HI_C
+    # How fast a BMC moves its fans toward a new duty: seconds to rise, a minute
+    # to fall (time constants of a first-order ramp).
+    _FAN_TAU_UP_S = 15.0
+    _FAN_TAU_DOWN_S = 60.0
 
     def _fan_speed_frac(self, device: "Device") -> float:
         """Fan drive speed 0..1 from intake temperature."""
-        inlet = float(getattr(device, "inlet_temp", None) or _SUPPLY_SETPOINT_C)
-        span = self._FAN_RAMP_HI_C - self._FAN_RAMP_LO_C
-        return max(0.0, min(1.0, (inlet - self._FAN_RAMP_LO_C) / span))
+        return _pd.fan_speed_frac(device, _SUPPLY_SETPOINT_C)
 
     def _server_live_watts(self, device: "Device") -> float:
         """Per-leaf live draw: nameplate scaled by CPU load (idle ~55 %, full
-        100 %) — the same curve Redfish _live_watts reports — PLUS chassis fan
-        power, which rises with intake temperature. 0 if powered off.
+        100 %) PLUS chassis fan power, which rises with intake temperature.
+        0 if powered off.
 
         The fan term is what makes a cooling failure reach the power chain. Without
         it server draw was a function of CPU load alone, so the campaign could push
         fans +925 rpm at a 42.7 °C inlet and watch IT kW, PDU kW and UPS load stay
         flat within noise across all 38 scenarios. On a real floor a cooling event
         is visible on the UPS, and that is the mechanism.
+
+        core/power_draw.live_watts is the formula, and Redfish's _live_watts and a
+        switch's PSU-input watts call it too: what a PDU meters must be what the
+        boxes plugged into it say they draw.
         """
-        if getattr(device, "power_state", "On") == "Off":
-            return 0.0
-        nominal = float(getattr(device, "power_draw_w", 0) or 0)
-        if nominal <= 0:
-            return 0.0
-        load = max(0.0, min(1.0, getattr(device, "cpu_usage", 0) / 100.0))
-        # Compute draw, with the base fan allowance already inside the published
-        # nameplate curve — so only the RISE above that floor is added on top.
-        compute_w = nominal * (0.55 + 0.45 * load)
-        spd = self._fan_speed_frac(device)
-        fan_w = nominal * (self._FAN_FULL_FRAC - self._FAN_BASE_FRAC) * (spd ** 3)
-        return compute_w + fan_w
+        return _pd.live_watts(device, _SUPPLY_SETPOINT_C)
 
     def _native_power_points(self) -> Optional[dict]:
         """Facility / IT / mechanical kW read off the electrical gear's OWN meters.
@@ -6340,6 +6346,22 @@ class DeviceStateStore:
                 continue
             if float(pv.get(point, 0.0)) >= 0.5:
                 return status
+        # A unit that was called and failed to prove running is LOCKED OUT, and
+        # its failure latches. Checked before the standby test for the same
+        # reason the alarms are: the sequencer stages a failed unit off and calls
+        # the next, and a standby-first check read that as "idle on purpose" and
+        # cleared the alarm two minutes after raising it while the machine never
+        # ran (all-chillers, 2026-11-04 - three chillers' alarms each raised and
+        # cleared in turn, the chilled water at 19 C throughout). A plant
+        # controller keeps a failed start annunciated until the machine runs or
+        # the cause is reset; here the cause is whatever held it off - a forced
+        # run point, lost power, a high-pressure lockout.
+        if device.name in self._failed_start:
+            ran = not any(k in _RUNNING_POINTS and float(v) < 0.5 for k, v in pv.items())
+            if ran or not self._held_off(device.name):
+                self._failed_start.discard(device.name)
+            else:
+                return "stopped"
         if device.name in self._plant_standby_names:
             self._stopped_since.pop(device.name, None)
             return "ok"           # idle N+1 spare, not a fault
@@ -6357,9 +6379,21 @@ class DeviceStateStore:
             t0 = self._stopped_since.setdefault(device.name, time.monotonic())
             if time.monotonic() - t0 < self._RUN_ALARM_S:
                 return "ok"
+            self._failed_start.add(device.name)
             return "stopped"
         self._stopped_since.pop(device.name, None)
         return "ok"
+
+    def _held_off(self, name: str) -> bool:
+        """Is something still preventing this unit from running: an operator
+        forcing its run-status point to 0, lost power, or a pressure lockout?
+        When none is, a latched failed start is reset - as an operator would
+        reset it once the cause is cleared."""
+        if name in self._plant_unpowered_names or name in self._chiller_hp_lockout:
+            return True
+        forced = self.plant_alarm_overrides.get(name) or {}
+        return any(k in _RUNNING_POINTS and v is not None and float(v) < 0.5
+                   for k, v in forced.items())
 
     def cooling_model_kw(self) -> float:
         """Staged-model cooling electrical, scaled by DELIVERED capacity (kW).
@@ -6928,28 +6962,45 @@ class DeviceStateStore:
                                 "CHW_Return_Temp": round(ret, 1),
                                 "CHW_Setpoint": round(_sp, 1),
                                 "CHW_Flow": round(per_ch, 1)})
-                    # Off-setpoint annunciation, with a dwell so a stage change or a
-                    # valve step cannot annunciate, and hysteresis so a plant sitting
-                    # on the deadband cannot chatter.
-                    #
-                    # Only ever PUBLISHED as 1.0, never as 0.0: these auto points are
-                    # merged over the operator's forced-alarm map, so writing an
-                    # explicit zero would stamp out a fault the operator injected from
-                    # the Limits tab. Dropping the key instead lets the engine's own
-                    # 0.0 show through, which is the clear.
-                    over = supply > (_sp + self._CHW_HIGH_DB_C)
-                    held = (self._chw_high_s.get(name, 0.0) + dt) if over else 0.0
-                    self._chw_high_s[name] = held
-                    if held >= self._CHW_HIGH_S:
-                        self._chw_high_alarm.add(name)
-                    elif supply <= (_sp + self._CHW_CLEAR_DB_C):
+
+            # Off-setpoint annunciation: the PLANT's chilled-water supply, with a
+            # dwell so a stage change or a valve step cannot annunciate, and
+            # hysteresis so a plant sitting on the deadband cannot chatter.
+            #
+            # Judged on the header, not per running machine. It used to be
+            # evaluated only on running chillers and wiped from any that was not,
+            # so when every chiller was down - the warmest water the plant can
+            # make - there was no chilled-water-high alarm at all; and while the
+            # sequencer rotated the lead through failed machines the alarm moved
+            # with it, restarting its dwell each time (all-chillers, 2026-11-04:
+            # one plant failure read as three short alarms and long silences). A
+            # BMS raises this on the header supply and holds it until the water
+            # is back. It is filed on the machine that was lead when it latched -
+            # the simulator has no plant controller device to carry it - and it
+            # stays there until the supply clears, wherever the lead moves.
+            #
+            # Only ever PUBLISHED as 1.0, never as 0.0: these auto points are
+            # merged over the operator's forced-alarm map, so writing an explicit
+            # zero would stamp out a fault the operator injected from the Limits
+            # tab. Dropping the key instead lets the engine's own 0.0 show through,
+            # which is the clear.
+            if chillers_all:
+                over = supply > (_sp + self._CHW_HIGH_DB_C)
+                held = (self._chw_high_s.get(dc, 0.0) + dt) if over else 0.0
+                self._chw_high_s[dc] = held
+                holder = self._chw_high_by_dc.get(dc)
+                if holder is None and held >= self._CHW_HIGH_S:
+                    holder = (running_ch or sorted(chillers_all))[0]
+                    self._chw_high_by_dc[dc] = holder
+                elif holder is not None and supply <= (_sp + self._CHW_CLEAR_DB_C):
+                    self._chw_high_by_dc.pop(dc, None)
+                    holder = None
+                for name in chillers_all:
+                    if name != holder:
                         self._chw_high_alarm.discard(name)
-                    if name in self._chw_high_alarm:
-                        pts["Alarm_HighCHWSupply"] = 1.0
-            for name in chillers_all:
-                if name not in running_ch:
-                    self._chw_high_s.pop(name, None)
-                    self._chw_high_alarm.discard(name)
+                if holder is not None:
+                    self._chw_high_alarm.add(holder)
+                    auto.setdefault(holder, {})["Alarm_HighCHWSupply"] = 1.0
 
             # ── Pumps: real flow, and head from the affinity law ──────────────
             trains = self._plant_trains_run.get(dc, [])
@@ -8518,6 +8569,11 @@ class DeviceStateStore:
             # This cancels the liquid advantage above, as a real leak would.
             if device.device_type == DeviceType.SERVER and self._leak_heat:
                 _cpu_t += self._leak_heat.get(device.name, 0.0) * 38.0
+            # Dried-out thermal paste or a lifted heatsink: the die runs hotter
+            # for the same load and intake (degradation `thermal_paste`). The
+            # fans below follow the die, so they ramp too - as they would.
+            if device.device_type == DeviceType.SERVER:
+                _cpu_t += self.faults.machine_value(device.name, "thermal_paste")
             # First-order thermal lag: the die relaxes toward its target rather than
             # snapping to it, so a short intake excursion (a transfer's dead-bus gap)
             # does not instantly spike cpu_temp and false-alarm, while a sustained
@@ -8594,8 +8650,22 @@ class DeviceStateStore:
                     # Duty tracks the die: min duty at 40 °C, full duty by 85 °C — the
                     # span between a warm idle and the Warning threshold.
                     _duty = max(0.0, min(1.0, (device.cpu_temp - 40.0) / 45.0))
-                _fan = _lo + (_hi - _lo) * _duty + random.uniform(-90, 90)
+                _target = _lo + (_hi - _lo) * _duty
+                # A BMC ramps its fans, it does not step them: fast up so a hot
+                # die is answered within seconds, slow down so a burst of load
+                # does not make the chassis hunt. Without this the speed jumped
+                # with every CPU burst - +1,300 then -600 rpm between two polls
+                # a minute apart, which no real fan does and which the DCIM's
+                # spike check rightly read as a faulty tach.
+                _prev = float(getattr(device, "fan_rpm", 0) or 0) or _target
+                _tau = self._FAN_TAU_UP_S if _target > _prev else self._FAN_TAU_DOWN_S
+                _fan = (_prev + (_target - _prev) * min(1.0, float(self._dt or 1.0) / _tau)
+                        + random.uniform(-30, 30))       # tach jitter, a few tens of rpm
             device.fan_rpm = int(max(0.0, self._num_limit("fan_rpm", _fan)))
+            # Fan 1 running above the chassis duty (degradation `fan_wear`): a
+            # blocked intake unloads it, or the BMC drives it to cover a weak
+            # neighbour. Per fan, so it is published, not folded into fan_rpm.
+            device.fan_wear_frac = self.faults.machine_value(device.name, "fan_wear")
 
         # Chassis inlet temperature — servers/network gear only. COLD-AISLE
         # INTAKE air, set by the CRAH supply setpoint, NOT this device's own load
@@ -8767,6 +8837,24 @@ class DeviceStateStore:
         if _do_oct or _do_err or _do_disc:
             congested = device.cpu_usage > 70
             moderate  = device.cpu_usage > 50
+            # A failing optic, a dirty connector or a damaged cable on ONE port
+            # (degradation `link_errors`): errors per second, carried as a
+            # fraction between ticks so a low rate still lands as whole errors.
+            _bad_port = None
+            _link_rate = (self.faults.machine_value(device.name, "link_errors")
+                          if device.device_type in (DeviceType.SWITCH, DeviceType.ROUTER)
+                          else 0.0)
+            if _link_rate > 0.0 and _do_err:
+                _ports = [i for i in device.interfaces
+                          if i.oper_status == 1 and i.connected_to_device is not None
+                          and not str(getattr(i, "name", "")).lower().startswith("mgmt")]
+                if _ports:
+                    _bad_port = _ports[0]
+                    _carry = self._link_err_carry.get(device.name, 0.0) \
+                        + _link_rate * float(self._dt or 0.0)
+                    _whole = int(_carry)
+                    self._link_err_carry[device.name] = _carry - _whole
+                    _bad_port.in_errors += _whole
             for iface in device.interfaces:
                 # Skip down ports and unconnected ports — neither carries traffic.
                 if iface.oper_status != 1 or iface.connected_to_device is None:
@@ -9534,9 +9622,13 @@ class DeviceStateStore:
             # report a 24 C switchroom as 26 C on a quiet day and as 33 C during
             # an outage in which the room never moved.
             _on_batt = st.get("ups_status") in ("on_battery", "low_battery")
+            # An ageing string's internal resistance rises, so float charge
+            # alone puts more heat into it (degradation `battery_aging`).
+            _aging_k = self.faults.machine_value(device.name, "battery_aging")
             _t = (_BATTERY_ROOM_C + _BATTERY_FLOAT_RISE_K
                   + _BATTERY_LOAD_RISE_K * st.get("ups_output_load", 0.0) / 100.0
-                  + (_BATTERY_DISCHARGE_RISE_K if _on_batt else 0.0))
+                  + (_BATTERY_DISCHARGE_RISE_K if _on_batt else 0.0)
+                  + _aging_k)
             _cur = float(st.get("ups_battery_temp_c", _BATTERY_ROOM_C))
             # Cells have mass: they take minutes to move, not ticks.
             st["ups_battery_temp_c"] = round(
@@ -9621,6 +9713,11 @@ class DeviceStateStore:
                 hp = st.get("ups_battery_health", 100.0)
                 decay = 0.05 if st.get("ups_battery_status", "normal") != "normal" else 0.002
                 hp = max(0.0, hp - random.uniform(0.0, decay))
+                # The capacity an ageing string has lost: about 3 % of state of
+                # health per kelvin it now runs hot. Never raises health back.
+                _aging = self.faults.machine_value(device.name, "battery_aging")
+                if _aging > 0.0:
+                    hp = min(hp, 100.0 - 3.0 * _aging)
                 st["ups_battery_health"] = round(self._num_limit("ups_battery_health", hp), 1)
 
             # Output energy accumulator (kWh). Flag gates accumulation

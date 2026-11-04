@@ -1350,3 +1350,30 @@ def test_degraded_reads_true_during_a_silent_total_loss(tmp_path, plant_cache):
     _hold(p, 150)
 
     assert p.store.cooling_degraded(DC) is True
+
+
+def test_a_failed_start_latches_through_staging(tmp_path, plant_cache, monkeypatch):
+    """all-chillers, 2026-11-04: a chiller called and held off raised
+    PlantUnitStopped, the sequencer staged it off and called the next, and the
+    standby test cleared the alarm two minutes later although the machine never
+    ran. A failed start stays annunciated until the machine runs or its cause
+    is reset."""
+    import time as _t
+
+    p = _plant(tmp_path, plant_cache)
+    lead = _lead_chillers(p)[0]
+    dev = p.name(lead)
+    plant_cache[lead] = {"Chiller_Running": 0.0}
+    p.store.plant_alarm_overrides[lead] = {"Chiller_Running": 0.0}   # held off
+    p.store._plant_standby_names.discard(lead)
+    base = _t.monotonic()
+    p.store._plant_status(dev)                                        # starts the debounce
+    monkeypatch.setattr("core.device_state_store.time.monotonic",
+                        lambda: base + p.store._RUN_ALARM_S + 1.0)
+    assert p.store._plant_status(dev) == "stopped"
+
+    p.store._plant_standby_names.add(lead)          # the sequencer moved on
+    assert p.store._plant_status(dev) == "stopped", "a failed start must latch"
+
+    p.store.plant_alarm_overrides.pop(lead)         # the cause is reset
+    assert p.store._plant_status(dev) == "ok"

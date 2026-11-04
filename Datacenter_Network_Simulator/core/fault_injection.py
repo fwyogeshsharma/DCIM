@@ -224,6 +224,17 @@ DEGRADATION_KINDS: Dict[str, Dict[str, Any]] = {
                        "unit": "loading fraction (1.0 = change-filter dP)"},
     "pump_derate": {"types": ("pump",), "healthy": 1.0, "band": (0.5, 1.0),
                     "unit": "head multiplier"},
+    # The IT and electrical faults the DCIM's learned baselines exist to catch
+    # (platform docs/35): each moves the machine, so every protocol that reads
+    # it shows the consequence, and nothing else in the room moves with it.
+    "battery_aging": {"types": ("ups",), "healthy": 0.0, "band": (0.0, 15.0),
+                      "unit": "K the string runs above its normal (internal resistance)"},
+    "thermal_paste": {"types": ("server",), "healthy": 0.0, "band": (0.0, 25.0),
+                      "unit": "K added to the CPU (thermal interface dry-out)"},
+    "fan_wear": {"types": ("server",), "healthy": 0.0, "band": (0.0, 0.8),
+                 "unit": "fraction Fan 1 runs above its duty (blocked or compensating)"},
+    "link_errors": {"types": ("switch", "router"), "healthy": 0.0, "band": (0.0, 500.0),
+                    "unit": "receive errors per second on the first connected data port"},
 }
 
 

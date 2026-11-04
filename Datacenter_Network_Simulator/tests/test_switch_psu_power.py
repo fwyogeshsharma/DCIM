@@ -24,6 +24,10 @@ def _switch(cpu: float = 40.0) -> Device:
                vendor=Vendor.CISCO_SYSTEMS, model_name="Cisco Nexus 9364C",
                ip_address="10.0.2.1", power_draw_w=500)
     d.cpu_usage = cpu
+    # A cool intake: the fans sit at their floor, so the draw is the CPU curve
+    # alone (the fan rise on a hot intake is tested in
+    # test_reported_power_includes_fans.py).
+    d.inlet_temp = 22.0
     return d
 
 

@@ -644,3 +644,36 @@ def test_condenser_flow_does_not_track_the_electrical_duty(tmp_path, plant_cache
     _settle(big, 8)
     ratio = _cw_flow(big) / max(1e-6, _cw_flow(small))
     assert ratio > 1.5, ratio
+
+
+def _chillers(plant):
+    return sorted(d.name for d in plant.dm.get_all_devices()
+                  if d.device_type.value == "chiller")
+
+
+def test_high_chw_supply_holds_when_no_chiller_runs(plant):
+    """all-chillers, 2026-11-04: with every chiller down the plant made its
+    warmest water and annunciated nothing - the alarm was judged only on
+    running machines. It is the header's condition."""
+    _settle(plant, 6)
+    plant.store._plant_standby_names = set(_chillers(plant))     # nothing running
+    _hold_shortfall(plant, 6.0, _dwell_ticks(plant))
+    holders = plant.store._chw_high_alarm
+    assert len(holders) == 1, "one plant, one chilled-water-high alarm"
+    holder = next(iter(holders))
+    assert plant.auto_points(holder)["Alarm_HighCHWSupply"] == 1.0
+
+
+def test_high_chw_supply_does_not_move_with_the_lead(plant):
+    """The sequencer rotating the lead through failed machines must not restart
+    the alarm's dwell or hand it from chiller to chiller."""
+    _settle(plant, 6)
+    _hold_shortfall(plant, 6.0, _dwell_ticks(plant))
+    holder = next(iter(plant.store._chw_high_alarm))
+    others = [c for c in _chillers(plant) if c != holder]
+    plant.store._plant_standby_names = {holder}                 # the lead moved on
+    _hold_shortfall(plant, 6.0, 1)
+    assert plant.store._chw_high_alarm == {holder}
+    assert not any(plant.auto_points(c).get("Alarm_HighCHWSupply") for c in others)
+    _hold_shortfall(plant, 0.0, 1)                              # the water is back
+    assert not plant.store._chw_high_alarm

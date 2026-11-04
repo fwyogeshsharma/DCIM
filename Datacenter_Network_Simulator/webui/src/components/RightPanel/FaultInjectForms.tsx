@@ -96,6 +96,29 @@ export const DEGRADATION_KINDS: Record<string, {
     unit: 'head multiplier', short: '×', step: 0.01, defRate: 0.02, defTarget: 0.85,
     explain: 'Impeller wear or a failing bearing: the pump makes less head at the same speed. 1.0 is healthy.',
   },
+  battery_aging: {
+    label: 'Battery ageing', types: ['ups'], healthy: 0.0, band: [0, 15],
+    unit: 'K the string runs above its normal (internal resistance)', short: 'K', step: 0.1,
+    defRate: 0.5, defTarget: 5,
+    explain: 'Rising internal resistance: the string runs warmer on float than its room explains, and its state of health falls.',
+  },
+  thermal_paste: {
+    label: 'CPU thermal interface dry-out', types: ['server'], healthy: 0.0, band: [0, 25],
+    unit: 'K added to the CPU', short: 'K', step: 0.5, defRate: 2, defTarget: 12,
+    explain: 'Dried paste or a lifted heatsink: the CPU runs hotter than its load and intake explain, and the fans ramp to follow it.',
+  },
+  fan_wear: {
+    label: 'Server fan wear (Fan 1)', types: ['server'], healthy: 0.0, band: [0, 0.8],
+    unit: 'fraction Fan 1 runs above its duty', short: 'frac', step: 0.01, defRate: 0.05,
+    defTarget: 0.3,
+    explain: 'A blocked intake unloads the fan, or the BMC drives it to cover a weak neighbour: Fan 1 spins faster than its conditions call for.',
+  },
+  link_errors: {
+    label: 'Interface errors (failing optic)', types: ['switch', 'router'], healthy: 0.0,
+    band: [0, 500], unit: 'receive errors per second', short: '/s', step: 1, defRate: 20,
+    defTarget: 50,
+    explain: 'A failing optic, dirty connector or damaged cable on the first connected data port: receive errors climb.',
+  },
 }
 export const DEGRADABLE_TYPES = new Set(Object.values(DEGRADATION_KINDS).flatMap(k => k.types))
 

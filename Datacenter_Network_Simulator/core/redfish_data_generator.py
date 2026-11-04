@@ -328,8 +328,14 @@ def _fans(device: "Device") -> list:
     floor = lo * (_DTC_IDLE_FACTOR if _is_liquid_server(device.name) else 1.0)
     off = getattr(device, "power_state", "On") == "Off"
     fans = []
+    wear = float(getattr(device, "fan_wear_frac", 0.0) or 0.0)
     for i in range(4):
         rpm = int(base + (i - 1.5) * 110 + (device.cpu_usage % 7) * 18)
+        if i == 0 and wear > 0.0:
+            # The worn fan (degradation `fan_wear`): faster than the duty the
+            # BMC is giving the others, which is what the DCIM sees as a fan
+            # unlike its conditions.
+            rpm = int(rpm * (1.0 + wear))
         # A chassis the operator powered off has stopped fans by definition — that
         # is not a fault, and reporting it as one would light up every server that
         # is intentionally down.
@@ -358,19 +364,16 @@ def _fans(device: "Device") -> list:
 
 
 def _live_watts(device: "Device") -> int:
-    """Live power draw: idle floor + load component driven by CPU utilization.
+    """PowerConsumedWatts: what the PSUs take from the outlet, fans included.
 
-    ``power_draw_w`` is a static config field the ticker never updates, so we
-    anchor it as the full-load nominal and scale with cpu_usage so the reading
-    moves every tick. At 100% CPU it equals the configured nominal.
+    The same formula the power chain books through the cords
+    (core/power_draw.live_watts): a BMC's reading is the PSU input, so the
+    chassis fans ramping on a hot intake are inside it. The two used to differ
+    by exactly that fan rise, so a PDU above a warm rack metered power that no
+    server plugged into it reported.
     """
-    if getattr(device, "power_state", "On") == "Off":
-        return 0
-    nominal = int(device.power_draw_w or 0)
-    if nominal <= 0:
-        return 0
-    load = max(0.0, min(1.0, device.cpu_usage / 100.0))
-    return int(nominal * (0.55 + 0.45 * load))
+    from core.power_draw import live_watts
+    return int(round(live_watts(device)))
 
 
 def power(device: "Device", topology=None) -> dict:
