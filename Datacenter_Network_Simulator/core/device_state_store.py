@@ -6339,6 +6339,23 @@ class DeviceStateStore:
         if device.name in self._chw_flow_interlock:
             return "flow_loss"
         pv = _plant_state_cache.get(device.name)
+        # A unit that was called and failed to prove running is LOCKED OUT, and
+        # its failure latches. Checked FIRST - before the empty-state and the
+        # standby tests - for the same reason the alarms are checked before
+        # standby: the sequencer stages a failed unit off and calls the next,
+        # and once staged off its published state is empty and it reads as a
+        # clean "ok" (all-chillers, 2026-11-05: the lead's alarm cleared sixteen
+        # seconds after it was raised while the machine never ran). A plant
+        # controller keeps a failed start annunciated until the machine runs or
+        # the cause is reset; here the cause is whatever held it off - a forced
+        # run point, lost power, a high-pressure lockout.
+        if device.name in self._failed_start:
+            ran = bool(pv) and not any(k in _RUNNING_POINTS and float(v) < 0.5
+                                       for k, v in pv.items())
+            if ran or not self._held_off(device.name):
+                self._failed_start.discard(device.name)
+            else:
+                return "stopped"
         if not pv:
             return "ok"
         for point, status in self._PLANT_STATUS_ORDER:
@@ -6346,22 +6363,6 @@ class DeviceStateStore:
                 continue
             if float(pv.get(point, 0.0)) >= 0.5:
                 return status
-        # A unit that was called and failed to prove running is LOCKED OUT, and
-        # its failure latches. Checked before the standby test for the same
-        # reason the alarms are: the sequencer stages a failed unit off and calls
-        # the next, and a standby-first check read that as "idle on purpose" and
-        # cleared the alarm two minutes after raising it while the machine never
-        # ran (all-chillers, 2026-11-04 - three chillers' alarms each raised and
-        # cleared in turn, the chilled water at 19 C throughout). A plant
-        # controller keeps a failed start annunciated until the machine runs or
-        # the cause is reset; here the cause is whatever held it off - a forced
-        # run point, lost power, a high-pressure lockout.
-        if device.name in self._failed_start:
-            ran = not any(k in _RUNNING_POINTS and float(v) < 0.5 for k, v in pv.items())
-            if ran or not self._held_off(device.name):
-                self._failed_start.discard(device.name)
-            else:
-                return "stopped"
         if device.name in self._plant_standby_names:
             self._stopped_since.pop(device.name, None)
             return "ok"           # idle N+1 spare, not a fault

@@ -1374,6 +1374,10 @@ def test_a_failed_start_latches_through_staging(tmp_path, plant_cache, monkeypat
 
     p.store._plant_standby_names.add(lead)          # the sequencer moved on
     assert p.store._plant_status(dev) == "stopped", "a failed start must latch"
+    # Staged off, its published state empties - and an empty state used to read
+    # as a clean "ok" ahead of the latch (2026-11-05: the lead cleared in 16 s).
+    plant_cache.pop(lead, None)
+    assert p.store._plant_status(dev) == "stopped", "an empty state is not a running one"
 
     p.store.plant_alarm_overrides.pop(lead)         # the cause is reset
     assert p.store._plant_status(dev) == "ok"
