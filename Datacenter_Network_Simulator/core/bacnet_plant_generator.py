@@ -202,6 +202,12 @@ PLANT_SPEC: Dict[str, dict] = {
 # rather than once per caller.
 _RUNNING_BINARIES = ("Chiller_Running", "Run_Status", "Fan_Status", "Unit_Running")
 
+#: A modulating valve's command-to-feedback alarm: the disc short of its
+#: command by more than this fraction, for this long. Typical BMS settings for
+#: a header butterfly on an electric actuator (10 %, 60 s).
+VALVE_DEV_DEADBAND = 0.10
+VALVE_DEV_DWELL_S = 60.0
+
 #: Nothing turning, nothing flowing, no valve open, no draw. Substring match, so
 #: Fan_Power / Pump_Speed / CHW_Flow / Cooling_Capacity / Facility_CHW_Valve are
 #: each covered by their family word.
@@ -403,6 +409,13 @@ class PlantTelemetryEngine:
         # latch. The DCIM sees it via COV on those points (no trap needed).
         self._leak_active = False
         self._leak_t = 0.0      # seconds elapsed since leak onset
+        # Header valve told to stop modulating: how long its disc has stood
+        # further than the deviation deadband from what the BMS asks.
+        self._stuck_dev_t = 0.0
+        # Where the disc stood when modulation stopped. None while it tracks:
+        # the generic walk keeps rewriting _values, so the hold needs its own copy.
+        self._stuck_pos: float | None = None
+        self._pos_last: float | None = None
         self._leak_dur = 0.0    # leak duration before repair
         # Per-alarm severity ramp timers (seconds a forced alarm has been held),
         # used to ramp its coupled metric effects in _apply_alarm_couplings.
@@ -641,14 +654,44 @@ class PlantTelemetryEngine:
         if plant_load_frac is not None and self._valve_pos_pts:
             frac = max(0.0, min(1.0, plant_load_frac))
             cmd = 10.0 + 85.0 * frac
+            # A header valve told to stop modulating (Status_Modulating forced
+            # 0) is FAIL-IN-PLACE: the electric actuators at that torque have no
+            # spring return, so the disc stands where it was while the BMS keeps
+            # asking. Only the command moves. The gap between them is what a
+            # real BMS alarms on, after a dwell, and what the store scores.
+            _stuck = self._type == "valve" and not running
+            if _stuck and self._stuck_pos is None:
+                # Where it stood: the last position PUBLISHED, not the generic
+                # walk's copy in _values, which never left its base curve.
+                self._stuck_pos = self._pos_last if self._pos_last is not None else round(cmd, 2)
+            if not _stuck:
+                self._stuck_pos = None
             for _vp in self._valve_pos_pts:
+                if _stuck and _vp != "Commanded_Position":
+                    out[_vp] = self._stuck_pos
+                    self._values[_vp] = self._stuck_pos      # so release starts from here
+                    continue
                 a = 0.5 if _vp == "Commanded_Position" else 0.3
                 tgt = cmd + self._rng.uniform(-1.0, 1.0)
                 self._values[_vp] = self._ema(tgt, self._values.get(_vp, tgt), a)
                 out[_vp] = round(max(0.0, min(100.0, self._values[_vp])), 2)
+            if self._type == "valve" and "Position" in out:
+                self._pos_last = out["Position"]
 
         for name, val in self._binaries.items():
             out[name] = val
+        if self._type == "valve":
+            # The BMS's own command-to-feedback alarm: a disc that has stood
+            # short of its command past the deadband for the dwell. After the
+            # binaries above, which restate every BI at its resting value.
+            pos, cmdv = out.get("Position"), out.get("Commanded_Position")
+            dev = ((cmdv - pos) / cmdv) if (pos is not None and cmdv) else 0.0
+            if not running and dev > VALVE_DEV_DEADBAND:
+                self._stuck_dev_t += dt
+            else:
+                self._stuck_dev_t = 0.0
+            if self._stuck_dev_t >= VALVE_DEV_DWELL_S:
+                out["Alarm_ActuatorFault"] = 1.0
         if self._type == "cdu":
             self._apply_cdu_leak(out, dt, "Alarm_Leak" in forced)
         self._apply_alarm_couplings(out, forced, dt)

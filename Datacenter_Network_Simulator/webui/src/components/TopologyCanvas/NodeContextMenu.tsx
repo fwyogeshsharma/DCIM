@@ -594,8 +594,10 @@ const PLANT_EVENTS: Record<string, PlantEvent[]> = {
   ],
   pump: [
     { label: 'Pump Fault', point: 'Alarm_Fault',   value: 1, kind: 'alarm' },
-    { label: 'Low Flow',   point: 'Alarm_LowFlow',  value: 1, kind: 'alarm' },
-    { label: 'Pump Stop',  point: 'Run_Status',     value: 0, kind: 'trip'  },
+    // The flow switch opens. The BMS waits its proof dwell with the flow
+    // running down, then calls the pump failed and stops it.
+    { label: 'Flow Proof Lost', point: 'Alarm_LowFlow',  value: 1, kind: 'alarm' },
+    { label: 'Pump Stop',       point: 'Run_Status',     value: 0, kind: 'trip'  },
   ],
   cooling_tower: [
     { label: 'High Vibration',  point: 'Alarm_HighVibration', value: 1, kind: 'alarm' },

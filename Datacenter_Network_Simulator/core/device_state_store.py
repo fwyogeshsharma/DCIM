@@ -200,6 +200,11 @@ _CAPACITY_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir",
 # answers "is this a health fault?"; membership here answers "whose key is it?".
 _CHW_OWNED_ALARMS = frozenset({"Alarm_HighCHWSupply", "Alarm_HighReturnAir"})
 
+#: Pumps inside their flow-proof dwell: Alarm_LowFlow is on the wire, nothing
+#: else is wrong, and _FLOW_PROOF_S has not yet run. Kept by the pump block of
+#: _compute_chw_loop; read by _is_faulted (a staticmethod on the wire cache).
+_PROOF_PENDING: set = set()
+
 # ── Plant header probes ───────────────────────────────────────────────────────
 # The chiller plant's headers carry instruments, not rack environmental probes:
 # supply/return thermowells on both water loops, a basin thermistor in the tower
@@ -1060,6 +1065,11 @@ class DeviceStateStore:
         # the chillers it has shed. See _FLOW_TRIP_FRAC.
         self._chw_pump_frac: Dict[str, float] = {}
         self._cw_pump_frac: Dict[str, float] = {}   # same, condenser side
+        # Flow-proof dwell per pump (s since Alarm_LowFlow came on with nothing
+        # else wrong), and the share each turning pump published last tick, so
+        # one losing proof can be shown running down from where it was.
+        self._pump_proof_s: Dict[str, float] = {}
+        self._pump_last: Dict[str, Dict[str, float]] = {}
         # DC → MEASURED condenser range (return − supply, K). Derived from the flow
         # the CW pumps actually deliver, not pinned at design, so a stalled
         # condenser loop stops advertising a design range it cannot carry.
@@ -4962,6 +4972,14 @@ class DeviceStateStore:
                 # map. A staged-off unit's valve is handled as "off" downstream.
                 for _n2, _w2, _t2 in units:
                     plant_loadfrac[_n2] = lf
+                # The header valves too. They carry no nameplate worth a place in
+                # `units`, and without a demand fraction the engine's valve block
+                # never ran: Position was the generic walk round its base, not a
+                # disc tracking load, and a stuck one could not be told from a
+                # healthy one on the wire.
+                for _v in (self._cooling_context()["plant_by_dc"].get(_dc, {})
+                           .get("valve") or []):
+                    plant_loadfrac.setdefault(_v, lf)
                 # Thermal part-load ratio for the chiller kW/ton curve. This is the
                 # chiller's OWN load ratio — live IT heat divided by the rated cooling
                 # capacity of the chillers currently running — not the staged plant's
@@ -5623,13 +5641,20 @@ class DeviceStateStore:
     def _is_faulted(name: str) -> bool:
         """True if this plant device is in a cooling-loss state — either any
         Alarm_* point is set, or its running-status point reads 0 (unit stopped).
-        A stopped unit is as much a loss of cooling as an alarm."""
+        A stopped unit is as much a loss of cooling as an alarm.
+
+        A pump whose only word is Alarm_LowFlow is inside its flow-proof dwell
+        for the first _FLOW_PROOF_S (see _pump_proof_s): the flow switch has
+        opened, the BMS has not yet called the pump failed, and the sequencer
+        must not re-stage on it until it does."""
         pv = _plant_state_cache.get(name)
         if not pv:
             return False
         for k, v in pv.items():
             if (k.startswith("Alarm_") and k not in _CAPACITY_ALARMS
                     and float(v) >= 0.5):
+                if k == "Alarm_LowFlow" and name in _PROOF_PENDING:
+                    continue
                 return True
             if k in _RUNNING_POINTS and float(v) < 0.5:
                 return True
@@ -5728,8 +5753,12 @@ class DeviceStateStore:
         pv = _plant_state_cache.get(name)
         if not pv:
             return False
+        # A pump inside its flow-proof dwell is not yet unhealthy to the BMS
+        # either: the switch has opened, the verdict waits (_update_pump_proof).
         return any(k.startswith("Alarm_") and k not in _CAPACITY_ALARMS
-                   and float(v) >= 0.5 for k, v in pv.items())
+                   and float(v) >= 0.5
+                   and not (k == "Alarm_LowFlow" and name in _PROOF_PENDING)
+                   for k, v in pv.items())
 
     # Command-to-feedback deviation a modulating valve shows in NORMAL service.
     # Commanded leads and the disc follows it across the actuator's stroke time,
@@ -5893,6 +5922,43 @@ class DeviceStateStore:
         except Exception:
             log.exception("[StateStore] staging prime failed")
 
+    def _update_pump_proof(self) -> None:
+        """Flow proof, run FIRST in the tick. A pump whose flow switch has opened
+        (Alarm_LowFlow on the wire, nothing else wrong, still commanded on) is
+        not failed yet: for _FLOW_PROOF_S the BMS waits for proof to return
+        while the flow it moves runs down. Only when the dwell runs out does
+        _is_faulted say so, the sequencer demote it and the wire show it
+        stopped. Forced the same tick it used to be: alarm, stop and re-stage
+        all at once, which no flow switch does. Kept in a module set because
+        _is_faulted is a staticmethod on the wire cache, and placed ahead of
+        the condenser loop because that is the first pass to ask."""
+        dt = float(self._dt or 0.0)
+        ctx = self._cooling_context()
+        seen = set()
+        for kinds in ctx["plant_by_dc"].values():
+            for name in (kinds.get("pump") or []):
+                seen.add(name)
+                pv = _plant_state_cache.get(name) or {}
+                lowflow_only = (float(pv.get("Alarm_LowFlow", 0.0) or 0.0) >= 0.5
+                                and not any(k.startswith("Alarm_") and k != "Alarm_LowFlow"
+                                            and k not in _CAPACITY_ALARMS
+                                            and float(v) >= 0.5 for k, v in pv.items())
+                                and float(pv.get("Run_Status", 1.0) or 0.0) >= 0.5
+                                and name not in self._plant_standby_names)
+                if lowflow_only:
+                    t = self._pump_proof_s.get(name, 0.0) + dt
+                    self._pump_proof_s[name] = t
+                    if t < self._FLOW_PROOF_S:
+                        _PROOF_PENDING.add(name)
+                    else:
+                        _PROOF_PENDING.discard(name)
+                else:
+                    self._pump_proof_s.pop(name, None)
+                    _PROOF_PENDING.discard(name)
+        for name in list(_PROOF_PENDING):
+            if name not in seen:
+                _PROOF_PENDING.discard(name)
+
     def _compute_cond_loop(self) -> None:
         """Per-tick: condenser-water temperature, then chiller head-pressure
         protection (unload → trip → latched lockout).
@@ -5920,6 +5986,7 @@ class DeviceStateStore:
         and a per-chiller derate that _compute_chw_penalty folds into cooling
         loss — so unloading actually costs cooling rather than being cosmetic.
         """
+        self._update_pump_proof()
         from core.cooling_model import tower_cells_needed, cond_supply_c
         self._ensure_staging_primed()
         ctx = self._cooling_context()
@@ -7085,6 +7152,22 @@ class DeviceStateStore:
                     ip = name
                     if not ip:
                         continue
+                    if name in _PROOF_PENDING:
+                        # Losing proof: the flow it was moving runs down over
+                        # the dwell, head with it, the drive still at speed.
+                        last = self._pump_last.get(name, {})
+                        fade = max(0.0, 1.0 - self._pump_proof_s.get(name, 0.0)
+                                   / self._FLOW_PROOF_S)
+                        _d = round(last.get("Diff_Pressure", 0.0) * fade, 1)
+                        auto.setdefault(ip, {}).update({
+                            "Flow": round(last.get("Flow", per_pump) * fade, 1),
+                            "Diff_Pressure": _d,
+                            "Suction_Pressure": round(self._PUMP_SUCTION_KPA, 1),
+                            "Discharge_Pressure": round(self._PUMP_SUCTION_KPA + _d, 1),
+                            "Speed": last.get("Speed", 0.0),
+                            "VFD_Frequency": last.get("VFD_Frequency", 0.0),
+                        })
+                        continue
                     if name not in turning:
                         # Stopped: no flow, no speed, and no differential across a
                         # still impeller. Suction is static head and survives.
@@ -7155,6 +7238,8 @@ class DeviceStateStore:
                         "Speed": round(spd * 100.0, 1),
                         "VFD_Frequency": round(spd * 50.0, 1),
                     })
+                    self._pump_last[name] = {k: pts[k] for k in
+                                             ("Flow", "Diff_Pressure", "Speed", "VFD_Frequency")}
                     # Deliberately NO capacity alarm on the pump. It is tempting to
                     # raise Alarm_LowFlow when a pump is pinned at 100 % and the
                     # plant is still short, but that point already means something

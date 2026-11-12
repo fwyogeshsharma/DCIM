@@ -609,18 +609,38 @@ def _coupling_kinds(st, name: str, dtype: str) -> dict[str, str]:
     the wire; ``lost`` - the engine's nudge lands on points the store publishes
     every tick, so the forced bit is the only tell. Alarms the engine has no
     coupling for are not listed."""
+    from core.bacnet_plant_generator import PLANT_SPEC
+    from core.device_state_store import _CAPACITY_ALARMS, _RUNNING_POINTS
     fc = getattr(st, "_FORCED_COUPLINGS", {}).get(dtype, {})
     side = getattr(st, "_STORE_SIDE_COUPLINGS", set())
     pub = getattr(st, "_plant_auto_points", {}).get(name, {})
     out: dict[str, str] = {}
-    for alarm, targets in fc.items():
-        if (dtype, alarm) in side:
-            out[alarm] = "store"
-        elif any(t in pub for t in targets):
+    for alarm in PLANT_SPEC.get(dtype, {}).get("bi", []):
+        if alarm in fc:
+            if (dtype, alarm) in side:
+                out[alarm] = "store"
+            elif any(t in pub for t in fc[alarm]):
+                out[alarm] = "lost"
+            else:
+                out[alarm] = "engine"
+        elif (dtype, alarm) in _NO_OP_FORCES:
             out[alarm] = "lost"
-        else:
-            out[alarm] = "engine"
+        elif alarm in _RUNNING_POINTS:
+            # A trip: the store takes the unit out itself (flow, speed and
+            # head to zero, the train re-staged) whatever the engine nudges.
+            out[alarm] = "store"
+        elif alarm.startswith("Alarm_") and alarm not in _CAPACITY_ALARMS:
+            # A health alarm the store scores as a fault, same path as a trip.
+            out[alarm] = "store"
     return out
+
+
+#: Forces the store reads as a fault but that cost nothing, measured in a rig
+#: (2026-11-12): a header valve told to stop modulating keeps tracking its
+#: command on the wire, so the command-to-feedback deviation the store scores
+#: stays at zero. Listed here so the menu says so until the engine freezes the
+#: disc where it stood.
+_NO_OP_FORCES = {("valve", "Status_Modulating")}
 
 
 @router.get("/plant/overrides")

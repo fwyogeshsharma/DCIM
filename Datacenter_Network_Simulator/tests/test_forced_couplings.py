@@ -238,3 +238,93 @@ def test_forced_high_chw_supply_is_no_longer_logged_as_lost(hall, caplog):
         r.tick(3)
     assert not any("does not reach the wire" in x.getMessage() for x in caplog.records)
     r.store.plant_alarm_overrides.pop(name, None)
+
+
+# ── valve Stuck: fail-in-place, then the BMS deviation alarm ─────────────────
+
+def test_a_stuck_header_valve_holds_its_disc_and_alarms_when_the_ask_moves():
+    """Told to stop modulating, the disc stands where it was while the command
+    keeps following load. The engine raises the actuator fault only after the
+    disc has stood short of the command past the BMS dwell."""
+    from core.bacnet_plant_generator import (PlantTelemetryEngine, VALVE_DEV_DWELL_S,
+                                             VALVE_DEV_DEADBAND)
+    e = PlantTelemetryEngine("valve", rated_kw=0.5, seed=7)
+    for _ in range(40):
+        out = e.tick(1.0, plant_load_frac=0.5, running=True)
+    pos0 = out["Position"]
+    assert abs(pos0 - out["Commanded_Position"]) < 6.0        # tracking, actuator lag
+    # Stuck, same load: nothing moves, nothing alarms.
+    for _ in range(int(VALVE_DEV_DWELL_S) + 10):
+        out = e.tick(1.0, plant_load_frac=0.5, running=False)
+    assert out["Position"] == pos0
+    assert out.get("Alarm_ActuatorFault", 0.0) == 0.0
+    # The load rises: the command walks away from the frozen disc.
+    for _ in range(20):
+        out = e.tick(1.0, plant_load_frac=0.95, running=False)
+    assert out["Position"] == pos0
+    assert (out["Commanded_Position"] - pos0) / out["Commanded_Position"] > VALVE_DEV_DEADBAND
+    assert out.get("Alarm_ActuatorFault", 0.0) == 0.0          # dwell not run yet
+    for _ in range(int(VALVE_DEV_DWELL_S)):
+        out = e.tick(1.0, plant_load_frac=0.95, running=False)
+    assert out["Alarm_ActuatorFault"] == 1.0
+    # Freed: the disc tracks again and the alarm goes with the deviation.
+    for _ in range(40):
+        out = e.tick(1.0, plant_load_frac=0.95, running=True)
+    assert abs(out["Position"] - out["Commanded_Position"]) < 6.0
+    assert out.get("Alarm_ActuatorFault", 0.0) == 0.0
+
+
+def test_a_stuck_header_valve_is_frozen_on_the_wire(tmp_path):
+    from test_fault_publish_truth import _attach_bacnet, _clear_caches, _lay_out, Rig, SEED
+    import random
+    from conftest import build_plant
+    _clear_caches(); random.seed(SEED)
+    h = build_plant(tmp_path, crahs=4, servers=48, probes=False, valves=True)
+    _lay_out(h, 4); h.store._air_mode = "uniform"
+    ctrl, bac = _attach_bacnet(h, tmp_path)
+    r = Rig(h=h, store=h.store, ctrl=ctrl, bac=bac)
+    r.tick(120)
+    v = next(d.name for d in h.dm.get_all_devices() if d.name.startswith("VCHW"))
+    r.store.plant_alarm_overrides.setdefault(v, {})["Status_Modulating"] = 0.0
+    r.tick(2)
+    pos = _wire(r, v, "Position")
+    r.tick(40)
+    assert _wire(r, v, "Position") == pos                       # the disc stood still
+    assert _wire(r, v, "Status_Modulating") == 0.0
+    assert r.store._is_faulted(v)                               # the store knows
+    r.store.plant_alarm_overrides.pop(v, None)
+    r.tick(40)
+    assert _wire(r, v, "Position") != pos                        # modulating again
+
+
+# ── pump Flow Proof Lost: the dwell, then the stop ───────────────────────────
+
+def test_flow_proof_lost_runs_the_flow_down_before_the_pump_stops(hall):
+    """The flow switch opens: the alarm is on the wire at once, the flow runs
+    down over the proof dwell with the drive still at speed, and only when the
+    dwell runs out does the BMS call the pump failed, stop it and re-stage."""
+    r = hall
+    dc = "DC1"
+    pump = next(p for p in sorted(n for n in r.store._cooling_context()["plant_by_dc"][dc]["pump"])
+                if p.startswith("CHWP") and p not in r.store._plant_standby_names)
+    r.tick(5)
+    flow0 = _wire(r, pump, "Flow")
+    assert flow0 > 0.5 and _wire(r, pump, "Run_Status") == 1.0
+    r.store.plant_alarm_overrides.setdefault(pump, {})["Alarm_LowFlow"] = 1.0
+    r.tick(3)
+    assert _wire(r, pump, "Alarm_LowFlow") == 1.0
+    assert _wire(r, pump, "Run_Status") == 1.0                  # not failed yet
+    assert pump not in r.store._plant_standby_names
+    f3 = _wire(r, pump, "Flow")
+    assert 0.0 < f3 < flow0                                     # running down
+    assert _wire(r, pump, "Speed") > 0.0                        # drive still at speed
+    r.tick(4)
+    f7 = _wire(r, pump, "Flow")
+    assert f7 < f3
+    r.tick(int(r.store._FLOW_PROOF_S) + 5)
+    assert _wire(r, pump, "Run_Status") == 0.0                  # called failed, stopped
+    assert _wire(r, pump, "Flow") == 0.0
+    assert pump in r.store._plant_standby_names                 # re-staged
+    r.store.plant_alarm_overrides.pop(pump, None)
+    r.tick(3)
+    assert pump not in r.store._pump_proof_s

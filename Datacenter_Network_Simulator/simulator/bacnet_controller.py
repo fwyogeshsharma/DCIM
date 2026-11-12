@@ -758,12 +758,18 @@ class BACnetController:
                     _off = (_cmd_off
                             or (plant_standby_names and _nm in plant_standby_names)
                             or (plant_unpowered_names and _nm in plant_unpowered_names))
+                    # A header valve told to stop modulating is not a stopped
+                    # unit - its disc stands where it was, so the stopped
+                    # rewrite below (which would drive Position to 0, a shut
+                    # valve) does not apply. The engine freezes it instead.
+                    _stuck = (kind == "plant:valve"
+                              and float(ovr.get("Status_Modulating", 1.0)) < 0.5)
                     values = engine.tick(dt, forced=forced, live_power=_pw,
                                          live_cop=_cop, plant_load_frac=_lf,
                                          live_speed=_spd,
                                          live_heat=_hl, live_duty=_dty,
                                          live_oa=_oa,
-                                         running=not _off)
+                                         running=not _off and not _stuck)
                     # Staged-OFF (standby) chiller / pump: sequenced down
                     # by the BMS (lead/lag), not faulted. Report the unit STOPPED and
                     # its dynamic signals at rest — so a staged-off unit reads "off",
