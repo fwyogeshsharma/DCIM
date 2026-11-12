@@ -602,15 +602,45 @@ def _device_name(device_id: str) -> str | None:
     return getattr(dev, "name", None) or None
 
 
+def _coupling_kinds(st, name: str, dtype: str) -> dict[str, str]:
+    """What forcing each of a device's alarm points does beyond the bit itself
+    (doc 32 §9.2): ``store`` - the store applies the physics (water or air
+    warms, the plant answers); ``engine`` - the engine nudges points that reach
+    the wire; ``lost`` - the engine's nudge lands on points the store publishes
+    every tick, so the forced bit is the only tell. Alarms the engine has no
+    coupling for are not listed."""
+    fc = getattr(st, "_FORCED_COUPLINGS", {}).get(dtype, {})
+    side = getattr(st, "_STORE_SIDE_COUPLINGS", set())
+    pub = getattr(st, "_plant_auto_points", {}).get(name, {})
+    out: dict[str, str] = {}
+    for alarm, targets in fc.items():
+        if (dtype, alarm) in side:
+            out[alarm] = "store"
+        elif any(t in pub for t in targets):
+            out[alarm] = "lost"
+        else:
+            out[alarm] = "engine"
+    return out
+
+
 @router.get("/plant/overrides")
 def get_plant_overrides(device: str | None = None):
     """Current per-device forced binary overrides (keyed by device NAME). With
-    ?device=ID, returns just that device's forced points; otherwise the whole map."""
+    ?device=ID, returns just that device's forced points plus ``couplings``:
+    what forcing each alarm does beyond the bit (see _coupling_kinds), so the
+    menu can say "annunciation only" before the operator finds out the hard
+    way; otherwise the whole map."""
     st = getattr(_state(), "state_store", None)
     ov = getattr(st, "plant_alarm_overrides", {}) if st else {}
     if device is not None:
         nm = _device_name(device)
-        return {"device": device, "overrides": ov.get(nm, {}) if nm else {}}
+        out: dict = {"device": device, "overrides": ov.get(nm, {}) if nm else {}}
+        dm = _state().device_manager
+        dev = dm.get_device(device) if (dm and nm) else None
+        if dev is not None and st is not None:
+            dtype = getattr(dev.device_type, "value", str(dev.device_type))
+            out["couplings"] = _coupling_kinds(st, nm, dtype)
+        return out
     return {"overrides": ov}
 
 
@@ -715,6 +745,12 @@ def set_plant_override(body: PlantOverride):
         return OkResponse(message=f"Ramping {body.point} on {names}")
     if body.value is None:
         return OkResponse(message=f"Cleared {body.point} on {names}")
+    # Say at once when the bit is all the operator gets: the store logs the
+    # same thing, but the operator is looking at the menu, not the log.
+    if _coupling_kinds(st, nm, dtype).get(body.point) == "lost":
+        return OkResponse(message=(
+            f"Set {body.point}={body.value} on {names}: annunciation only. Its coupled "
+            f"points are published by the store every tick, so nothing downstream moves."))
     return OkResponse(message=f"Set {body.point}={body.value} on {names}")
 
 

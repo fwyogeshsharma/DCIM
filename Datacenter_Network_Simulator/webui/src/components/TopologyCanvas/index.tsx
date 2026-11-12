@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal } from './NodeContextMenu'
+import NodeContextMenu, { EditDeviceDialog, DeviceInfoModal, FaultDialog } from './NodeContextMenu'
 
 import {
   ReactFlow,
@@ -189,6 +189,7 @@ function Canvas() {
   const [searchText, setSearchText] = useState('')
   const [ctxMenu,      setCtxMenu]      = useState<{ nodeId: string; deviceType: string; deviceName: string; modelName: string; x: number; y: number } | null>(null)
   const [editDeviceId, setEditDeviceId] = useState<string | null>(null)
+  const [faultDialog, setFaultDialog] = useState<{ kind: 'degrade' | 'sensor'; deviceId: string } | null>(null)
   const [infoDeviceId, setInfoDeviceId] = useState<string | null>(null)
 
   const searchRef = useRef<HTMLInputElement>(null)
@@ -514,10 +515,15 @@ function Canvas() {
           onLocate={() => fitView({ nodes: [{ id: ctxMenu.nodeId }], padding: 0.4, duration: 400 })}
           onEditDevice={() => setEditDeviceId(ctxMenu.nodeId)}
           onShowInfo={() => setInfoDeviceId(ctxMenu.nodeId)}
+          onDegrade={() => setFaultDialog({ kind: 'degrade', deviceId: ctxMenu.nodeId })}
+          onSensorFault={() => setFaultDialog({ kind: 'sensor', deviceId: ctxMenu.nodeId })}
         />
       )}
       {editDeviceId && (
         <EditDeviceDialog deviceId={editDeviceId} onClose={() => setEditDeviceId(null)} />
+      )}
+      {faultDialog && (
+        <FaultDialog kind={faultDialog.kind} deviceId={faultDialog.deviceId} onClose={() => setFaultDialog(null)} />
       )}
       {infoDeviceId && (
         <DeviceInfoModal deviceId={infoDeviceId} onClose={() => setInfoDeviceId(null)} />

@@ -1145,6 +1145,10 @@ class DeviceStateStore:
         # DC → the chiller carrying the plant's chilled-water-high alarm. The
         # dwell in _chw_high_s is keyed by DC: it is the header's condition.
         self._chw_high_by_dc: Dict[str, str] = {}
+        # Header rise an operator-forced Alarm_HighCHWSupply is carrying this
+        # tick, per DC (S2-3, doc 32 §9.2). Read by the CRAH discharge and the
+        # rack fallbacks so the rooms see the warmer water, not only the wire.
+        self._chw_forced_c: Dict[str, float] = {}
         # Live reading for each plant header probe (CHWS/CHWR/CWS/CWR/CTB/FLOW),
         # keyed by device name → (role, value). Published by _compute_chw_loop and
         # consumed by _step_device so the probes report the loop instead of air.
@@ -1508,7 +1512,8 @@ class DeviceStateStore:
         "chiller": {"Alarm_HighCHWSupply": ("CHW_Supply_Temp", "CHW_Return_Temp")},
     }
     #: Couplings the store now applies itself (so they are not "lost").
-    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp"), ("cdu", "Alarm_HighSupplyTemp")}
+    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp"), ("cdu", "Alarm_HighSupplyTemp"),
+                             ("chiller", "Alarm_HighCHWSupply")}
 
     def _alarm_forced(self, dtype: str, name: str, alarm: str) -> bool:
         if float((self.plant_alarm_overrides.get(name) or {}).get(alarm, 0.0) or 0.0) >= 0.5:
@@ -6693,6 +6698,11 @@ class DeviceStateStore:
     _CHW_HIGH_DB_C   = 2.0     # K above setpoint before the plant is "off setpoint"
     _CHW_HIGH_S      = 180.0   # dwell before Alarm_HighCHWSupply latches
     _CHW_CLEAR_DB_C  = 1.0     # hysteresis — must come back inside this to clear
+    # How far a FORCED Alarm_HighCHWSupply pushes the header off setpoint at full
+    # severity. The same 6 K the forced CRAH Alarm_HighTemp carries, and three
+    # times the annunciation deadband, so the plant's own alarm latches on it
+    # after the dwell instead of the forced bit being the only tell.
+    _CHW_FORCED_RISE_C = 6.0
     # Return-air limit for a CRAH. ASHRAE A1 allowable tops out at 32 °C INLET; a
     # return sensor sits in the hot aisle, so the alarm point is well above that.
     _CRAH_RETURN_ALARM_C = 42.0
@@ -6809,6 +6819,26 @@ class DeviceStateStore:
             # reusing it keeps the water the plant makes and the air the room gets
             # telling one story instead of two.
             pen = self._chw_pen.get(dc, 0.0)
+            # S2-3 (doc 32 §9.2): an operator-forced Alarm_HighCHWSupply. The
+            # engine's +3 K on the leaving water was overwritten by this pass
+            # every tick, so the forced bit was the only tell and nothing
+            # downstream warmed. Applied here instead, as a header shortfall on
+            # the engine's severity ramp (0.25 -> 1.0 over ~45 s): the supply
+            # leaves setpoint, the CRAH discharge below carries it, the room
+            # model reads that back, and the dwell further down latches the
+            # plant's own alarm on the lead once the water has held high. It is
+            # the header's condition, so the worst forced machine sets it. A
+            # standby, locked-out or unpowered machine has no leaving water to
+            # raise and is not charged, as a stopped CRAH is not.
+            _live_ch = [c for c in (kinds.get("chiller") or [])
+                        if c not in self._plant_standby_names
+                        and c not in self._chiller_hp_lockout
+                        and c not in self._plant_unpowered_names]
+            forced_c = self._CHW_FORCED_RISE_C * max(
+                [self._forced_sev("chiller", c, "Alarm_HighCHWSupply") for c in _live_ch],
+                default=0.0)
+            self._chw_forced_c[dc] = forced_c
+            pen += forced_c
             # S1-8: the leaving-water setpoint is the operator's (a CHW reset),
             # not the design constant, and the published CHW_Setpoint says so.
             _sp = self._chw_sp(dc)
@@ -7177,7 +7207,7 @@ class DeviceStateStore:
             # plant holds setpoint, which is what makes any drift off it diagnostic.
             # S1-8: each unit holds ITS OWN discharge setpoint (Setpoint point,
             # operator hold or ramp), not the module constant.
-            _pen_dc = self._chw_pen.get(dc, 0.0)
+            _pen_dc = self._chw_pen.get(dc, 0.0) + self._chw_forced_c.get(dc, 0.0)
             _sps = [self._crah_sp(n) for n in crahs]
             _sp_room = (sum(_sps) / len(_sps)) if _sps else _SUPPLY_SETPOINT_C
             self._crah_sp_room[rk] = _sp_room
@@ -7742,7 +7772,8 @@ class DeviceStateStore:
         rk = (device.datacenter, device.room)
         crahs = ctx["crah_by_room"].get(rk)
         if not crahs:
-            return self._rack_supply_temp(device) + self._chw_pen.get(device.datacenter, 0.0)
+            return (self._rack_supply_temp(device) + self._chw_pen.get(device.datacenter, 0.0)
+                    + self._chw_forced_c.get(device.datacenter, 0.0))
         supplies, lost_units = [], 0.0
         for n in crahs:
             frac = self._crah_delivered_frac(n)
@@ -7762,7 +7793,8 @@ class DeviceStateStore:
             base = self._supply_air_c.get(
                 device.datacenter,
                 self._crah_sp_room.get(rk, _SUPPLY_SETPOINT_C)
-                + self._chw_pen.get(device.datacenter, 0.0))
+                + self._chw_pen.get(device.datacenter, 0.0)
+                + self._chw_forced_c.get(device.datacenter, 0.0))
         # LOST CAPACITY, as a shortfall rather than a headcount.
         #
         # A CRAH trip used to add a fixed share of 12 K whether or not the rest of

@@ -157,3 +157,84 @@ def test_a_healthy_crah_supply_ripples_round_setpoint_not_on_it(hall):
         seen.append(_wire(r, name))
     assert len(set(seen)) > 1, "supply air sat on one value for 40 ticks"
     assert all(abs(v - SP) <= 0.5 for v in seen), "ripple stays a few tenths"
+
+
+# ── S2-3: chiller Alarm_HighCHWSupply ────────────────────────────────────────
+
+def _lead(r, dc="DC1"):
+    trains = r.store._plant_trains_run.get(dc, [])
+    assert trains, "the plant has staged a train on"
+    return trains[0]["chiller"]
+
+
+def test_forced_high_chw_supply_reaches_the_wire_and_the_rooms(hall):
+    """The forced bit used to be the only tell: the engine's +3 K on the leaving
+    water was overwritten by the loop pass every tick, the CRAHs kept their
+    discharge and the room never warmed. Now it is a header shortfall the
+    store carries: the supply leaves setpoint, the CRAH discharge follows, the
+    room reads that back, and the plant's own alarm latches after its dwell."""
+    r = hall
+    name = _lead(r)
+    sp = _wire(r, name, "CHW_Setpoint")
+    room0 = _room_supply(r)
+    crah = r.crah(1).name
+    sa0 = _wire(r, crah)
+    assert _wire(r, name, "CHW_Supply_Temp") == pytest.approx(sp, abs=0.5)
+    r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighCHWSupply"] = 1.0
+    r.tick(60)                                          # the ramp is at 1.0
+    assert _wire(r, name, "Alarm_HighCHWSupply") == 1.0
+    assert _wire(r, name, "CHW_Supply_Temp") >= sp + 5.5
+    assert _wire(r, crah) >= sa0 + 5.5                  # every coil fed warm water
+    assert _room_supply(r) - room0 == pytest.approx(6.0, abs=0.3)
+    # The plant's own annunciation: held high past the dwell, the header alarm
+    # latches on the lead by the loop model itself, not by the operator's map.
+    r.tick(int(r.store._CHW_HIGH_S) + 5)
+    assert r.store._chw_high_by_dc.get("DC1") in r.store._plant_trains_run["DC1"][0].values()
+    # Clearing restores the previous state, and the ramp forgets the episode.
+    r.store.plant_alarm_overrides.pop(name, None)
+    r.tick(5)
+    assert _wire(r, name, "CHW_Supply_Temp") == pytest.approx(sp, abs=0.5)
+    assert _wire(r, crah) == pytest.approx(sa0, abs=0.5)
+    assert _room_supply(r) == pytest.approx(room0, abs=0.1)
+    assert r.store._forced_t == {}
+
+
+def test_forced_high_chw_supply_ramps_like_the_engine(hall):
+    r = hall
+    name = _lead(r)
+    sp = _wire(r, name, "CHW_Setpoint")
+    r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighCHWSupply"] = 1.0
+    r.tick(1)
+    first = _wire(r, name, "CHW_Supply_Temp") - sp
+    assert 6.0 * 0.25 - 0.3 <= first <= 6.0 * 0.30 + 0.3
+    r.tick(30)
+    mid = _wire(r, name, "CHW_Supply_Temp") - sp
+    assert first < mid < 6.0
+    r.store.plant_alarm_overrides.pop(name, None)
+
+
+def test_a_standby_chiller_is_not_charged(hall):
+    """A machine the BMS has staged off makes no water; forcing its alarm is a
+    bad point, not a plant event, and the header does not move."""
+    r = hall
+    standby = sorted(r.store._plant_standby_names)
+    if not standby:
+        pytest.skip("this plant runs every train")
+    name = standby[0]
+    lead = _lead(r)
+    sp = _wire(r, lead, "CHW_Setpoint")
+    r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighCHWSupply"] = 1.0
+    r.tick(60)
+    assert _wire(r, lead, "CHW_Supply_Temp") == pytest.approx(sp, abs=0.5)
+    assert r.store._chw_forced_c.get("DC1", 0.0) == 0.0
+    r.store.plant_alarm_overrides.pop(name, None)
+
+
+def test_forced_high_chw_supply_is_no_longer_logged_as_lost(hall, caplog):
+    r = hall
+    name = _lead(r)
+    with caplog.at_level(logging.WARNING, logger="core.device_state_store"):
+        r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighCHWSupply"] = 1.0
+        r.tick(3)
+    assert not any("does not reach the wire" in x.getMessage() for x in caplog.records)
+    r.store.plant_alarm_overrides.pop(name, None)

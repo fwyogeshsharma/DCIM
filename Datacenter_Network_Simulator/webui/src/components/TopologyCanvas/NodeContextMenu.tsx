@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { api, errorMessage } from '../../api/client'
 import { useStore } from '../../store/useStore'
-import type { DeviceInfo } from '../../api/types'
+import type { ActiveFault, DeviceInfo } from '../../api/types'
+import { DegradeForm, SensorFaultForm, DEGRADABLE_TYPES } from '../RightPanel/FaultInjectForms'
 import { VENDORS, MODELS, deviceTypeLabel, PASSIVE_DEVICE_TYPES } from '../../data/deviceConstants'
 import { snmpCell } from '../../data/snmpView'
 import NumberInput from '../NumberInput'
@@ -639,15 +640,23 @@ interface Props {
   onLocate: () => void
   onEditDevice: () => void
   onShowInfo: () => void
+  /** Open the degradation / sensor-fault dialogs with this device fixed (doc 32 S2-1). */
+  onDegrade?: () => void
+  onSensorFault?: () => void
 }
 
-export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelName, x, y, onClose, onLocate, onEditDevice, onShowInfo }: Props) {
+export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelName, x, y, onClose, onLocate, onEditDevice, onShowInfo, onDegrade, onSensorFault }: Props) {
   const { snmp, fetchGraph, fetchDevices, fetchFaulted } = useStore()
   const menuRef  = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [pos,     setPos]    = useState({ x, y })
   const [subOpen, setSubOpen] = useState(false)
   const [overrides, setOverrides] = useState<Record<string, number>>({})
+  // What forcing each alarm does beyond the bit (doc 32 §9.2): 'store' or
+  // 'engine' reach physics or the wire; 'lost' is annunciation only.
+  const [couplings, setCouplings] = useState<Record<string, 'store' | 'engine' | 'lost'>>({})
+  // Whether this device has a point a sensor fault can be put on.
+  const [hasPoints, setHasPoints] = useState(false)
   const [evBusy, setEvBusy] = useState<string | null>(null)
   const [faultsAvail, setFaultsAvail] = useState<{ fault: string; label: string }[]>([])
   const [faultsActive, setFaultsActive] = useState<string[]>([])
@@ -731,8 +740,11 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   // Load active fault overrides so the submenu can show ACTIVE state (plant only)
   async function loadOverrides() {
     try {
-      const ov = await api.plantOverrides(nodeId) as { overrides: Record<string, number> }
+      const ov = await api.plantOverrides(nodeId) as {
+        overrides: Record<string, number>; couplings?: Record<string, 'store' | 'engine' | 'lost'>
+      }
       setOverrides(ov.overrides ?? {})
+      setCouplings(ov.couplings ?? {})
     } catch { /* ignore */ }
   }
   useEffect(() => {
@@ -752,6 +764,13 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
     } catch { /* ignore */ }
   }
   useEffect(() => { loadFaults() }, [nodeId])
+  useEffect(() => {
+    let live = true
+    api.faultPoints(nodeId)
+      .then(r => { if (live) setHasPoints((r.points ?? []).length > 0) })
+      .catch(() => { if (live) setHasPoints(false) })
+    return () => { live = false }
+  }, [nodeId])
 
   // Outlet relays. Only rack PDUs have them, so this stays quiet for every other
   // device type rather than 404-ing on each menu open.
@@ -858,11 +877,14 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   // grouped under one submenu so the user sees a single, consistent entry point.
   const isPlant = PLANT_EVENT_TYPES.includes(deviceType)
 
-  type SimCond = { key: string; label: string; on: boolean; busy: boolean; toggle: () => void }
+  type SimCond = { key: string; label: string; on: boolean; busy: boolean; toggle: () => void
+                   /** 'lost': the bit is all this does; physics stays put. */
+                   lost?: boolean }
   const conditions: SimCond[] = isPlant
     ? plantEvents.map(ev => ({
         key: ev.point, label: ev.label,
         on: ev.point in overrides, busy: evBusy === ev.point,
+        lost: couplings[ev.point] === 'lost',
         toggle: () => { if (!evBusy) toggleEvent(ev) },
       }))
     : faultsAvail.map(f => ({
@@ -888,7 +910,8 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   const covered = new Set(faultsAvail.map(f => FAULT_TRAP[f.fault]).filter(Boolean))
   const events = (!isPlant && snmpRunning) ? traps.filter(t => !covered.has(t.type)) : []
 
-  const hasSim = conditions.length > 0 || events.length > 0 || outlets.length > 0
+  const canDegrade = DEGRADABLE_TYPES.has(deviceType)
+  const hasSim = conditions.length > 0 || events.length > 0 || outlets.length > 0 || canDegrade || hasPoints
   const busyAny = evBusy !== null || fltBusy !== null
   const outletsOff = outlets.filter(o => o.state === 'off').length
 
@@ -1031,9 +1054,12 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     onMouseDown={e => { e.preventDefault(); if (!c.on) c.toggle() }}
                   >
-                    <span>{c.label}</span>
+                    <span title={c.lost ? 'Forces the alarm point only. Its coupled readings are published by the plant model every tick, so nothing downstream moves. Use Degrade… for a real capacity loss.' : undefined}>
+                      {c.label}
+                      {c.lost && <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 8 }}>annunciation only</span>}
+                    </span>
                     <span style={{ fontSize: 9, color: c.on ? 'var(--crit)' : 'var(--text-dim)' }}>
-                      {c.busy ? '…' : c.on ? 'ACTIVE' : ''}
+                      {c.busy ? '…' : c.on ? (c.lost ? 'ACTIVE · NO PHYSICS' : 'ACTIVE') : ''}
                     </span>
                   </div>
                 ))}
@@ -1056,6 +1082,31 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
                   </div>
                 ))}
 
+                {(canDegrade || hasPoints) && <div style={GROUP_HDR}>Inject</div>}
+                {canDegrade && (
+                  <div
+                    style={{ padding: '5px 14px', cursor: 'pointer', color: 'var(--text)', whiteSpace: 'nowrap',
+                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}
+                    title="Wear the machine itself: capacity it can no longer make. Physics follows."
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseDown={e => { e.preventDefault(); onClose(); onDegrade?.() }}
+                  >
+                    <span>Degrade…</span>
+                  </div>
+                )}
+                {hasPoints && (
+                  <div
+                    style={{ padding: '5px 14px', cursor: 'pointer', color: 'var(--text)', whiteSpace: 'nowrap',
+                             display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18 }}
+                    title="Make one reading lie: bias, drift, noise, stuck or dropout. Physics stays true."
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseDown={e => { e.preventDefault(); onClose(); onSensorFault?.() }}
+                  >
+                    <span>Sensor fault…</span>
+                  </div>
+                )}
                 {events.length > 0 && <div style={GROUP_HDR}>Events</div>}
                 {events.map(t => (
                   <div
@@ -1077,4 +1128,41 @@ export default function NodeContextMenu({ nodeId, deviceType, deviceName, modelN
   )
 
   return createPortal(menu, document.body)
+}
+
+
+// ── FaultDialog ───────────────────────────────────────────────────────────────
+// The Fault Injection panel's own forms, wrapped for one device from its node
+// menu (doc 32 S2-1). The device is preselected, not locked: the form's own
+// picker still works, so an operator who right-clicked the wrong CRAH can
+// correct it here rather than closing and starting over.
+export function FaultDialog({ kind, deviceId, onClose }: {
+  kind: 'degrade' | 'sensor'; deviceId: string; onClose: () => void
+}) {
+  const { devices, fetchFaulted } = useStore()
+  const [active, setActive] = useState<ActiveFault[]>([])
+  useEffect(() => {
+    let live = true
+    api.faultsActive().then(r => { if (live) setActive(r.active ?? []) }).catch(() => {})
+    return () => { live = false }
+  }, [])
+  const name = devices.find(d => d.id === deviceId)?.name ?? ''
+  const done = () => { fetchFaulted(); onClose() }
+  return createPortal(
+    <div style={editOverlay} onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ ...editDialog, width: 480 }}>
+        <div className="panel-header" style={{ borderRadius: '6px 6px 0 0', flexShrink: 0 }}>
+          <span>{kind === 'degrade' ? 'Degrade' : 'Sensor fault'}{name ? ` · ${name}` : ''}</span>
+          <button onClick={onClose} aria-label="Close"
+                  style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer', padding: '0 4px' }}>✕</button>
+        </div>
+        <div style={{ padding: '10px 16px 14px', overflowY: 'auto' }}>
+          {kind === 'degrade'
+            ? <DegradeForm devices={devices} initialDeviceId={deviceId} campaign="" active={active} onStarted={done} />
+            : <SensorFaultForm devices={devices} initialDeviceId={deviceId} campaign="" onInjected={done} />}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
 }
