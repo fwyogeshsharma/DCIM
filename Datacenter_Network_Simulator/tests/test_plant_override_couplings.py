@@ -42,7 +42,8 @@ def test_pump_forces_are_the_store_taking_the_pump_out():
     assert k == {"Run_Status": "store", "Alarm_Fault": "store", "Alarm_LowFlow": "store"}
 
 
-def test_valve_actuator_fault_moves_the_disc_but_stuck_is_annunciation_only():
+def test_valve_forces_both_reach_physics():
+    """Actuator Fault parks the disc short of its command; Stuck freezes it
+    where it stood and lets the command walk away. Both are scored."""
     k = _coupling_kinds(_store({}), "VCHW", "valve")
-    assert k["Alarm_ActuatorFault"] == "store"
-    assert k["Status_Modulating"] == "lost"
+    assert k == {"Alarm_ActuatorFault": "store", "Status_Modulating": "store"}

@@ -635,12 +635,11 @@ def _coupling_kinds(st, name: str, dtype: str) -> dict[str, str]:
     return out
 
 
-#: Forces the store reads as a fault but that cost nothing, measured in a rig
-#: (2026-11-12): a header valve told to stop modulating keeps tracking its
-#: command on the wire, so the command-to-feedback deviation the store scores
-#: stays at zero. Listed here so the menu says so until the engine freezes the
-#: disc where it stood.
-_NO_OP_FORCES = {("valve", "Status_Modulating")}
+#: Forces the store reads as a fault but that cost nothing on the wire or in
+#: physics. Empty since the header valve's Stuck freezes the disc (the engine
+#: holds Position, the store scores the deviation as load moves); kept so the
+#: next such gap found in a rig has somewhere honest to go.
+_NO_OP_FORCES: set = set()
 
 
 @router.get("/plant/overrides")
