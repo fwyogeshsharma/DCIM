@@ -363,6 +363,11 @@ def test_a_failed_pump_starts_the_spare_and_keeps_the_chiller(hall):
     assert _wire(r, spare, "Flow") > 0.5
     assert "Alarm_FlowLoss" not in r.store._plant_auto_points.get(ch, {})
     assert _wire(r, ch, "CHW_Flow") > 0.5                         # the barrel sees water
+    # Covered means covered: the plant is not short, the water holds setpoint.
+    sp = _wire(r, ch, "CHW_Setpoint")
+    r.tick(30)
+    assert r.store._chw_pen.get("DC1", 0.0) < 0.5
+    assert _wire(r, ch, "CHW_Supply_Temp") == pytest.approx(sp, abs=0.6)
     # Repaired: the train's own pump comes back and the spare idles again.
     r.store.plant_alarm_overrides.pop(pump, None)
     r.tick(8)

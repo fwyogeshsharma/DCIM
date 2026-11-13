@@ -6702,9 +6702,24 @@ class DeviceStateStore:
                 self._chw_flow_interlock -= _running
 
             if trains_on:
+                # A header spare the BMS has started stands in for one running
+                # train's parked pump: that pump is no longer the train's loss.
+                # Without this the train scored a total loss the moment its pump
+                # was parked, while the spare moved its water - the supply left
+                # setpoint and the halls warmed for a failure the plant had
+                # covered (2026-11-13, CHWP1 Flow Proof Lost: 7 -> 15 C).
+                _spares_free = [sp for sp in (ctx.get("spare_chwp", {}).get(dc) or [])
+                                if sp not in self._plant_standby_names
+                                and sp not in self._plant_unpowered_names
+                                and not self._is_faulted(sp)]
                 deficit = 0.0
                 for tr in trains_on:
-                    worst = max((lost_weight(m) for m in tr["members"]), default=0.0)
+                    members = list(tr["members"])
+                    pump = tr.get("chwp")
+                    if pump and _spares_free and lost_weight(pump) >= 1.0:
+                        _spares_free.pop(0)
+                        members = [m for m in members if m != pump]
+                    worst = max((lost_weight(m) for m in members), default=0.0)
                     if not tr["complete"]:
                         worst = 1.0     # a chiller with no pump moves no water
                     deficit += worst
