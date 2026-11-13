@@ -1167,6 +1167,10 @@ class DeviceStateStore:
         # tick, per DC (S2-3, doc 32 §9.2). Read by the CRAH discharge and the
         # rack fallbacks so the rooms see the warmer water, not only the wire.
         self._chw_forced_c: Dict[str, float] = {}
+        #: Fraction of its secondary flow a CDU still moves under a forced
+        #: Alarm_PumpFault / Alarm_LowFlow (absent = 1.0). Set by the CDU block
+        #: of _compute_chw_loop, read where the plates' die temperature is made.
+        self._cdu_forced_ff: Dict[str, float] = {}
         # Live reading for each plant header probe (CHWS/CHWR/CWS/CWR/CTB/FLOW),
         # keyed by device name → (role, value). Published by _compute_chw_loop and
         # consumed by _step_device so the probes report the loop instead of air.
@@ -1530,7 +1534,10 @@ class DeviceStateStore:
         "chiller": {"Alarm_HighCHWSupply": ("CHW_Supply_Temp", "CHW_Return_Temp")},
     }
     #: Couplings the store now applies itself (so they are not "lost").
-    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp"), ("cdu", "Alarm_HighSupplyTemp"),
+    _STORE_SIDE_COUPLINGS = {("crah", "Alarm_HighTemp"), ("crah", "Alarm_HighReturnAir"),
+                             ("crah", "Filter_Dirty"),
+                             ("cdu", "Alarm_HighSupplyTemp"), ("cdu", "Alarm_PumpFault"),
+                             ("cdu", "Alarm_LowFlow"),
                              ("chiller", "Alarm_HighCHWSupply")}
 
     def _alarm_forced(self, dtype: str, name: str, alarm: str) -> bool:
@@ -7448,6 +7455,8 @@ class DeviceStateStore:
                 # a high-return alarm underneath that is noise on top of the finding.
                 if self._unit_stopped(name):
                     self._crah_hightemp_t.pop(name, None)
+                    for _a in ("Alarm_HighReturnAir", "Filter_Dirty"):
+                        self._forced_t.pop(("crah", name, _a), None)
                     continue
                 # affects_control (doc 32 §4.4): the unit holds discharge setpoint
                 # on its OWN sensor, so a sensor reading high by b drives the real
@@ -7459,6 +7468,20 @@ class DeviceStateStore:
                 # tick, so it never reached the wire or the room. Applied here,
                 # store-side, on the engine's own severity ramp (0.25 -> 1.0).
                 _ht = self._crah_hightemp_sev(name)
+                # Forced Alarm_HighReturnAir (doc 32 §9.2): "hot aisle, healthy
+                # unit". The alarm derives from the return thermistor, so the
+                # thermistor reads hot (+8 K on the ramp) and the coil works
+                # harder to hold discharge; discharge itself does NOT move and
+                # nothing is derated, which is the whole distinction from
+                # Alarm_HighTemp. Sensor-level truth only: the room is not made
+                # hot, because the cause (load, recirculation) is not here.
+                _hr = self._forced_sev("crah", name, "Alarm_HighReturnAir")
+                if _hr > 0.0 and pts.get("Return_Air_Temp") is not None:
+                    pts["Return_Air_Temp"] = round(pts["Return_Air_Temp"] + 8.0 * _hr, 1)
+                # Forced Filter_Dirty: the switch is a dP switch, so the dP reads
+                # at its "change filter" point; the airflow derate it costs the
+                # room is already scored in _crah_delivered_frac.
+                _fd = self._forced_sev("crah", name, "Filter_Dirty")
                 _sp_u = self._crah_sp(name)
                 # Control ripple. A real discharge loop never sits on setpoint to
                 # the tenth: the PID hunts a little round it as the coil load and
@@ -7490,6 +7513,8 @@ class DeviceStateStore:
                 _L = self.faults.machine_value(name, "filter_loading")
                 _q = max(0.0, min(1.0, self._filter_q.get(name, 1.0)))
                 _dp = self._CRAH_FILTER_CLEAN_PA * (1.0 + 3.0 * _L) * _q * _q
+                if _fd > 0.0:
+                    _dp = max(_dp, self._CRAH_FILTER_CLEAN_PA * (1.0 + 3.0 * _fd))
                 pts["Filter_DP"] = round(max(0.0, _dp * (1.0 + self._rng_for(name)
                                                          .uniform(-0.01, 0.01))), 1)
                 if _L >= 1.0 - 1e-9:
@@ -7511,6 +7536,10 @@ class DeviceStateStore:
                 # sign is physics, the gains are not calibrated].
                 _load_pos += -4.0 * (_sp_u - _SUPPLY_SETPOINT_C) + 5.0 * (_chw_sp_dc - CHW_SETPOINT_C)
                 _load_pos = max(10.0, _load_pos)
+                # The engine's forced-alarm valve shifts, applied here because
+                # this block owns the point: hot return = more coil, less air
+                # over the coil = more water per unit of air.
+                _load_pos += 25.0 * _hr + 12.0 * _fd
                 _starve = (self._chw_pen.get(dc, 0.0) + max(0.0, _cb)) * self._CRAH_VALVE_GAIN
                 pts["CHW_Valve"] = (100.0 if _ht > 0.0
                                     else round(min(100.0, _load_pos + _starve), 1))
@@ -7570,6 +7599,20 @@ class DeviceStateStore:
                                 if _nom > 0 else 0.0)
                 _flow = (max(self._CDU_MIN_FLOW_FRAC, _duty) * _flow_design
                          * self._cdu_flow_frac.get(name, 1.0))
+                # Forced Alarm_PumpFault / Alarm_LowFlow (doc 32 §9.2): the
+                # engine cut TCS_Flow by 50 % / 60 % on its ramp, on a point this
+                # block overwrites, so the wire never saw it. Applied here: the
+                # pump moves less water, the plates still make the same heat, so
+                # the range widens and the return climbs. Single-pump CDU model;
+                # a dual-pump unit would change over and show only a dip.
+                _pf = self._forced_sev("cdu", name, "Alarm_PumpFault")
+                _lf = self._forced_sev("cdu", name, "Alarm_LowFlow")
+                _ff = (1.0 - 0.5 * _pf) * (1.0 - 0.6 * _lf)
+                if _ff < 1.0:
+                    _flow *= _ff
+                    self._cdu_forced_ff[name] = _ff
+                else:
+                    self._cdu_forced_ff.pop(name, None)
                 _range = (_q / (_flow * CP_WATER_KJ_KGK)) if _flow > 0 else 0.0
                 # The facility valve modulates to hold the secondary setpoint,
                 # and holds it until it runs out of travel.
@@ -7605,7 +7648,7 @@ class DeviceStateStore:
                 _lost = min(_range, _unmet * self._CDU_LOST_AUTHORITY_K)
                 _tcs = (_tsp - _cb
                         + _drift * self._CDU_FOLLOW_FRAC
-                        + _lost + 6.0 * _hst
+                        + _lost + 6.0 * _hst + 5.0 * _pf + 3.0 * _lf
                         + random.uniform(-self._CDU_TCS_BAND_K, self._CDU_TCS_BAND_K))
                 pts["TCS_Supply_Temp"] = round(_tcs, 1)
                 pts["TCS_Return_Temp"] = round(_tcs + _range, 1)
@@ -7623,7 +7666,7 @@ class DeviceStateStore:
                 # annunciates low flow [judgement: doc 32 §5.3]; raised only.
                 _Lc = self.faults.machine_value(name, "filter_loading")
                 _qf = (max(self._CDU_MIN_FLOW_FRAC, _duty)
-                       * self._cdu_flow_frac.get(name, 1.0))
+                       * self._cdu_flow_frac.get(name, 1.0) * _ff)
                 pts["Filter_DP"] = round(self._CDU_STRAINER_KPA * (1.0 + 1.5 * _Lc)
                                          * _qf * _qf * (1.0 + _irng.uniform(-0.01, 0.01)), 2)
                 if _Lc >= 1.0 - 1e-9:
@@ -8786,6 +8829,12 @@ class DeviceStateStore:
                         _cpu_t += 34.0          # CDU stopped → coolant flow lost → die climbs
                     elif _pv.get("TCS_Supply_Temp") is not None:
                         _cpu_t += max(0.0, float(_pv["TCS_Supply_Temp"]) - 32.0) * 1.2
+                    # Less coolant over the plate: the plate rise scales with
+                    # 1/flow at the same heat [judgement: 6 K per unit of 1/ff-1,
+                    # so half flow adds 6 K, 40 % flow adds 9 K].
+                    _ffc = self._cdu_forced_ff.get(_cdu, 1.0)
+                    if _ffc < 1.0:
+                        _cpu_t += (1.0 / max(0.2, _ffc) - 1.0) * 6.0
                 _cpu_t += self._chw_pen.get(device.datacenter, 0.0) * 0.8
             else:
                 _cpu_t = 38.0 + device.cpu_usage * 0.45 + random.uniform(-1.0, 1.0)

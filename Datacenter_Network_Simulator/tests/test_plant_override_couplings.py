@@ -22,18 +22,34 @@ def test_chiller_high_chw_supply_is_store_side_now():
     assert k["Alarm_HighPressure"] == "store"         # scored as a fault
 
 
-def test_crah_return_air_force_is_lost_when_the_store_publishes_the_target():
+def test_crah_forces_are_all_store_side_now():
     st = _store({"CRAH1": {"Return_Air_Temp": 30.0, "CHW_Valve": 60.0}})
     k = _coupling_kinds(st, "CRAH1", "crah")
     assert k["Alarm_HighTemp"] == "store"
-    assert k["Alarm_HighReturnAir"] == "lost"
-    assert k["Filter_Dirty"] == "lost"
+    assert k["Alarm_HighReturnAir"] == "store"
+    assert k["Filter_Dirty"] == "store"
     assert k["Unit_Running"] == "store"
 
 
-def test_crah_return_air_force_reaches_the_wire_before_anything_is_published():
-    k = _coupling_kinds(_store({}), "CRAH1", "crah")
-    assert k["Alarm_HighReturnAir"] == "engine"
+def test_cdu_forces_are_all_store_side_now():
+    st = _store({"CDU1": {"TCS_Flow": 4.0, "TCS_Supply_Temp": 32.0}})
+    k = _coupling_kinds(st, "CDU1", "cdu")
+    assert k["Alarm_HighSupplyTemp"] == "store"
+    assert k["Alarm_PumpFault"] == "store"
+    assert k["Alarm_LowFlow"] == "store"
+    assert k["Unit_Running"] == "store"
+
+
+def test_a_coupling_the_store_does_not_own_is_lost_once_its_target_is_published():
+    """The classifier's lost/engine split, with a coupling taken back out of
+    the store's set, so the mechanism stays tested now that nothing is lost."""
+    side = DeviceStateStore._STORE_SIDE_COUPLINGS - {("crah", "Alarm_HighReturnAir")}
+    st = _store({})
+    st._STORE_SIDE_COUPLINGS = side
+    assert _coupling_kinds(st, "CRAH1", "crah")["Alarm_HighReturnAir"] == "engine"
+    st = _store({"CRAH1": {"Return_Air_Temp": 30.0, "CHW_Valve": 60.0}})
+    st._STORE_SIDE_COUPLINGS = side
+    assert _coupling_kinds(st, "CRAH1", "crah")["Alarm_HighReturnAir"] == "lost"
 
 
 def test_pump_forces_are_the_store_taking_the_pump_out():

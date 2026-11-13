@@ -95,8 +95,12 @@ def test_a_stopped_unit_is_not_charged(hall):
 
 
 def test_lost_couplings_are_logged_once(hall, caplog):
+    """Nothing in _FORCED_COUPLINGS is lost any more, so one coupling is taken
+    back out of the store's set to keep the warning path tested."""
     r = hall
     name = r.crah(5).name
+    r.store._STORE_SIDE_COUPLINGS = (type(r.store)._STORE_SIDE_COUPLINGS
+                                     - {("crah", "Alarm_HighReturnAir")})
     with caplog.at_level(logging.WARNING, logger="core.device_state_store"):
         r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighReturnAir"] = 1.0
         r.tick(5)
@@ -114,6 +118,94 @@ def test_lost_couplings_are_logged_once(hall, caplog):
         r.store.plant_alarm_overrides[name]["Alarm_HighReturnAir"] = 1.0
         r.tick(2)
     assert sum("does not reach the wire" in x.getMessage() for x in caplog.records) == 1
+
+
+# ── CRAH Alarm_HighReturnAir / Filter_Dirty (doc 32 §9.2) ───────────────────
+
+def test_forced_high_return_air_reads_on_the_thermistor_not_the_room(hall):
+    r = hall
+    name = r.crah(2).name
+    ret0 = _wire(r, name, "Return_Air_Temp")
+    sa0, valve0, room0 = _wire(r, name), _wire(r, name, "CHW_Valve"), _room_supply(r)
+    r.store.plant_alarm_overrides.setdefault(name, {})["Alarm_HighReturnAir"] = 1.0
+    r.tick(60)
+    assert _wire(r, name, "Alarm_HighReturnAir") == 1.0
+    assert _wire(r, name, "Return_Air_Temp") >= ret0 + 7.0          # the thermistor
+    assert _wire(r, name, "CHW_Valve") >= min(100.0, valve0 + 24.0)  # more coil
+    assert _wire(r, name) == pytest.approx(sa0, abs=0.5)             # still on setpoint
+    assert _room_supply(r) == pytest.approx(room0, abs=0.15)         # nothing derated
+    assert r.store._crah_delivered_frac(name) == 1.0
+    r.store.plant_alarm_overrides.pop(name, None)
+    r.tick(3)
+    assert _wire(r, name, "Return_Air_Temp") == pytest.approx(ret0, abs=0.7)
+    assert _wire(r, name, "CHW_Valve") < valve0 + 10.0
+
+
+def test_forced_filter_dirty_reads_on_the_dp_and_costs_the_room_its_air(hall):
+    r = hall
+    name = r.crah(3).name
+    dp0, valve0, room0 = _wire(r, name, "Filter_DP"), _wire(r, name, "CHW_Valve"), _room_supply(r)
+    assert dp0 < 100.0
+    r.store.plant_alarm_overrides.setdefault(name, {})["Filter_Dirty"] = 1.0
+    r.tick(60)
+    assert _wire(r, name, "Filter_Dirty") == 1.0
+    assert _wire(r, name, "Filter_DP") >= 235.0                      # the change-filter point
+    assert _wire(r, name, "CHW_Valve") >= min(100.0, valve0 + 11.0)
+    assert r.store._crah_delivered_frac(name) == pytest.approx(0.8)  # the derate it costs
+    assert _room_supply(r) > room0                                   # which the room feels
+    r.store.plant_alarm_overrides.pop(name, None)
+    r.tick(3)
+    assert _wire(r, name, "Filter_DP") == pytest.approx(dp0, rel=0.1)
+    assert r.store._crah_delivered_frac(name) == 1.0
+
+
+# ── CDU Alarm_PumpFault / Alarm_LowFlow (doc 32 §9.2) ───────────────────────
+
+def _cdu_rig(tmp_path):
+    from test_degradation import _rig as _iso_rig
+    r = _iso_rig(tmp_path, cdus=1)
+    r.tick(150)
+    cdu = r.h.made["CDU1"].name
+    loop = sorted(r.store._cdu_loop_servers().get(cdu, ()))
+    assert loop, "the fixture CDU carries a cold-plate loop"
+    dev = {d.name: d for d in r.servers()}
+    return r, cdu, lambda: sum(dev[n].cpu_temp for n in loop) / len(loop)
+
+
+def test_forced_cdu_pump_fault_cuts_the_flow_and_warms_the_plates(tmp_path):
+    r, cdu, die = _cdu_rig(tmp_path)
+    die0 = die()
+    flow0, tcs0 = _wire(r, cdu, "TCS_Flow"), _wire(r, cdu, "TCS_Supply_Temp")
+    range0 = _wire(r, cdu, "TCS_Return_Temp") - tcs0
+    dp0 = _wire(r, cdu, "Filter_DP")
+    r.store.plant_alarm_overrides.setdefault(cdu, {})["Alarm_PumpFault"] = 1.0
+    r.tick(60)
+    assert _wire(r, cdu, "Alarm_PumpFault") == 1.0
+    assert _wire(r, cdu, "TCS_Flow") == pytest.approx(0.5 * flow0, rel=0.08)
+    assert _wire(r, cdu, "TCS_Supply_Temp") >= tcs0 + 4.5
+    # Same heat through half the water: the range doubles.
+    rng = _wire(r, cdu, "TCS_Return_Temp") - _wire(r, cdu, "TCS_Supply_Temp")
+    assert rng == pytest.approx(2.0 * range0, rel=0.15)
+    assert _wire(r, cdu, "Filter_DP") == pytest.approx(0.25 * dp0, rel=0.15)   # dP ~ Q^2
+    assert r.store._cdu_forced_ff[cdu] == pytest.approx(0.5)
+    r.tick(240)
+    assert die() > die0 + 6.0          # warmer coolant AND less of it
+    r.store.plant_alarm_overrides.pop(cdu, None)
+    r.tick(3)
+    assert _wire(r, cdu, "TCS_Flow") == pytest.approx(flow0, rel=0.05)
+    assert r.store._cdu_forced_ff == {}
+    assert r.store._forced_t == {}
+
+
+def test_forced_cdu_low_flow_is_the_same_path_at_sixty_percent(tmp_path):
+    r, cdu, die = _cdu_rig(tmp_path)
+    flow0, tcs0 = _wire(r, cdu, "TCS_Flow"), _wire(r, cdu, "TCS_Supply_Temp")
+    r.store.plant_alarm_overrides.setdefault(cdu, {})["Alarm_LowFlow"] = 1.0
+    r.tick(60)
+    assert _wire(r, cdu, "Alarm_LowFlow") == 1.0
+    assert _wire(r, cdu, "TCS_Flow") == pytest.approx(0.4 * flow0, rel=0.08)
+    assert _wire(r, cdu, "TCS_Supply_Temp") >= tcs0 + 2.5
+    assert r.store._cdu_forced_ff[cdu] == pytest.approx(0.4)
 
 
 # ── S1-10: CDU Alarm_HighSupplyTemp ─────────────────────────────────────────
