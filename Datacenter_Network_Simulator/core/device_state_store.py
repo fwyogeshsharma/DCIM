@@ -1076,6 +1076,14 @@ class DeviceStateStore:
         self._cond_range_c: Dict[str, float] = {}
         self._chw_flow_lost_s: Dict[str, float] = {}
         self._chw_flow_interlock: set = set()
+        # Each chiller's OWN evaporator flow safety (S2-5): seconds its barrel has
+        # seen less than half its flow, and the machines it has tripped. Faster
+        # than the plant-level interlock above and per machine, the way a real
+        # chiller's flow switch is; auto-resetting once flow proves or the
+        # machine has sat off for a while.
+        self._chiller_flow_s: Dict[str, float] = {}
+        self._chiller_flow_trip: set = set()
+        self._chiller_flow_reset_s: Dict[str, float] = {}
         # DC → CRAH discharge air (setpoint + CHW penalty). Published on the units
         # and read back by _room_supply_temp, so the penalty is counted once.
         self._supply_air_c: Dict[str, float] = {}
@@ -4838,9 +4846,32 @@ class DeviceStateStore:
                     _n_run = max(1, min(len(_trains),
                                         math.ceil(on / inst_mods * len(_trains))))
 
+                    # SPARE BEFORE SWAP. A running train whose ONLY failed member
+                    # is its evaporator pump is not a failed train when a healthy
+                    # header spare can be started for it: the BMS starts the spare
+                    # and the chiller never stops. Swapping the whole train - the
+                    # chiller, both pumps and the tower cell - is what a plant with
+                    # pump-per-chiller and no spare has to do; with a spare it is a
+                    # compressor stop and restart for a pump. One spare covers one
+                    # train, in train order; the rest fail over as before.
+                    def _member_out(m):
+                        return (m in self._plant_unpowered_names
+                                or self._is_alarmed(m)
+                                or m in self._chiller_hp_lockout
+                                or self._run_proof_failed(m))
+                    _spare_ok = [sp for sp in _spare_chwp if not _member_out(sp)]
+                    _covered: set = set()
+                    for i, tr in enumerate(_trains):
+                        if len(_covered) >= len(_spare_ok):
+                            break
+                        out = {m for m in tr["members"] if _member_out(m)}
+                        if tr.get("chwp") and out == {tr["chwp"]}:
+                            _covered.add(i)
+
                     def _fitness(i_tr):
                         i, tr = i_tr
-                        dead = any(m in self._plant_unpowered_names for m in tr["members"])
+                        dead = (any(m in self._plant_unpowered_names for m in tr["members"])
+                                and i not in _covered)
                         # A latched HP trip is read straight from the lockout set, not
                         # via its alarm point — the trip is set later in the tick, so a
                         # point-only check could still rank a tripped chiller as lead and
@@ -4856,11 +4887,12 @@ class DeviceStateStore:
                         # down — because the cooling-loss model counts a stopped unit as
                         # gone while this ranking judged it healthy. Two predicates, two
                         # different answers, and the run-status bit fell between them.
-                        bad = any(m not in self._plant_unpowered_names
-                                  and (self._is_alarmed(m)
-                                       or m in self._chiller_hp_lockout
-                                       or self._run_proof_failed(m))
-                                  for m in tr["members"])
+                        bad = (any(m not in self._plant_unpowered_names
+                                   and (self._is_alarmed(m)
+                                        or m in self._chiller_hp_lockout
+                                        or self._run_proof_failed(m))
+                                   for m in tr["members"])
+                               and i not in _covered)
                         _ch = tr.get("chiller")
                         # LEAST-SWITCHING: a train already running outranks an equal idle
                         # one, so a recovered chiller does NOT displace the standby that
@@ -4930,6 +4962,11 @@ class DeviceStateStore:
                     for i, tr in enumerate(_trains):
                         if i not in _run_idx:
                             self._plant_standby_names |= set(tr["members"])
+                        elif i in _covered:
+                            # The BMS has parked the failed pump; the spare moves
+                            # the water. Stopped on the wire, flow 0, and out of
+                            # the header split in _compute_chw_loop.
+                            self._plant_standby_names.add(tr["chwp"])
                     # Age the timers off the set just chosen. Lead time is CONTINUOUS
                     # — losing the lead zeroes it, so a train cannot bank minimum-run
                     # credit across a handover. The stopped timer starts the moment a
@@ -5858,6 +5895,15 @@ class DeviceStateStore:
     # An interlock that cannot trip is not an interlock.
     _FLOW_TRIP_FRAC = 0.25   # below a quarter of required pumping, flow is "lost"
     _FLOW_PROOF_S   = 10.0   # dwell, so a stage change or valve step cannot trip it
+    # A chiller's own evaporator flow switch: below this share of its flow for
+    # this long and the machine trips on Alarm_FlowLoss to protect the barrel
+    # from freezing. 15 s is a plant that has set its flow proof to ride
+    # through a pump changeover to the header spare; the spare starts on the
+    # BMS's own proof dwell (_FLOW_PROOF_S) and proves well inside this. Only
+    # with no spare left does the chiller see its flow gone long enough.
+    _CHILLER_FLOW_TRIP_FRAC = 0.5
+    _CHILLER_FLOW_TRIP_S    = 15.0
+    _CHILLER_FLOW_RESET_S   = 30.0   # off, or flow proved, this long -> switch resets
     # Auto-resetting, unlike the high head-pressure lockout. A flow-loss interlock
     # is a protective cutout that permits a restart once flow proves — it is the
     # repeated-trip counter, not the first trip, that demands a manual reset on a
@@ -7048,18 +7094,66 @@ class DeviceStateStore:
                           if c not in self._plant_standby_names
                           and c not in self._chiller_hp_lockout
                           and c not in self._plant_unpowered_names]
+            # What each running chiller's barrel actually sees: its own train's
+            # evaporator pump, or the header spare standing in for it. A pump
+            # losing proof fades it; a parked pump with no spare turning is 0.
+            _spares_turning = [sp for sp in (ctx.get("spare_chwp", {}).get(dc) or [])
+                               if sp not in self._plant_standby_names
+                               and sp not in self._plant_unpowered_names
+                               and not self._is_faulted(sp) and sp not in _PROOF_PENDING]
+
+            def _evap_frac(ch_name: str) -> float:
+                tr = next((t for t in self._plant_trains_run.get(dc, [])
+                           if t.get("chiller") == ch_name), None)
+                pump = tr.get("chwp") if tr else None
+                if not pump:
+                    return 1.0
+                if pump in _PROOF_PENDING:
+                    return max(0.0, 1.0 - self._pump_proof_s.get(pump, 0.0) / self._FLOW_PROOF_S)
+                if (pump in self._plant_standby_names or pump in self._plant_unpowered_names
+                        or self._is_faulted(pump)):
+                    return 1.0 if _spares_turning else 0.0
+                return 1.0
+
             if running_ch:
                 per_ch = flow / len(running_ch)
                 for name in running_ch:
                     ip = name
                     if not ip:
                         continue
+                    evap = _evap_frac(name)
+                    # The machine's own flow switch: a dwell, then the trip.
+                    if evap < self._CHILLER_FLOW_TRIP_FRAC:
+                        self._chiller_flow_s[name] = self._chiller_flow_s.get(name, 0.0) + dt
+                    else:
+                        self._chiller_flow_s.pop(name, None)
+                    if self._chiller_flow_s.get(name, 0.0) >= self._CHILLER_FLOW_TRIP_S:
+                        self._chiller_flow_trip.add(name)
+                        self._chiller_flow_reset_s.pop(name, None)
                     pts = auto.setdefault(ip, {})
                     pts.update({"CHW_Supply_Temp": round(
                                     supply + _cb_mean - _cb_by.get(name, 0.0), 1),
                                 "CHW_Return_Temp": round(ret, 1),
                                 "CHW_Setpoint": round(_sp, 1),
-                                "CHW_Flow": round(per_ch, 1)})
+                                "CHW_Flow": round(per_ch * evap, 1)})
+            # A tripped chiller says so on the wire until its switch resets: flow
+            # proved again, or the machine has sat off for _CHILLER_FLOW_RESET_S.
+            # Published only as 1.0 - dropping the key is the clear, so an
+            # operator's own forced bit is never stamped out.
+            for name in list(self._chiller_flow_trip):
+                proved = name in running_ch and _evap_frac(name) >= self._CHILLER_FLOW_TRIP_FRAC
+                off = name not in running_ch
+                if proved or off:
+                    t = self._chiller_flow_reset_s.get(name, 0.0) + dt
+                    self._chiller_flow_reset_s[name] = t
+                    if t >= self._CHILLER_FLOW_RESET_S:
+                        self._chiller_flow_trip.discard(name)
+                        self._chiller_flow_reset_s.pop(name, None)
+                        self._chiller_flow_s.pop(name, None)
+                        continue
+                else:
+                    self._chiller_flow_reset_s.pop(name, None)
+                auto.setdefault(name, {})["Alarm_FlowLoss"] = 1.0
 
             # Off-setpoint annunciation: the PLANT's chilled-water supply, with a
             # dwell so a stage change or a valve step cannot annunciate, and
@@ -7133,8 +7227,13 @@ class DeviceStateStore:
             _cw_pump_design = water_flow_lps(
                 _inst_kw * (1.0 + 1.0 / CHILLER_COP_RATED),
                 COND_DESIGN_RANGE_C) / _n_trains_all
+            # The header spare, when the BMS has started it for a parked train
+            # pump, shares the chilled-water header with the train pumps. It
+            # used to be absent from this split - a member of no train - so a
+            # running spare advertised 0 l/s while the chiller it fed ran on.
+            _chwps_turning = chwps + [sp for sp in _spares_turning if sp not in chwps]
             for group, total, _pump_design_lps, _label, _pref in (
-                    (chwps, flow, _chw_pump_design, "chw", "CHWP"),
+                    (_chwps_turning, flow, _chw_pump_design, "chw", "CHWP"),
                     (cwps, cw_flow, _cw_pump_design, "cw", "CWP")):
                 _members = [n for n in _pumps_all if n.upper().startswith(_pref)]
                 # TURNING, not merely present. A faulted or silent pump is not

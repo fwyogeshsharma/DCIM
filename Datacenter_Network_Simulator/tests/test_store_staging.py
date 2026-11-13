@@ -97,9 +97,23 @@ class TestFailover:
         plant.tick()
         assert plant.running_chillers() == {"CHL2-DC1-CP"}
 
-    def test_a_pump_fault_takes_its_whole_train_out(self, plant, plant_cache):
-        """Trains stage as a unit — a chiller with no pump moves no water."""
+    def test_a_pump_fault_starts_the_spare_and_keeps_the_train(self, plant, plant_cache):
+        """A train whose only failed member is its evaporator pump keeps its
+        chiller when a header spare can be started for it: the BMS parks the
+        pump and the spare moves the water (S2-5). Swapping the whole train is
+        what a plant with no spare has to do."""
         plant_cache["CHWP1-DC1-CP"] = {"Alarm_Fault": 1.0}
+        plant.tick()
+        assert "CHL1-DC1-CP" in plant.running_chillers()
+        assert "CHWP1-DC1-CP" in plant.standby()                 # parked
+        spare = plant.store._cooling_context()["spare_chwp"][DC][0]
+        assert spare not in plant.standby()                      # started for it
+
+    def test_a_pump_fault_with_no_spare_left_takes_its_whole_train_out(self, plant, plant_cache):
+        """Trains stage as a unit — a chiller with no pump moves no water."""
+        spare = plant.store._cooling_context()["spare_chwp"][DC][0]
+        plant_cache["CHWP1-DC1-CP"] = {"Alarm_Fault": 1.0}
+        plant_cache[spare] = {"Alarm_Fault": 1.0}
         plant.tick()
         assert "CHL1-DC1-CP" not in plant.running_chillers()
 

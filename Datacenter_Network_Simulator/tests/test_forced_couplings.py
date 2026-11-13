@@ -328,3 +328,88 @@ def test_flow_proof_lost_runs_the_flow_down_before_the_pump_stops(hall):
     r.store.plant_alarm_overrides.pop(pump, None)
     r.tick(3)
     assert pump not in r.store._pump_proof_s
+
+
+# ── spare before swap, and the chiller's own flow switch ─────────────────────
+
+def _lead_train(r, dc="DC1"):
+    trains = r.store._plant_trains_run.get(dc, [])
+    assert trains, "a train is staged on"
+    return trains[0]
+
+
+def _spare(r, dc="DC1"):
+    sp = r.store._cooling_context()["spare_chwp"].get(dc) or []
+    assert sp, "the plant has a header spare"
+    return sp[0]
+
+
+def test_a_failed_pump_starts_the_spare_and_keeps_the_chiller(hall):
+    """A running train whose evaporator pump fails is not a failed train when
+    a header spare exists: the BMS parks the pump, starts the spare, and the
+    chiller never stops. It used to swap the whole train."""
+    r = hall
+    tr = _lead_train(r)
+    ch, pump, spare = tr["chiller"], tr["chwp"], _spare(r)
+    assert spare in r.store._plant_standby_names                  # idling as N+1
+    r.store.plant_alarm_overrides.setdefault(pump, {})["Alarm_Fault"] = 1.0
+    r.tick(8)
+    assert _lead_train(r)["chiller"] == ch                        # same train leads
+    assert ch not in r.store._plant_standby_names
+    assert _wire(r, ch, "Chiller_Running") == 1.0
+    assert pump in r.store._plant_standby_names                   # parked
+    assert _wire(r, pump, "Run_Status") == 0.0 and _wire(r, pump, "Flow") == 0.0
+    assert spare not in r.store._plant_standby_names              # running for it
+    assert _wire(r, spare, "Flow") > 0.5
+    assert "Alarm_FlowLoss" not in r.store._plant_auto_points.get(ch, {})
+    assert _wire(r, ch, "CHW_Flow") > 0.5                         # the barrel sees water
+    # Repaired: the train's own pump comes back and the spare idles again.
+    r.store.plant_alarm_overrides.pop(pump, None)
+    r.tick(8)
+    assert _lead_train(r)["chiller"] == ch
+    assert pump not in r.store._plant_standby_names and _wire(r, pump, "Flow") > 0.5
+    assert spare in r.store._plant_standby_names
+
+
+def test_flow_proof_lost_with_a_spare_never_trips_the_chiller(hall):
+    """The run-down takes the barrel below half its flow for a few seconds;
+    the spare proves before the chiller's own switch runs out."""
+    r = hall
+    tr = _lead_train(r)
+    ch, pump, spare = tr["chiller"], tr["chwp"], _spare(r)
+    r.store.plant_alarm_overrides.setdefault(pump, {})["Alarm_LowFlow"] = 1.0
+    r.tick(7)
+    assert 0.0 < _wire(r, ch, "CHW_Flow") < 0.6 * 7.0 or _wire(r, ch, "CHW_Flow") < 5.0
+    r.tick(int(r.store._FLOW_PROOF_S) + 6)
+    assert _lead_train(r)["chiller"] == ch
+    assert spare not in r.store._plant_standby_names
+    assert "Alarm_FlowLoss" not in r.store._plant_auto_points.get(ch, {})
+    assert ch not in r.store._chiller_flow_trip
+    r.store.plant_alarm_overrides.pop(pump, None)
+
+
+def test_no_spare_left_trips_the_chiller_on_its_own_switch(hall):
+    """Pump and spare both stopped: the barrel sees no flow, the chiller's own
+    switch trips it on Alarm_FlowLoss after its dwell, and the plant fails
+    over to another train. Repaired, the switch resets by itself."""
+    r = hall
+    tr = _lead_train(r)
+    ch, pump, spare = tr["chiller"], tr["chwp"], _spare(r)
+    r.store.plant_alarm_overrides.setdefault(pump, {})["Run_Status"] = 0.0
+    r.store.plant_alarm_overrides.setdefault(spare, {})["Run_Status"] = 0.0
+    r.tick(6)
+    assert _wire(r, ch, "CHW_Flow") == 0.0                        # nothing moving
+    assert "Alarm_FlowLoss" not in r.store._plant_auto_points.get(ch, {})   # dwell
+    r.tick(int(r.store._CHILLER_FLOW_TRIP_S) + 3)
+    assert ch in r.store._chiller_flow_trip
+    assert _wire(r, ch, "Alarm_FlowLoss") == 1.0
+    assert r.store._plant_status(r.h.name(ch)) in ("flow_loss", "stopped", "unit_fault")
+    r.tick(3)
+    assert _lead_train(r)["chiller"] != ch                        # failed over
+    assert ch in r.store._plant_standby_names
+    # Repaired: both pumps back; the switch resets once the machine has sat off.
+    r.store.plant_alarm_overrides.pop(pump, None)
+    r.store.plant_alarm_overrides.pop(spare, None)
+    r.tick(int(r.store._CHILLER_FLOW_RESET_S) + 5)
+    assert ch not in r.store._chiller_flow_trip
+    assert "Alarm_FlowLoss" not in r.store._plant_auto_points.get(ch, {})
